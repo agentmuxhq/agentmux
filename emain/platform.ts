@@ -164,8 +164,8 @@ export function checkIfRunningUnderARM64Translation(fullConfig: FullConfigType) 
         const dialogOpts: Electron.MessageBoxOptions = {
             type: "warning",
             buttons: ["Dismiss", "Learn More"],
-            title: "Wave has detected a performance issue",
-            message: `Wave is running in ARM64 translation mode which may impact performance.\n\nRecommendation: Download the native ARM64 version from our website for optimal performance.`,
+            title: "WaveMux has detected a performance issue",
+            message: `WaveMux is running in ARM64 translation mode which may impact performance.\n\nRecommendation: Download the native ARM64 version from our website for optimal performance.`,
         };
 
         const choice = dialog.showMessageBoxSync(null, dialogOpts);

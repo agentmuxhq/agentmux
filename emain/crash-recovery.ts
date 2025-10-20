@@ -126,8 +126,8 @@ export async function showRecoveryModal(crashInfo: CrashInfo): Promise<void> {
             buttons: ["Copy Crash Info", "Clear Crashes", "Continue"],
             defaultId: 2, // Continue is default
             cancelId: 2,
-            title: "WaveTerm Recovered from Crash",
-            message: `WaveTerm recovered from a previous crash.\n\n${message}`,
+            title: "WaveMux Recovered from Crash",
+            message: `WaveMux recovered from a previous crash.\n\n${message}`,
             detail:
                 `Last activity: ${crashInfo.timestamp || "Unknown"}\n\n` +
                 (crashInfo.crashDumps && crashInfo.crashDumps.length > 0

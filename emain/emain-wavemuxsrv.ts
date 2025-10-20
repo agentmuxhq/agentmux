@@ -60,14 +60,14 @@ export async function showMultiInstanceDialog(): Promise<void> {
             buttons: ["Close", "Learn More"],
             defaultId: 0,
             cancelId: 0,
-            title: "Wave is Already Running",
-            message: "Another instance of Wave is already running.",
+            title: "WaveMux is Already Running",
+            message: "Another instance of WaveMux is already running.",
             detail:
-                "Wave is already running on this system. To run multiple instances simultaneously, " +
-                "launch Wave with the --instance flag:\n\n" +
+                "WaveMux is already running on this system. To run multiple instances simultaneously, " +
+                "launch WaveMux with the --instance flag:\n\n" +
                 "Example:\n" +
-                "  Wave.exe --instance=test\n" +
-                "  Wave.exe --instance=dev\n\n" +
+                "  WaveMux.exe --instance=test\n" +
+                "  WaveMux.exe --instance=dev\n\n" +
                 "Each instance will have its own isolated data while sharing your settings.\n\n" +
                 "Click 'Learn More' for documentation on multi-instance mode.",
             noLink: true,
@@ -92,13 +92,13 @@ export async function showSingleInstanceDialog(): Promise<void> {
             buttons: ["Close", "Learn More"],
             defaultId: 0,
             cancelId: 0,
-            title: "Wave is Already Running in Single-Instance Mode",
-            message: "Another instance of Wave is already running with --single-instance flag.",
+            title: "WaveMux is Already Running in Single-Instance Mode",
+            message: "Another instance of WaveMux is already running with --single-instance flag.",
             detail:
-                "You launched Wave with the --single-instance flag, which prevents multiple instances.\n\n" +
-                "To run multiple instances, simply launch Wave without the --single-instance flag:\n\n" +
-                "  Wave.exe                     (auto multi-instance)\n" +
-                "  Wave.exe --instance=test     (named multi-instance)\n\n" +
+                "You launched WaveMux with the --single-instance flag, which prevents multiple instances.\n\n" +
+                "To run multiple instances, simply launch WaveMux without the --single-instance flag:\n\n" +
+                "  WaveMux.exe                     (auto multi-instance)\n" +
+                "  WaveMux.exe --instance=test     (named multi-instance)\n\n" +
                 "Each instance will have its own isolated data while sharing your settings.\n\n" +
                 "Click 'Learn More' for documentation on multi-instance mode.",
             noLink: true,

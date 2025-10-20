@@ -181,8 +181,8 @@ export async function showCrashDialog(error: Error): Promise<void> {
             buttons: ["Copy to Clipboard", "View Logs", "Report Issue", "Close"],
             defaultId: 3, // Close is default
             cancelId: 3,
-            title: "WaveTerm Encountered an Error",
-            message: "WaveTerm has crashed due to an unexpected error.",
+            title: "WaveMux Encountered an Error",
+            message: "WaveMux has crashed due to an unexpected error.",
             detail:
                 `${error.name}: ${error.message}\n\n` +
                 `Click "Copy to Clipboard" to copy full crash details for reporting this issue.\n\n` +

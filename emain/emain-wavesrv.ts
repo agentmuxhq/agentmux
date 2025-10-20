@@ -24,7 +24,7 @@ let isWaveSrvDead = false;
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
 let WaveBuildTime = 0; // set by WAVESRV-ESTART
-let waveSrvLockError = false; // set when wavesrv fails to acquire lock
+let waveSrvLockError = false; // set when wavemuxsrv fails to acquire lock
 
 export function getWaveVersion(): { version: string; buildTime: number } {
     return { version: WaveVersion, buildTime: WaveBuildTime };
@@ -144,9 +144,9 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
         if (updater?.status == "installing") {
             return;
         }
-        console.log("wavesrv exited, shutting down");
+        console.log("wavemuxsrv exited, shutting down");
 
-        // If wavesrv failed due to lock conflict, show multi-instance dialog
+        // If wavemuxsrv failed due to lock conflict, show multi-instance dialog
         if (waveSrvLockError) {
             await showMultiInstanceDialog();
         }
@@ -156,12 +156,12 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
         electron.app.quit();
     });
     proc.on("spawn", (e) => {
-        console.log("spawned wavesrv");
+        console.log("spawned wavemuxsrv");
         waveSrvProc = proc;
         pResolve(true);
     });
     proc.on("error", (e) => {
-        console.log("error running wavesrv", e);
+        console.log("error running wavemuxsrv", e);
         pReject(e);
     });
     const rlStdout = readline.createInterface({
@@ -202,9 +202,9 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
             }
             return;
         }
-        // Detect lock error from wavesrv
+        // Detect lock error from wavemuxsrv
         if (line.includes("error acquiring wave lock") || line.includes("lock already acquired")) {
-            console.log("wavesrv detected lock conflict:", line);
+            console.log("wavemuxsrv detected lock conflict:", line);
             waveSrvLockError = true;
         }
         console.log(line);

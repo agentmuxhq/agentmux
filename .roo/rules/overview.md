@@ -32,7 +32,7 @@ The Electron main process handles the native desktop application layer:
 - [`emain.ts`](emain/emain.ts) - Main entry point, application lifecycle management
 - [`emain-window.ts`](emain/emain-window.ts) - Window management (`WaveBrowserWindow` class)
 - [`emain-tabview.ts`](emain/emain-tabview.ts) - Tab view management (`WaveTabView` class)
-- [`emain-wavesrv.ts`](emain/emain-wavesrv.ts) - Go backend server integration
+- [`emain-wavemuxsrv.ts`](emain/emain-wavemuxsrv.ts) - Go backend server integration
 - [`emain-wsh.ts`](emain/emain-wsh.ts) - WSH (Wave Shell) client integration
 - [`menu.ts`](emain/menu.ts) - Application menu system
 - [`updater.ts`](emain/updater.ts) - Auto-update functionality

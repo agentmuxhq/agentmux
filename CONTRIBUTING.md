@@ -56,7 +56,7 @@ Guidelines:
 
 ## Project Structure
 
-The project is broken into four main components: frontend, emain, wavesrv, and wsh. This section is a work-in-progress as our codebase is constantly changing.
+The project is broken into four main components: frontend, emain, wavemuxsrv, and wsh. This section is a work-in-progress as our codebase is constantly changing.
 
 ### Frontend
 
@@ -66,18 +66,18 @@ We also have a Storybook project configured for testing our component library. W
 
 ### emain
 
-emain can be found at [`/emain`](./emain/). It is the main NodeJS process and is first thing that is run when you start up the app and it forks off the process for the wavesrv backend and manages all the Electron interfaces, such as window and view management, context menus, and native UI calls. Its main entrypoint is [`emain.ts`](./emain/emain.ts). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
+emain can be found at [`/emain`](./emain/). It is the main NodeJS process and is first thing that is run when you start up the app and it forks off the process for the wavemuxsrv backend and manages all the Electron interfaces, such as window and view management, context menus, and native UI calls. Its main entrypoint is [`emain.ts`](./emain/emain.ts). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
 
 The frontend and emain communicate using the [Electron IPC mechanism](https://www.electronjs.org/docs/latest/tutorial/ipc). All exposed functions between the two are defined twice, once in [`preload.ts`](./emain/preload.ts) and once in [`custom.d.ts`](./frontend/types/custom.d.ts). On the frontend, you call the exposed function by calling `getApi().<function>()`.
 
-### wavesrv
+### wavemuxsrv
 
-wavesrv can be found at [`/cmd/server`](./cmd/server), with most business logic located in [`/pkg`](./pkg/). It is the primary Go backend for our app and manages the database and all communications with remote hosts. Its main entrypoint is [`main-server.go`](./cmd/server/main-server.go). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
+wavemuxsrv can be found at [`/cmd/server`](./cmd/server), with most business logic located in [`/pkg`](./pkg/). It is the primary Go backend for our app and manages the database and all communications with remote hosts. Its main entrypoint is [`main-server.go`](./cmd/server/main-server.go). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
 
-Communication between the wavesrv and the frontend and emain is handled by both HTTP services (found at [`/pkg/service`](./pkg/service/)) and wshrpc via WebSocket (found at [`/pkg/wshrpc`](./pkg/wshrpc/)).
+Communication between the wavemuxsrv and the frontend and emain is handled by both HTTP services (found at [`/pkg/service`](./pkg/service/)) and wshrpc via WebSocket (found at [`/pkg/wshrpc`](./pkg/wshrpc/)).
 
 ### wsh
 
 wsh can be found at [`/cmd/wsh`](./cmd/wsh/). It serves two purposes: it functions as a CLI tool for controlling Wave from the command line and it functions as a server on remote machines to facilitate multiplexing terminal sessions over a single connection and streaming files between the remote host and the local host. This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
 
-Communication between wavesrv and wsh is handled by wshrpc via either forwarded domain socket or WebSocket, depending on what the remote host supports.
+Communication between wavemuxsrv and wsh is handled by wshrpc via either forwarded domain socket or WebSocket, depending on what the remote host supports.

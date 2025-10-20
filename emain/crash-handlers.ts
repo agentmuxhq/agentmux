@@ -93,6 +93,6 @@ export function initCrashHandlers() {
         electron.app.quit();
     });
 
-    // Note: Child process errors (can add handlers for wavesrv here if needed)
+    // Note: Child process errors (can add handlers for wavemuxsrv here if needed)
     log("Crash handlers initialized (GPU, renderer process crashes)");
 }

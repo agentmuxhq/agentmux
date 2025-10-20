@@ -5,7 +5,7 @@ import * as electron from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import { getWaveDataDir, getWaveConfigDir, unamePlatform, unameArch, getMultiInstanceInfo } from "./platform";
-import { getWaveVersion } from "./emain-wavesrv";
+import { getWaveVersion } from "./emain-wavemuxsrv";
 import { getAllWaveWindows } from "./emain-window";
 import { log } from "./log";
 import { getCrashBreadcrumbs, formatBreadcrumbs } from "./crash-breadcrumbs";

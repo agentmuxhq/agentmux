@@ -38,7 +38,7 @@ import {
     runWaveSrv,
     showMultiInstanceDialog,
     showSingleInstanceDialog,
-} from "./emain-wavesrv";
+} from "./emain-wavemuxsrv";
 import {
     createBrowserWindow,
     createNewWaveWindow,
@@ -624,7 +624,7 @@ electronApp.on("before-quit", (e) => {
     stopHeartbeat(); // Mark clean exit
     if (unamePlatform == "win32") {
         // win32 doesn't have a SIGINT, so we just let electron die, which
-        // ends up killing wavesrv via closing it's stdin.
+        // ends up killing wavemuxsrv via closing it's stdin.
         return;
     }
     getWaveSrvProc()?.kill("SIGINT");
@@ -638,13 +638,13 @@ electronApp.on("before-quit", (e) => {
         hideWindowWithCatch(window);
     }
     if (getIsWaveSrvDead()) {
-        console.log("wavesrv is dead, quitting immediately");
+        console.log("wavemuxsrv is dead, quitting immediately");
         setForceQuit(true);
         electronApp.quit();
         return;
     }
     setTimeout(() => {
-        console.log("waiting for wavesrv to exit...");
+        console.log("waiting for wavemuxsrv to exit...");
         setForceQuit(true);
         electronApp.quit();
     }, 3000);
@@ -739,7 +739,7 @@ async function appMain() {
         console.log(e.toString());
     }
     const ready = await getWaveSrvReady();
-    console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
+    console.log("wavemuxsrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
 
@@ -756,7 +756,7 @@ async function appMain() {
     // Start heartbeat monitor to detect external kills
     startHeartbeat();
 
-    await sleep(10); // wait a bit for wavesrv to be ready
+    await sleep(10); // wait a bit for wavemuxsrv to be ready
     try {
         initElectronWshClient();
         initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });

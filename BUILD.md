@@ -133,7 +133,7 @@ All the methods below will install Node and Go dependencies when they run the fi
 > - During development, **ALWAYS** use `task dev` to run the app
 > - **DO NOT** launch WaveTerm from the `make/` directory during development
 > - The packaged app in `make/` is **NOT automatically updated** when you make code changes
-> - Launching a stale build will cause crashes like "wavesrv.x64.exe ENOENT"
+> - Launching a stale build will cause crashes like "wavemuxsrv.x64.exe ENOENT"
 > - Only use `task package` when you need to create a final distributable installer/archive
 
 ### Development server

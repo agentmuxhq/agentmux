@@ -25,7 +25,7 @@
 | `task start` | Standalone testing (rare) | ❌ No |
 | `task package` | **Final release builds ONLY** | ❌ No |
 
-**CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "wavesrv.x64.exe ENOENT"
+**CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "wavemuxsrv.x64.exe ENOENT"
 
 ### After Code Changes
 
@@ -36,7 +36,7 @@
 ### Architecture
 
 - **WaveMux.exe** = Electron app (UI)
-- **wavesrv** = Go backend (auto-spawned, don't run manually)
+- **wavemuxsrv** = Go backend (auto-spawned, don't run manually)
 - **wsh** = Shell integration (must be versioned correctly)
 
 ---
@@ -119,7 +119,7 @@ npm run coverage
 ### Backend (Go)
 
 ```bash
-# Build all binaries (wavesrv, wsh for all platforms)
+# Build all binaries (wavemuxsrv, wsh for all platforms)
 task build:backend
 
 # Build specific platform

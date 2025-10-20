@@ -66,7 +66,7 @@ When attempting to launch Wave without `--instance` flag while another instance 
 - Prevents silent failures
 
 **Backend Error Messages:**
-If the backend server (wavesrv) detects a lock conflict, it prints formatted instructions to the log explaining how to use multi-instance mode.
+If the backend server (wavemuxsrv) detects a lock conflict, it prints formatted instructions to the log explaining how to use multi-instance mode.
 
 ### 3. Improved Lock System
 
@@ -78,7 +78,7 @@ If the backend server (wavesrv) detects a lock conflict, it prints formatted ins
 
 **Lock File Behavior:**
 - Each instance creates `wave.lock` in its data directory
-- Lock is held for the lifetime of the wavesrv process
+- Lock is held for the lifetime of the wavemuxsrv process
 - Automatically released when instance exits
 - Non-blocking lock attempts (fails fast if already locked)
 

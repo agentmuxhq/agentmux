@@ -20,7 +20,7 @@ function verifyRequiredArtifacts() {
         "dist/frontend/index.html",     // Frontend UI
 
         // Backend binaries (versioned for correct shell integration)
-        "dist/bin/wavesrv.x64.exe",                    // Backend server
+        "dist/bin/wavemuxsrv.x64.exe",                    // Backend server
         `dist/bin/wsh-${version}-windows.x64.exe`,     // Shell integration (x64) - REQUIRED for PowerShell
         `dist/bin/wsh-${version}-windows.arm64.exe`,   // Shell integration (ARM64)
     ];
@@ -82,7 +82,7 @@ const config = {
         output: "make",
     },
     asarUnpack: [
-        "dist/bin/**/*", // wavesrv and wsh binaries (platform-specific after filtering)
+        "dist/bin/**/*", // wavemuxsrv and wsh binaries (platform-specific after filtering)
         "dist/docsite/**/*", // the static docsite
     ],
     mac: {
@@ -104,7 +104,7 @@ const config = {
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
         mergeASARs: true,
-        singleArchFiles: "**/dist/bin/wavesrv.*",
+        singleArchFiles: "**/dist/bin/wavemuxsrv.*",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
         extendInfo: {
@@ -178,19 +178,19 @@ const config = {
         url: "https://dl.waveterm.dev/releases-w2",
     },
     afterPack: (context) => {
-        // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
+        // This is a workaround to restore file permissions to the wavemuxsrv binaries on macOS after packaging the universal binary.
         if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {
             const packageBinDir = path.resolve(
                 context.appOutDir,
                 `${pkg.productName}.app/Contents/Resources/app.asar.unpacked/dist/bin`
             );
 
-            // Reapply file permissions to the wavesrv binaries in the final app package
+            // Reapply file permissions to the wavemuxsrv binaries in the final app package
             fs.readdirSync(packageBinDir, {
                 recursive: true,
                 withFileTypes: true,
             })
-                .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
+                .filter((f) => f.isFile() && f.name.startsWith("wavemuxsrv"))
                 .forEach((f) => fs.chmodSync(path.resolve(f.parentPath ?? f.path, f.name), 0o755)); // 0o755 corresponds to -rwxr-xr-x
         }
     },

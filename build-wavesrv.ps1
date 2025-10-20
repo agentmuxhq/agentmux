@@ -1,4 +1,4 @@
-# Build wavesrv for Windows x64
+# Build wavemuxsrv for Windows x64
 $ErrorActionPreference = "Stop"
 
 Set-Location -Path "D:\Code\agent-workspaces\agentx\waveterm"
@@ -42,7 +42,7 @@ $env:CC = "$zigPath cc -target x86_64-windows-gnu"
 $buildTime = Get-Date -Format "yyyyMMddHHmm"
 $version = "0.12.0"
 
-Write-Host "Building wavesrv.x64.exe with Zig..."
+Write-Host "Building wavemuxsrv.x64.exe with Zig..."
 Write-Host "BuildTime: $buildTime"
 Write-Host "Version: $version"
 Write-Host "CC: $env:CC"
@@ -50,12 +50,12 @@ Write-Host "CC: $env:CC"
 & $goExe build `
     -tags "osusergo,sqlite_omit_load_extension" `
     -ldflags "-X main.BuildTime=$buildTime -X main.WaveVersion=$version" `
-    -o dist/bin/wavesrv.x64.exe `
+    -o dist/bin/wavemuxsrv.x64.exe `
     cmd/server/main-server.go
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Build successful!" -ForegroundColor Green
-    Get-Item dist/bin/wavesrv.x64.exe | Select-Object Name, Length, LastWriteTime
+    Get-Item dist/bin/wavemuxsrv.x64.exe | Select-Object Name, Length, LastWriteTime
 } else {
     Write-Host "Build failed with exit code $LASTEXITCODE" -ForegroundColor Red
     exit 1

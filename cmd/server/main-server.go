@@ -317,7 +317,7 @@ func clearTempFiles() error {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.SetPrefix("[wavesrv] ")
+	log.SetPrefix("[wavemuxsrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 

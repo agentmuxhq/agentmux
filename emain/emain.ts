@@ -720,18 +720,20 @@ async function appMain() {
     const startTs = Date.now();
     const multiInstanceInfo = getMultiInstanceInfo();
 
-    // Enforce single-instance lock only if --single-instance flag is used
-    if (!multiInstanceInfo.isMultiInstance) {
+    // Enforce single-instance lock only if --single-instance flag is explicitly passed
+    if (multiInstanceInfo.singleInstanceFlag) {
         const instanceLock = electronApp.requestSingleInstanceLock();
         if (!instanceLock) {
-            console.log("waveterm-app could not get single-instance-lock, another instance is running");
+            console.log("waveterm-app could not get single-instance-lock (--single-instance flag used), another instance is running");
             await showSingleInstanceDialog();
             electronApp.quit();
             return;
         }
-        console.log("waveterm-app running in single-instance mode");
-    } else {
+        console.log("waveterm-app running in single-instance mode (--single-instance flag)");
+    } else if (multiInstanceInfo.isMultiInstance) {
         console.log(`waveterm-app running in multi-instance mode (instance: ${multiInstanceInfo.instanceId})`);
+    } else {
+        console.log("waveterm-app running in default mode (wave-data/, multi-instance allowed)");
     }
     try {
         await runWaveSrv(handleWSEvent);

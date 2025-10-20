@@ -434,6 +434,9 @@
         }
 
         &.block-focused {
+            position: relative;
+            z-index: 10; // Elevate focused block above adjacent blocks to prevent border overlap
+
             .block-mask {
                 border: 2px solid var(--accent-color);
                 outline: 2px solid var(--accent-color);

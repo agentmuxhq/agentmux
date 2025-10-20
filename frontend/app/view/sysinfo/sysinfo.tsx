@@ -46,6 +46,17 @@ function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
     };
 }
 
+function defaultNetMeta(name: string): TimeSeriesMeta {
+    return {
+        name: name,
+        label: "MB/s",
+        miny: 0,
+        maxy: 100,
+        color: "var(--sysinfo-net-color)",
+        decimalPlaces: 2,
+    };
+}
+
 const PlotTypes: Object = {
     CPU: function (dataItem: DataItem): Array<string> {
         return ["cpu"];
@@ -55,6 +66,15 @@ const PlotTypes: Object = {
     },
     "CPU + Mem": function (dataItem: DataItem): Array<string> {
         return ["cpu", "mem:used"];
+    },
+    Net: function (dataItem: DataItem): Array<string> {
+        return ["net:bytestotal"];
+    },
+    "Net (Sent/Recv)": function (dataItem: DataItem): Array<string> {
+        return ["net:bytessent", "net:bytesrecv"];
+    },
+    "CPU + Mem + Net": function (dataItem: DataItem): Array<string> {
+        return ["cpu", "mem:used", "net:bytestotal"];
     },
     "All CPU": function (dataItem: DataItem): Array<string> {
         return Object.keys(dataItem)
@@ -73,6 +93,9 @@ const DefaultPlotMeta = {
     "mem:used": defaultMemMeta("Memory Used", "mem:total"),
     "mem:free": defaultMemMeta("Memory Free", "mem:total"),
     "mem:available": defaultMemMeta("Memory Available", "mem:total"),
+    "net:bytessent": defaultNetMeta("Network Sent"),
+    "net:bytesrecv": defaultNetMeta("Network Recv"),
+    "net:bytestotal": defaultNetMeta("Network Total"),
 };
 for (let i = 0; i < 32; i++) {
     DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`Core ${i}`);

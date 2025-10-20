@@ -372,13 +372,23 @@ async function callWithOriginalXdgCurrentDesktopAsync(callback: () => Promise<vo
 }
 
 /**
- * Gets multi-instance information.
- * @returns Object containing isMultiInstance flag and instanceId
+ * Check if --single-instance flag is present in command-line arguments.
+ * @returns true if --single-instance flag was passed
  */
-function getMultiInstanceInfo(): { isMultiInstance: boolean; instanceId: string | null } {
+function hasSingleInstanceFlag(): boolean {
+    const args = process.argv.slice(1);
+    return args.includes("--single-instance");
+}
+
+/**
+ * Gets multi-instance information.
+ * @returns Object containing isMultiInstance flag, instanceId, and singleInstanceFlag
+ */
+function getMultiInstanceInfo(): { isMultiInstance: boolean; instanceId: string | null; singleInstanceFlag: boolean } {
+    const singleInstanceFlag = hasSingleInstanceFlag();
     const isMultiInstance = instanceNumber !== "1";
     const instanceId = isMultiInstance ? `instance-${instanceNumber}` : null;
-    return { isMultiInstance, instanceId };
+    return { isMultiInstance, instanceId, singleInstanceFlag };
 }
 
 export {

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
 )
 
 type renderContextKeyType struct{}

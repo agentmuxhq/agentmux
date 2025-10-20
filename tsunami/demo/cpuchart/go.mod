@@ -4,7 +4,7 @@ go 1.24.6
 
 require (
 	github.com/shirou/gopsutil/v4 v4.25.8
-	github.com/wavetermdev/waveterm/tsunami v0.0.0
+	github.com/a5af/wavemux/tsunami v0.0.0
 )
 
 require (
@@ -20,4 +20,4 @@ require (
 	golang.org/x/sys v0.35.0 // indirect
 )
 
-replace github.com/wavetermdev/waveterm/tsunami => /Users/mike/work/waveterm/tsunami
+replace github.com/a5af/wavemux/tsunami => /Users/mike/work/waveterm/tsunami

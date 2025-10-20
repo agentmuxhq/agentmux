@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/waveterm/tsunami/engine"
-	"github.com/wavetermdev/waveterm/tsunami/util"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/a5af/wavemux/tsunami/engine"
+	"github.com/a5af/wavemux/tsunami/util"
+	"github.com/a5af/wavemux/tsunami/vdom"
 )
 
 // UseVDomRef provides a reference to a DOM element in the VDOM tree.

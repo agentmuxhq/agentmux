@@ -6,9 +6,9 @@ package wshclient
 import (
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wshutil"
 )
 
 type WshServer struct{}

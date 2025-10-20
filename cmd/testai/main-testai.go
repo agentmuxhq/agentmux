@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/a5af/wavemux/pkg/aiusechat"
+	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
+	"github.com/a5af/wavemux/pkg/web/sse"
 )
 
 //go:embed testschema.json

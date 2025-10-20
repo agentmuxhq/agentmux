@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
-	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/remote/awsconn"
+	"github.com/a5af/wavemux/pkg/remote/connparse"
+	"github.com/a5af/wavemux/pkg/remote/fileshare/fstype"
+	"github.com/a5af/wavemux/pkg/remote/fileshare/s3fs"
+	"github.com/a5af/wavemux/pkg/remote/fileshare/wavefs"
+	"github.com/a5af/wavemux/pkg/remote/fileshare/wshfs"
+	"github.com/a5af/wavemux/pkg/util/iochan/iochantypes"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wshutil"
 )
 
 const (

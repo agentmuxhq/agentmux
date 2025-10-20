@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 var viewMagnified bool

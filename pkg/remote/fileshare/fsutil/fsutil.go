@@ -12,13 +12,13 @@ import (
 	"log"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fspath"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/pathtree"
-	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/remote/connparse"
+	"github.com/a5af/wavemux/pkg/remote/fileshare/fspath"
+	"github.com/a5af/wavemux/pkg/remote/fileshare/fstype"
+	"github.com/a5af/wavemux/pkg/remote/fileshare/pathtree"
+	"github.com/a5af/wavemux/pkg/util/tarcopy"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 func GetParentPath(conn *connparse.Connection) string {

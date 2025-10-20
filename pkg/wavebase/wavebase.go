@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
 )
 
 // set by main-server.go
@@ -258,7 +258,7 @@ func determineLang() string {
 
 		return preferredLang
 	} else {
-		// this is specifically to get the wavesrv LANG so waveshell
+		// this is specifically to get the wavemuxsrv LANG so waveshell
 		// on a remote uses the same LANG
 		return os.Getenv("LANG")
 	}

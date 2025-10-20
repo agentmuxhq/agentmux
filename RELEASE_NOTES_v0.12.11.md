@@ -77,7 +77,7 @@ git push origin <branch> --tags
 
 **Contents:**
 - Wave.exe (Electron wrapper)
-- wavesrv.x64.exe (Backend server)
+- wavemuxsrv.x64.exe (Backend server)
 - wsh-0.12.11-windows.x64.exe (Shell integration - x64)
 - wsh-0.12.11-windows.arm64.exe (Shell integration - ARM64)
 - All frontend assets and dependencies
@@ -129,7 +129,7 @@ Version inconsistencies have historically caused:
 2. **Hardcoded version references:** Some example code contains old version numbers
    - **Files:**
      - `cmd/server/main-server.go` (example output)
-     - `emain/emain-wavesrv.ts` (example output)
+     - `emain/emain-wavemuxsrv.ts` (example output)
      - `frontend/app/onboarding/onboarding-features.tsx` (onboarding version)
    - **Impact:** Cosmetic only, does not affect build
    - **Status:** Will be updated in next release

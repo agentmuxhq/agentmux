@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wshutil"
 )
 
 var notifyTitle string

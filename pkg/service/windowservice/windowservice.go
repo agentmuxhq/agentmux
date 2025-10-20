@@ -9,13 +9,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/a5af/wavemux/pkg/eventbus"
+	"github.com/a5af/wavemux/pkg/panichandler"
+	"github.com/a5af/wavemux/pkg/tsgen/tsgenmeta"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wcore"
+	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/wavemux/pkg/wstore"
 )
 
 const DefaultTimeout = 2 * time.Second

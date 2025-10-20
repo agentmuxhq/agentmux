@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/tsgen/tsgenmeta"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wshutil"
 )
 
 const (

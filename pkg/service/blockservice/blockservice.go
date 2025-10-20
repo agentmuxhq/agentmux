@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/a5af/wavemux/pkg/blockcontroller"
+	"github.com/a5af/wavemux/pkg/filestore"
+	"github.com/a5af/wavemux/pkg/tsgen/tsgenmeta"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wstore"
 )
 
 type BlockService struct{}

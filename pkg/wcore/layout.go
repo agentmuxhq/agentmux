@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wstore"
 )
 
 const (
@@ -47,7 +47,7 @@ func GetStarterLayout() PortableLayout {
 		{IndexArr: []int{1, 1}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
 				waveobj.MetaKey_View: "web",
-				waveobj.MetaKey_Url:  "https://github.com/wavetermdev/waveterm",
+				waveobj.MetaKey_Url:  "https://github.com/a5af/wavemux",
 			},
 		}},
 		{IndexArr: []int{1, 2}, BlockDef: &waveobj.BlockDef{

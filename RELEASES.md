@@ -32,7 +32,7 @@ Once the tag has been created, a new [Build Helper](#build-helper-workflow) run 
 
 Our release builds are managed by the [Build Helper workflow](https://github.com/wavetermdev/waveterm/actions/workflows/build-helper.yml).
 
-Under the hood, this will call the `package` task in [`Taskfile.yml`](./Taskfile.yml), which will build the `wavesrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](./electron-builder.config.cjs).
+Under the hood, this will call the `package` task in [`Taskfile.yml`](./Taskfile.yml), which will build the `wavemuxsrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](./electron-builder.config.cjs).
 
 This will also sign and notarize the macOS app packages and sign the Windows packages.
 

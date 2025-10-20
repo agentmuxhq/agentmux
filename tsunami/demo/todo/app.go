@@ -4,8 +4,8 @@ import (
 	_ "embed"
 	"strconv"
 
-	"github.com/wavetermdev/waveterm/tsunami/app"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/a5af/wavemux/tsunami/app"
+	"github.com/a5af/wavemux/tsunami/vdom"
 )
 
 const AppTitle = "Todo App (Tsunami Demo)"

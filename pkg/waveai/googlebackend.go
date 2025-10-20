@@ -11,7 +11,7 @@ import (
 	"net/url"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )

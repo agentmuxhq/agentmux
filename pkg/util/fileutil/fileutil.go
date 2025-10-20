@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 func FixPath(path string) (string, error) {

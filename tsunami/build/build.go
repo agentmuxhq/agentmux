@@ -22,12 +22,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wavetermdev/waveterm/tsunami/util"
+	"github.com/a5af/wavemux/tsunami/util"
 	"golang.org/x/mod/modfile"
 )
 
 const MinSupportedGoMinorVersion = 22
-const TsunamiUIImportPath = "github.com/wavetermdev/waveterm/tsunami/ui"
+const TsunamiUIImportPath = "github.com/a5af/wavemux/tsunami/ui"
 
 type BuildOpts struct {
 	AppPath        string
@@ -219,7 +219,7 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 		}
 
 		// Add requirement for tsunami SDK
-		if err := modFile.AddRequire("github.com/wavetermdev/waveterm/tsunami", "v0.0.0"); err != nil {
+		if err := modFile.AddRequire("github.com/a5af/wavemux/tsunami", "v0.0.0"); err != nil {
 			return fmt.Errorf("failed to add require directive: %w", err)
 		}
 	} else {
@@ -227,7 +227,7 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 	}
 
 	// Add replace directive for tsunami SDK
-	if err := modFile.AddReplace("github.com/wavetermdev/waveterm/tsunami", "", opts.SdkReplacePath, ""); err != nil {
+	if err := modFile.AddReplace("github.com/a5af/wavemux/tsunami", "", opts.SdkReplacePath, ""); err != nil {
 		return fmt.Errorf("failed to add replace directive: %w", err)
 	}
 
@@ -245,8 +245,8 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 
 	if verbose {
 		log.Printf("Created go.mod with module path: %s", modulePath)
-		log.Printf("Added require: github.com/wavetermdev/waveterm/tsunami v0.0.0")
-		log.Printf("Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+		log.Printf("Added require: github.com/a5af/wavemux/tsunami v0.0.0")
+		log.Printf("Added replace directive: github.com/a5af/wavemux/tsunami => %s", opts.SdkReplacePath)
 	}
 
 	// Run go mod tidy to clean up dependencies

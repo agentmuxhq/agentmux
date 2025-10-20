@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/outrigdev/goid"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/a5af/wavemux/tsunami/vdom"
 )
 
 const (

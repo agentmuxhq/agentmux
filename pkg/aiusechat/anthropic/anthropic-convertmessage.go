@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
 )
 
 // these conversions are based off the anthropic spec

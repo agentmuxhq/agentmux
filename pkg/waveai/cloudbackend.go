@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wcloud"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/panichandler"
+	"github.com/a5af/wavemux/pkg/wcloud"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 type WaveAICloudBackend struct{}

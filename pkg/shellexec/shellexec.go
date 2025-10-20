@@ -20,17 +20,17 @@ import (
 	"maps"
 
 	"github.com/creack/pty"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
-	"github.com/wavetermdev/waveterm/pkg/util/pamparse"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wslconn"
+	"github.com/a5af/wavemux/pkg/blocklogger"
+	"github.com/a5af/wavemux/pkg/panichandler"
+	"github.com/a5af/wavemux/pkg/remote/conncontroller"
+	"github.com/a5af/wavemux/pkg/util/pamparse"
+	"github.com/a5af/wavemux/pkg/util/shellutil"
+	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
+	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/wslconn"
 )
 
 const DefaultGracefulKillWait = 400 * time.Millisecond

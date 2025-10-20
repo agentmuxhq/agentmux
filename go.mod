@@ -1,8 +1,9 @@
-module github.com/wavetermdev/waveterm
+module github.com/a5af/wavemux
 
 go 1.24.6
 
 require (
+	github.com/a5af/wavemux/tsunami v0.0.0-00010101000000-000000000000
 	github.com/alexflint/go-filemutex v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.39.3
 	github.com/aws/aws-sdk-go-v2/config v1.31.13
@@ -33,7 +34,6 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/ubuntu/gowsl v0.0.0-20240906163211-049fd49bd93b
 	github.com/wavetermdev/htmltoken v0.2.0
-	github.com/wavetermdev/waveterm/tsunami v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.43.0
 	golang.org/x/mod v0.29.0
 	golang.org/x/sync v0.17.0
@@ -110,4 +110,4 @@ replace github.com/kevinburke/ssh_config => github.com/wavetermdev/ssh_config v0
 
 replace github.com/creack/pty => github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b
 
-replace github.com/wavetermdev/waveterm/tsunami => ./tsunami
+replace github.com/a5af/wavemux/tsunami => ./tsunami

@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/telemetry"
+	"github.com/a5af/wavemux/pkg/telemetry/telemetrydata"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 const WaveAIPacketstr = "waveai"

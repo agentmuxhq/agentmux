@@ -9,11 +9,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/gogen"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/gogen"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wconfig"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 const WshClientFileName = "pkg/wshrpc/wshclient/wshclient.go"
@@ -24,15 +24,15 @@ func GenerateWshClient() error {
 	fmt.Fprintf(os.Stderr, "generating wshclient file to %s\n", WshClientFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wshclient", []string{
-		"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata",
-		"github.com/wavetermdev/waveterm/pkg/wshutil",
-		"github.com/wavetermdev/waveterm/pkg/wshrpc",
-		"github.com/wavetermdev/waveterm/pkg/wconfig",
-		"github.com/wavetermdev/waveterm/pkg/waveobj",
-		"github.com/wavetermdev/waveterm/pkg/wps",
-		"github.com/wavetermdev/waveterm/pkg/vdom",
-		"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes",
-		"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes",
+		"github.com/a5af/wavemux/pkg/telemetry/telemetrydata",
+		"github.com/a5af/wavemux/pkg/wshutil",
+		"github.com/a5af/wavemux/pkg/wshrpc",
+		"github.com/a5af/wavemux/pkg/wconfig",
+		"github.com/a5af/wavemux/pkg/waveobj",
+		"github.com/a5af/wavemux/pkg/wps",
+		"github.com/a5af/wavemux/pkg/vdom",
+		"github.com/a5af/wavemux/pkg/util/iochan/iochantypes",
+		"github.com/a5af/wavemux/pkg/aiusechat/uctypes",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {

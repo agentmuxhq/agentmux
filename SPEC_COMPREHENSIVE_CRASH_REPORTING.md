@@ -257,8 +257,8 @@ export function initCrashHandlers() {
         electron.app.quit();
     });
 
-    // 4. Child process (wavesrv) crashes
-    // Already handled in emain-wavesrv.ts but can add breadcrumb
+    // 4. Child process (wavemuxsrv) crashes
+    // Already handled in emain-wavemuxsrv.ts but can add breadcrumb
 }
 ```
 

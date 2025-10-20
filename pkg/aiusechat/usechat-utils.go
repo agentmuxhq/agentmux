@@ -6,9 +6,9 @@ package aiusechat
 import (
 	"fmt"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/a5af/wavemux/pkg/aiusechat/anthropic"
+	"github.com/a5af/wavemux/pkg/aiusechat/openai"
+	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
 )
 
 // CombineConsecutiveSameRoleMessages combines consecutive UIMessages with the same role

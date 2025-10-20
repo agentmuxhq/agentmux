@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
 )
 
 type ChatStore struct {

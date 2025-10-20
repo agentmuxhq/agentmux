@@ -29,7 +29,7 @@ WaveMux is an independent terminal multiplexer project, originally forked from [
 
 - **Electron 38.1.2** - Desktop application framework
 - **TypeScript + React** - Frontend UI
-- **Go** - Backend server (wavesrv) and shell integration (wsh)
+- **Go** - Backend server (wavemuxsrv) and shell integration (wsh)
 - **Vite** - Build tool
 - **Vitest** - Testing framework
 
@@ -50,7 +50,7 @@ npm install
 # Development mode (hot reload)
 task dev
 
-# Build Go binaries (wavesrv, wsh)
+# Build Go binaries (wavemuxsrv, wsh)
 task build:backend
 
 # Build frontend (production)

@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/remote/connparse"
+	"github.com/a5af/wavemux/pkg/util/iochan/iochantypes"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 const (

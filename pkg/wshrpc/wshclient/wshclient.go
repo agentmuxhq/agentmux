@@ -6,15 +6,15 @@
 package wshclient
 
 import (
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/a5af/wavemux/pkg/telemetry/telemetrydata"
+	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wconfig"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/wavemux/pkg/vdom"
+	"github.com/a5af/wavemux/pkg/util/iochan/iochantypes"
+	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
 )
 
 // command "activity", wshserver.ActivityCommand

@@ -13,14 +13,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/panichandler"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/wavemux/pkg/wshrpc"
 )
 
 const (
-	DefaultRoute  = "wavesrv"
+	DefaultRoute  = "wavemuxsrv"
 	UpstreamRoute = "upstream"
 	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
 	ElectronRoute = "electron"

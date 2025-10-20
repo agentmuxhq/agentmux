@@ -17,13 +17,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
-	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
-	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/a5af/wavemux/pkg/blocklogger"
+	"github.com/a5af/wavemux/pkg/genconn"
+	"github.com/a5af/wavemux/pkg/remote/awsconn"
+	"github.com/a5af/wavemux/pkg/util/iterfn"
+	"github.com/a5af/wavemux/pkg/util/shellutil"
+	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/wavemux/pkg/wconfig"
 	"golang.org/x/crypto/ssh"
 )
 

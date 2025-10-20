@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wshutil"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 	ConnectionTypeWave = "wavefile"
 
 	ConnHostCurrent = "current"
-	ConnHostWaveSrv = "wavesrv"
+	ConnHostWaveSrv = "wavemuxsrv"
 )
 
 var windowsDriveRegex = regexp.MustCompile(`^[a-zA-Z]:`)

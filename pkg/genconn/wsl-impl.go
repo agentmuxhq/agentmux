@@ -9,7 +9,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/a5af/wavemux/pkg/wsl"
 )
 
 var _ ShellClient = (*WSLShellClient)(nil)

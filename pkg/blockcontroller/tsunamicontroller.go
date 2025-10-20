@@ -19,12 +19,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/utilds"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
-	"github.com/wavetermdev/waveterm/tsunami/build"
+	"github.com/a5af/wavemux/pkg/utilds"
+	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/wavemux/tsunami/build"
 )
 
 type TsunamiAppProc struct {

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/tsunami/build"
-	"github.com/wavetermdev/waveterm/tsunami/tsunamibase"
+	"github.com/a5af/wavemux/tsunami/build"
+	"github.com/a5af/wavemux/tsunami/tsunamibase"
 )
 
 const (

@@ -11,9 +11,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
+	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/wavemux/pkg/wavebase"
 )
 
 const ReadDirDefaultMaxEntries = 500

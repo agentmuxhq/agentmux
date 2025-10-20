@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wavetermdev/waveterm/tsunami/app"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/a5af/wavemux/tsunami/app"
+	"github.com/a5af/wavemux/tsunami/vdom"
 )
 
 const AppTitle = "GitHub Actions Monitor"

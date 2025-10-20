@@ -6,8 +6,8 @@ package wshserver
 import (
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/wavemux/pkg/wshutil"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 var waveSrvClient_Singleton *wshutil.WshRpc
 var waveSrvClient_Once = &sync.Once{}
 
-// returns the wavesrv main rpc client singleton
+// returns the wavemuxsrv main rpc client singleton
 func GetMainRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		inputCh := make(chan []byte, DefaultInputChSize)

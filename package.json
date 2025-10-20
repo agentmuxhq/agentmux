@@ -121,7 +121,7 @@
         "htl": "^0.3.1",
         "html-to-image": "^1.11.13",
         "immer": "^10.1.1",
-        "jotai": "2.9.3",
+        "jotai": "2.15.0",
         "mermaid": "^11.12.0",
         "monaco-editor": "^0.52.0",
         "monaco-yaml": "^5.4.0",

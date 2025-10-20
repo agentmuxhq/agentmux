@@ -1,0 +1,571 @@
+# Copyright 2024, Command Line Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+vars:
+    APP_NAME: "Wave"
+    BIN_DIR: "bin"
+    VERSION:
+        sh: node version.cjs
+    RM: '{{if eq OS "windows"}}powershell Remove-Item -Force -ErrorAction SilentlyContinue{{else}}rm -f{{end}}'
+    RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
+    DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
+    ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
+    RELEASES_BUCKET: dl.waveterm.dev/releases-w2
+    WINGET_PACKAGE: CommandLine.Wave
+
+tasks:
+    electron:dev:
+        desc: Run the Electron application via the Vite dev server (enables hot reloading).
+        cmd: npm run dev
+        aliases:
+            - dev
+        deps:
+            - npm:install
+            - docsite:build:embedded
+            - build:backend
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
+
+    electron:start:
+        desc: Run the Electron application directly.
+        cmd: npm run start
+        aliases:
+            - start
+        deps:
+            - npm:install
+            - docsite:build:embedded
+            - build:backend
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
+
+    electron:quickdev:
+        desc: Run the Electron application via the Vite dev server (quick dev - no docsite, arm64 only, no generate, no wsh).
+        cmd: npm run dev
+        deps:
+            - npm:install
+            - build:backend:quickdev
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+
+    storybook:
+        desc: Start the Storybook server.
+        cmd: npm run storybook
+        deps:
+            - npm:install
+
+    storybook:build:
+        desc: Build the Storybook static site.
+        cmd: npm run build-storybook
+        generates:
+            - storybook-static/**/*
+        deps:
+            - npm:install
+
+    docs:npm:install:
+        desc: Runs `npm install` in docs directory
+        internal: true
+        generates:
+            - docs/node_modules/**/*
+            - docs/package-lock.json
+        sources:
+            - docs/package-lock.json
+            - docs/package.json
+        cmd: npm install
+        dir: docs
+
+    docsite:start:
+        desc: Start the docsite dev server.
+        cmd: npm run start
+        dir: docs
+        aliases:
+            - docsite
+        deps:
+            - docs:npm:install
+
+    docsite:build:public:
+        desc: Build the full docsite.
+        cmds:
+            - cd docs && npm run build
+            - task: copyfiles:'storybook-static':'docs/build/storybook'
+        env:
+            USE_SIMPLE_CSS_MINIFIER: "true"
+        sources:
+            - "docs/*"
+            - "docs/src/**/*"
+            - "docs/docs/**/*"
+            - "docs/static/**/*"
+            - storybook-static/**/*
+        generates:
+            - "docs/build/**/*"
+        deps:
+            - docs:npm:install
+            - storybook:build
+
+    docsite:build:embedded:
+        desc: Build the embedded docsite and copy it to dist/docsite
+        sources:
+            - "docs/*"
+            - "docs/src/**/*"
+            - "docs/docs/**/*"
+            - "docs/static/**/*"
+        generates:
+            - "dist/docsite/**/*"
+        cmds:
+            - cd docs && npm run build-embedded
+            - task: copyfiles:'docs/build/':'dist/docsite'
+        env:
+            EMBEDDED: "true"
+            USE_SIMPLE_CSS_MINIFIER: "true"
+        deps:
+            - docs:npm:install
+
+    package:
+        desc: Package the application for the current platform.
+        cmds:
+            - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
+        deps:
+            - clean
+            - npm:install
+            - docsite:build:embedded
+            - build:backend
+
+    build:frontend:dev:
+        desc: Build the frontend in development mode.
+        cmd: npm run build:dev
+        deps:
+            - npm:install
+
+    build:backend:
+        desc: Build the wavesrv and wsh components.
+        cmds:
+            - task: build:server
+            - task: build:wsh
+
+    build:backend:quickdev:
+        desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
+        cmds:
+            - task: build:server:quickdev
+        sources:
+            - go.mod
+            - go.sum
+            - pkg/**/*.go
+            - pkg/**/*.sh
+            - cmd/**/*.go
+            - tsunami/go.mod
+            - tsunami/go.sum
+            - tsunami/**/*.go
+
+    build:schema:
+        desc: Build the schema for configuration.
+        sources:
+            - "cmd/generateschema/*.go"
+            - "pkg/wconfig/*.go"
+        generates:
+            - "dist/schema/**/*"
+        cmds:
+            - go run cmd/generateschema/main-generateschema.go
+            - cmd: '{{.RMRF}} "dist/schema"'
+              ignore_error: true
+            - task: copyfiles:'schema':'dist/schema'
+
+    build:server:
+        desc: Build the wavesrv component.
+        cmds:
+            - task: build:server:linux
+            - task: build:server:macos
+            - task: build:server:windows
+        deps:
+            - go:mod:tidy
+            - generate
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+            - "pkg/**/*.sh"
+            - tsunami/**/*.go
+        generates:
+            - dist/bin/wavesrv.*
+
+    build:server:macos:
+        desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
+        platforms: [darwin]
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS: arm64,amd64
+
+    build:server:quickdev:
+        desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
+        platforms: [darwin]
+        cmds:
+            - task: build:server:internal
+              vars:
+                  ARCHS: arm64
+        deps:
+            - go:mod:tidy
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+            - "pkg/**/*.sh"
+            - "tsunami/**/*.go"
+        generates:
+            - dist/bin/wavesrv.*
+
+    build:server:windows:
+        desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
+        platforms: [windows]
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS:
+                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
+                  GO_ENV_VARS:
+                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-windows-gnu\"{{else}}CC=\"zig cc -target aarch64-windows-gnu\"{{end}}"
+
+    build:server:linux:
+        desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
+        platforms: [linux]
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS:
+                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
+                  GO_ENV_VARS:
+                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-linux-gnu.2.28\"{{else}}CC=\"zig cc -target aarch64-linux-gnu.2.28\"{{end}}"
+
+    build:server:internal:
+        requires:
+            vars:
+                - ARCHS
+        cmd:
+            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
+            for:
+                var: ARCHS
+                split: ","
+                as: GOARCH
+        internal: true
+
+    build:wsh:
+        desc: Build the wsh component for all possible targets.
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wsh*"
+              ignore_error: true
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: arm64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: linux
+                  GOARCH: arm64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: linux
+                  GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: linux
+                  GOARCH: mips
+            - task: build:wsh:internal
+              vars:
+                  GOOS: linux
+                  GOARCH: mips64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: windows
+                  GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: windows
+                  GOARCH: arm64
+        deps:
+            - go:mod:tidy
+            - generate
+        sources:
+            - "cmd/wsh/**/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - "dist/bin/wsh*"
+
+    build:wsh:internal:
+        vars:
+            EXT:
+                sh: echo {{if eq .GOOS "windows"}}.exe{{end}}
+            NORMALIZEDARCH:
+                sh: echo {{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}
+        requires:
+            vars:
+                - GOOS
+                - GOARCH
+                - VERSION
+        cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+        internal: true
+
+    generate:
+        desc: Generate Typescript bindings for the Go backend.
+        cmds:
+            - go run cmd/generatets/main-generatets.go
+            - go run cmd/generatego/main-generatego.go
+        deps:
+            - build:schema
+        sources:
+            - "cmd/generatego/*.go"
+            - "cmd/generatets/*.go"
+            - "pkg/**/*.go"
+        # don't add generates key (otherwise will always execute)
+
+    outdated:
+        desc: Check for outdated packages using npm-check-updates.
+        cmd: npx npm-check-updates@latest
+
+    version:
+        desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
+        cmd: node version.cjs {{.CLI_ARGS}}
+
+    artifacts:upload:
+        desc: Uploads build artifacts to the staging bucket in S3. To add additional AWS CLI arguments, add them after `--`.
+        vars:
+            ORIGIN: "make/"
+            DESTINATION: "{{.ARTIFACTS_BUCKET}}/{{.VERSION}}"
+        cmd: aws s3 cp {{.ORIGIN}}/ s3://{{.DESTINATION}}/ --recursive --exclude "*/*" --exclude "builder-*.yml" {{.CLI_ARGS}}
+
+    artifacts:download:*:
+        desc: Downloads the specified artifacts version from the staging bucket. To add additional AWS CLI arguments, add them after `--`.
+        vars:
+            DL_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+            ORIGIN: "{{.ARTIFACTS_BUCKET}}/{{.DL_VERSION}}"
+            DESTINATION: "artifacts/{{.DL_VERSION}}"
+        cmds:
+            - '{{.RMRF}} "{{.DESTINATION}}"'
+            - aws s3 cp s3://{{.ORIGIN}}/ {{.DESTINATION}}/ --recursive {{.CLI_ARGS}}
+
+    artifacts:publish:*:
+        desc: Publishes the specified artifacts version from the staging bucket to the releases bucket. To add additional AWS CLI arguments, add them after `--`.
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+            ORIGIN: "{{.ARTIFACTS_BUCKET}}/{{.UP_VERSION}}"
+            DESTINATION: "{{.RELEASES_BUCKET}}"
+        cmd: |
+            OUTPUT=$(aws s3 cp s3://{{.ORIGIN}}/ s3://{{.DESTINATION}}/ --recursive {{.CLI_ARGS}})
+
+            for line in $OUTPUT; do
+                PREFIX=${line%%{{.DESTINATION}}*}
+                SUFFIX=${line:${#PREFIX}}
+                if [[ -n "$SUFFIX" ]]; then
+                    echo "https://$SUFFIX"
+                fi
+            done
+    artifacts:snap:publish:*:
+        desc: Publishes the specified artifacts version to Snapcraft.
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+            CHANNEL: '{{if contains "beta" .UP_VERSION}}beta{{else}}beta,stable{{end}}'
+        cmd: |
+            echo "Releasing to channels: [{{.CHANNEL}}]"
+            for file in waveterm_{{.UP_VERSION}}_*.snap; do
+                echo "Publishing $file"
+                snapcraft upload --release={{.CHANNEL}} $file
+                echo "Finished publishing $file"
+            done
+
+    artifacts:winget:publish:*:
+        desc: Submits a version bump request to WinGet for the latest release.
+        status:
+            - exit {{if contains "beta" .UP_VERSION}}0{{else}}1{{end}}
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+        cmd: |
+            wingetcreate update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t {{.GITHUB_TOKEN}}
+
+    dev:installwsh:
+        desc: quick shortcut to rebuild wsh and install for macos arm64
+        requires:
+            vars:
+                - VERSION
+        cmds:
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: arm64
+            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
+
+    dev:clearconfig:
+        desc: Clear the config directory for waveterm-dev
+        cmd: "{{.RMRF}} ~/.config/waveterm-dev"
+
+    dev:cleardata:
+        desc: Clear the data directory for waveterm-dev
+        cmds:
+            - task: dev:cleardata:windows
+            - task: dev:cleardata:linux
+            - task: dev:cleardata:macos
+
+    init:
+        desc: Initialize the project for development.
+        cmds:
+            - npm install
+            - go mod tidy
+            - cd docs && npm install
+
+    dev:cleardata:windows:
+        internal: true
+        platforms: [windows]
+        cmd: '{{.RMRF}} %LOCALAPPDATA%\waveterm-dev\Data'
+
+    dev:cleardata:linux:
+        internal: true
+        platforms: [linux]
+        cmd: "rm -rf ~/.local/share/waveterm-dev"
+
+    dev:cleardata:macos:
+        internal: true
+        platforms: [darwin]
+        cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
+
+    npm:install:
+        desc: Runs `npm install`
+        internal: true
+        generates:
+            - node_modules/**/*
+            - package-lock.json
+        sources:
+            - package-lock.json
+            - package.json
+        cmd: npm install
+
+    go:mod:tidy:
+        desc: Runs `go mod tidy`
+        internal: true
+        generates:
+            - go.sum
+        sources:
+            - go.mod
+        cmd: go mod tidy
+
+    copyfiles:*:*:
+        desc: Recursively copy directory and its contents.
+        internal: true
+        cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+
+    clean:
+        desc: clean make/dist directories
+        cmds:
+            - cmd: '{{.RMRF}} "make"'
+              ignore_error: true
+            - cmd: '{{.RMRF}} "dist"'
+              ignore_error: true
+
+    tsunami:demo:todo:
+        desc: Run the tsunami todo demo application
+        cmd: go run demo/todo/*.go
+        dir: tsunami
+        env:
+            TSUNAMI_LISTENADDR: "localhost:12026"
+
+    tsunami:frontend:dev:
+        desc: Run the tsunami frontend vite dev server
+        cmd: npm run dev
+        dir: tsunami/frontend
+
+    tsunami:frontend:build:
+        desc: Build the tsunami frontend
+        cmd: npm run build
+        dir: tsunami/frontend
+
+    tsunami:frontend:devbuild:
+        desc: Build the tsunami frontend in development mode (with source maps and symbols)
+        cmd: npm run build:dev
+        dir: tsunami/frontend
+
+    tsunami:scaffold:
+        desc: Build scaffold for tsunami frontend development
+        deps:
+            - tsunami:frontend:build
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:devscaffold:
+        desc: Build scaffold for tsunami frontend development (with source maps and symbols)
+        deps:
+            - tsunami:frontend:devbuild
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:scaffold:packagejson:
+        desc: Create package.json for tsunami scaffold using npm commands
+        dir: tsunami/frontend/scaffold
+        cmds:
+            - cmd: "{{.RM}} package.json"
+              ignore_error: true
+            - npm --no-workspaces init -y --init-license Apache-2.0
+            - npm pkg set name=tsunami-scaffold
+            - npm pkg delete author
+            - npm pkg set author.name="Command Line Inc"
+            - npm pkg set author.email="info@commandline.dev"
+            - npm --no-workspaces install tailwindcss@4.1.13 @tailwindcss/cli@4.1.13
+
+    tsunami:scaffold:internal:
+        desc: Internal task to create scaffold directory structure
+        dir: tsunami/frontend
+        internal: true
+        cmds:
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+            - mkdir scaffold
+            - cp ../templates/package.json.tmpl scaffold/package.json
+            - cd scaffold && npm install
+            - cp -r dist scaffold/
+            - cp ../templates/app-main.go.tmpl scaffold/app-main.go
+            - cp ../templates/tailwind.css scaffold/
+            - cp ../templates/gitignore.tmpl scaffold/.gitignore
+
+    tsunami:build:
+        desc: Build the tsunami binary.
+        cmds:
+            - cmd: "{{.RM}} bin/tsunami*"
+              ignore_error: true
+            - mkdir -p bin
+            - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
+        sources:
+            - "tsunami/**/*.go"
+            - "tsunami/go.mod"
+            - "tsunami/go.sum"
+        generates:
+            - "bin/tsunami{{exeExt}}"
+
+    tsunami:clean:
+        desc: Clean tsunami frontend build artifacts
+        dir: tsunami/frontend
+        cmds:
+            - cmd: "{{.RMRF}} dist"
+              ignore_error: true
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+
+    godoc:
+        desc: Start the Go documentation server for the root module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+
+    tsunami:godoc:
+        desc: Start the Go documentation server for the tsunami module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+        dir: tsunami

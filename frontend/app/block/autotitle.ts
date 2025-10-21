@@ -46,16 +46,9 @@ export function generateAutoTitle(block: Block): string {
  */
 function generateTerminalTitle(block: Block): string {
     const meta = block.meta!;
-    const cwd = meta["term:cwd"] as string | undefined;
-    const lastCmd = meta["term:lastcmd"] as string | undefined;
-
-    if (!isBlank(lastCmd)) {
-        const cmdTruncated = truncate(lastCmd!, 30);
-        if (!isBlank(cwd)) {
-            return `${basename(cwd!)}: ${cmdTruncated}`;
-        }
-        return cmdTruncated;
-    }
+    const cwd = meta["cmd:cwd"] as string | undefined;
+    // Note: shell:lastcmd is in RTInfo, not metadata, so we can't access it here
+    // TODO: Add RTInfo support to display last command
 
     if (!isBlank(cwd)) {
         return basename(cwd!) || "~";

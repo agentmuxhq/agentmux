@@ -15,39 +15,15 @@ describe("generateAutoTitle", () => {
             version: 1,
             meta: {
                 view: "term",
-                "term:cwd": "/home/user/projects/myapp",
+                "cmd:cwd": "/home/user/projects/myapp",
             },
         };
         const title = generateAutoTitle(block);
         assert.equal(title, "myapp");
     });
 
-    test("generates terminal title with last command", () => {
-        const block: Block = {
-            oid: "test-123",
-            version: 1,
-            meta: {
-                view: "term",
-                "term:cwd": "/home/user/projects",
-                "term:lastcmd": "npm run dev",
-            },
-        };
-        const title = generateAutoTitle(block);
-        assert.equal(title, "projects: npm run dev");
-    });
-
-    test("generates terminal title with long command truncated", () => {
-        const block: Block = {
-            oid: "test-123",
-            version: 1,
-            meta: {
-                view: "term",
-                "term:lastcmd": "this is a very long command that should be truncated at thirty chars",
-            },
-        };
-        const title = generateAutoTitle(block);
-        assert.equal(title, "this is a very long command th...");
-    });
+    // Note: shell:lastcmd tests removed - that data is in RTInfo, not metadata
+    // TODO: Add RTInfo support and restore these tests
 
     test("generates preview title from filename", () => {
         const block: Block = {
@@ -217,7 +193,7 @@ describe("getEffectiveTitle", () => {
             meta: {
                 view: "term",
                 "pane-title": "My Terminal",
-                "term:cwd": "/home/user",
+                "cmd:cwd": "/home/user",
             },
         };
         const title = getEffectiveTitle(block, true);
@@ -243,7 +219,7 @@ describe("getEffectiveTitle", () => {
             version: 1,
             meta: {
                 view: "term",
-                "term:cwd": "/home/user",
+                "cmd:cwd": "/home/user",
             },
         };
         const title = getEffectiveTitle(block, false);
@@ -257,7 +233,7 @@ describe("getEffectiveTitle", () => {
             meta: {
                 view: "term",
                 "pane-title": "Custom",
-                "term:cwd": "/home/user",
+                "cmd:cwd": "/home/user",
             },
         };
         const title = getEffectiveTitle(block, true);

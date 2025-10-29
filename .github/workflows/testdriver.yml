@@ -1,10 +1,12 @@
 name: TestDriver.ai Run
 
+# Temporarily disabled - CI tests not needed for fork
 on:
-    workflow_run:
-        workflows: ["TestDriver.ai Build"]
-        types:
-            - completed
+    workflow_dispatch: # Manual trigger only
+    # workflow_run:
+    #     workflows: ["TestDriver.ai Build"]
+    #     types:
+    #         - completed
 
 env:
     GO_VERSION: "1.24"

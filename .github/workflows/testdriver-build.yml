@@ -1,31 +1,32 @@
 name: TestDriver.ai Build
 
+# Temporarily disabled - CI tests not needed for fork
 on:
-    push:
-        branches:
-            - main
-        tags:
-            - "v[0-9]+.[0-9]+.[0-9]+*"
-    pull_request:
-        # branches:
-        #     - main
-        # paths-ignore:
-        #     - "docs/**"
-        #     - ".storybook/**"
-        #     - ".vscode/**"
-        #     - ".editorconfig"
-        #     - ".gitignore"
-        #     - ".prettierrc"
-        #     - ".eslintrc.js"
-        #     - "**/*.md"
-        types:
-            - opened
-            - synchronize
-            - reopened
-            - ready_for_review
-    schedule:
-        - cron: 0 21 * * *
-    workflow_dispatch: null
+    workflow_dispatch: # Manual trigger only
+    # push:
+    #     branches:
+    #         - main
+    #     tags:
+    #         - "v[0-9]+.[0-9]+.[0-9]+*"
+    # pull_request:
+    #     # branches:
+    #     #     - main
+    #     # paths-ignore:
+    #     #     - "docs/**"
+    #     #     - ".storybook/**"
+    #     #     - ".vscode/**"
+    #     #     - ".editorconfig"
+    #     #     - ".gitignore"
+    #     #     - ".prettierrc"
+    #     #     - ".eslintrc.js"
+    #     #     - "**/*.md"
+    #     types:
+    #         - opened
+    #         - synchronize
+    #         - reopened
+    #         - ready_for_review
+    # schedule:
+    #     - cron: 0 21 * * *
 
 env:
     GO_VERSION: "1.24"

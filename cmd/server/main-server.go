@@ -40,6 +40,7 @@ import (
 	"github.com/a5af/wavemux/pkg/wshutil"
 	"github.com/a5af/wavemux/pkg/wslconn"
 	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/wavemux/pkg/webhookdelivery"
 )
 
 // these are set at build time
@@ -70,6 +71,8 @@ func doShutdown(reason string) {
 		go blockcontroller.StopAllBlockControllers()
 		shutdownActivityUpdate()
 		sendTelemetryWrapper()
+		// Shutdown webhook service
+		webhookdelivery.ShutdownWebhookService()
 		// TODO deal with flush in progress
 		clearTempFiles()
 		filestore.WFS.FlushCache(ctx)
@@ -416,6 +419,17 @@ func main() {
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
 	sigutil.InstallSIGUSR1Handler()
 	startConfigWatcher()
+
+	// Initialize webhook service for reactive agent communication
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("InitWebhookService", recover())
+		}()
+		if err := webhookdelivery.InitializeWebhookService(); err != nil {
+			log.Printf("warning: failed to initialize webhook service: %v\n", err)
+		}
+	}()
+
 	go stdinReadWatch()
 	go telemetryLoop()
 	go updateTelemetryCountsLoop()

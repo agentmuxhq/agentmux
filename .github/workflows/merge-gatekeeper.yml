@@ -1,32 +1,19 @@
----
-name: Merge Gatekeeper
+# Merge Gatekeeper workflow - DISABLED
+# To re-enable, restore the original triggers and uncomment the jobs section
 
+name: Merge Gatekeeper (DISABLED)
+
+# DISABLED - only manual trigger to prevent notification spam
 on:
-    pull_request_target:
-        branches:
-            - main
-            - master
-        types:
-            - opened
-            - synchronize
-            - reopened
-            - ready_for_review
+  workflow_dispatch:
+    inputs:
+      note:
+        description: 'This workflow is disabled'
+        required: false
+        default: 'Workflow disabled - jobs commented out'
 
-# DISABLED - jobs:
-#     merge-gatekeeper:
-#         runs-on: ubuntu-latest
-#         if: github.event.pull_request.draft == false
-#         # Restrict permissions of the GITHUB_TOKEN.
-#         # Docs: https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
-#         permissions:
-#             checks: read
-#             statuses: read
-#         steps:
-#             - name: Run Merge Gatekeeper
-#               # NOTE: v1 is updated to reflect the latest v1.x.y. Please use any tag/branch that suits your needs:
-#               #       https://github.com/upsidr/merge-gatekeeper/tags
-#               #       https://github.com/upsidr/merge-gatekeeper/branches
-#               uses: upsidr/merge-gatekeeper@v1
-#               with:
-#                   token: ${{ secrets.GITHUB_TOKEN }}
-#                   ignored: Build for TestDriver.ai, TestDriver.ai Run, Analyze (go), Analyze (javascript-typescript), License Compliance, CodeRabbit
+# DISABLED - jobs section commented out
+# Original triggers were:
+#   pull_request_target:
+#     branches: [main, master]
+#     types: [opened, synchronize, reopened, ready_for_review]

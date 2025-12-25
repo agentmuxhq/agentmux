@@ -3,10 +3,49 @@
 
 import { assert, describe, test } from "vitest";
 import {
+    detectAgentFromPath,
     generateAutoTitle,
     getEffectiveTitle,
     shouldAutoGenerateTitle,
 } from "./autotitle";
+
+describe("detectAgentFromPath", () => {
+    test("detects agent from Unix path", () => {
+        const path = "/home/user/agent-workspaces/agent2/wavemux";
+        const result = detectAgentFromPath(path);
+        assert.equal(result, "Agent2");
+    });
+
+    test("detects agent from Windows path", () => {
+        const path = "C:\\Code\\agent-workspaces\\agent3\\project";
+        const result = detectAgentFromPath(path);
+        assert.equal(result, "Agent3");
+    });
+
+    test("detects agentx (case-insensitive)", () => {
+        const path = "/code/agent-workspaces/agentx/task";
+        const result = detectAgentFromPath(path);
+        assert.equal(result, "AgentX");
+    });
+
+    test("returns null for non-agent paths", () => {
+        const path = "/home/user/projects/myapp";
+        const result = detectAgentFromPath(path);
+        assert.equal(result, null);
+    });
+
+    test("returns null for empty/null paths", () => {
+        assert.equal(detectAgentFromPath(undefined), null);
+        assert.equal(detectAgentFromPath(""), null);
+        assert.equal(detectAgentFromPath(null as any), null);
+    });
+
+    test("handles mixed case agent-workspaces", () => {
+        const path = "D:\\Code\\Agent-Workspaces\\AGENT5\\src";
+        const result = detectAgentFromPath(path);
+        assert.equal(result, "Agent5");
+    });
+});
 
 describe("generateAutoTitle", () => {
     test("generates terminal title from cwd", () => {
@@ -15,39 +54,28 @@ describe("generateAutoTitle", () => {
             version: 1,
             meta: {
                 view: "term",
-                "term:cwd": "/home/user/projects/myapp",
+                "cmd:cwd": "/home/user/projects/myapp",
             },
         };
         const title = generateAutoTitle(block);
         assert.equal(title, "myapp");
     });
 
-    test("generates terminal title with last command", () => {
+    test("generates terminal title with agent identity from agent workspace", () => {
         const block: Block = {
             oid: "test-123",
             version: 1,
             meta: {
                 view: "term",
-                "term:cwd": "/home/user/projects",
-                "term:lastcmd": "npm run dev",
+                "cmd:cwd": "C:\\Code\\agent-workspaces\\agent2\\wavemux",
             },
         };
         const title = generateAutoTitle(block);
-        assert.equal(title, "projects: npm run dev");
+        assert.equal(title, "Agent2");
     });
 
-    test("generates terminal title with long command truncated", () => {
-        const block: Block = {
-            oid: "test-123",
-            version: 1,
-            meta: {
-                view: "term",
-                "term:lastcmd": "this is a very long command that should be truncated at thirty chars",
-            },
-        };
-        const title = generateAutoTitle(block);
-        assert.equal(title, "this is a very long command th...");
-    });
+    // Note: shell:lastcmd tests removed - that data is in RTInfo, not metadata
+    // TODO: Add RTInfo support and restore these tests
 
     test("generates preview title from filename", () => {
         const block: Block = {
@@ -217,7 +245,7 @@ describe("getEffectiveTitle", () => {
             meta: {
                 view: "term",
                 "pane-title": "My Terminal",
-                "term:cwd": "/home/user",
+                "cmd:cwd": "/home/user",
             },
         };
         const title = getEffectiveTitle(block, true);
@@ -243,7 +271,7 @@ describe("getEffectiveTitle", () => {
             version: 1,
             meta: {
                 view: "term",
-                "term:cwd": "/home/user",
+                "cmd:cwd": "/home/user",
             },
         };
         const title = getEffectiveTitle(block, false);
@@ -257,7 +285,7 @@ describe("getEffectiveTitle", () => {
             meta: {
                 view: "term",
                 "pane-title": "Custom",
-                "term:cwd": "/home/user",
+                "cmd:cwd": "/home/user",
             },
         };
         const title = getEffectiveTitle(block, true);

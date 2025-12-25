@@ -9,6 +9,30 @@
 import { isBlank } from "@/util/util";
 
 /**
+ * Detect agent identity from a directory path
+ * Looks for patterns like /agent-workspaces/agent2/ or C:\Code\agent-workspaces\agent3\
+ * Returns the agent ID (e.g., "Agent2") or null if not detected
+ */
+export function detectAgentFromPath(path: string | undefined): string | null {
+    if (isBlank(path)) {
+        return null;
+    }
+
+    // Normalize path separators for cross-platform support
+    const normalizedPath = path!.replace(/\\/g, "/").toLowerCase();
+
+    // Pattern: agent-workspaces/agentX or agent-workspaces/agentX/
+    const agentMatch = normalizedPath.match(/agent-workspaces\/(agent\d+|agentx)/i);
+    if (agentMatch) {
+        const agentId = agentMatch[1];
+        // Capitalize properly: agent2 -> Agent2, agentx -> AgentX
+        return agentId.charAt(0).toUpperCase() + agentId.slice(1).toLowerCase().replace("x", "X");
+    }
+
+    return null;
+}
+
+/**
  * Generate an automatic title for a block based on its metadata and type
  */
 export function generateAutoTitle(block: Block): string {
@@ -42,21 +66,19 @@ export function generateAutoTitle(block: Block): string {
 
 /**
  * Generate title for terminal blocks
- * Uses current working directory or last command
+ * Prioritizes agent identity from CWD, falls back to directory name
  */
 function generateTerminalTitle(block: Block): string {
     const meta = block.meta!;
-    const cwd = meta["term:cwd"] as string | undefined;
-    const lastCmd = meta["term:lastcmd"] as string | undefined;
+    const cwd = meta["cmd:cwd"] as string | undefined;
 
-    if (!isBlank(lastCmd)) {
-        const cmdTruncated = truncate(lastCmd!, 30);
-        if (!isBlank(cwd)) {
-            return `${basename(cwd!)}: ${cmdTruncated}`;
-        }
-        return cmdTruncated;
+    // Check for agent identity in the CWD path
+    const agentId = detectAgentFromPath(cwd);
+    if (agentId) {
+        return agentId;
     }
 
+    // Fall back to directory basename
     if (!isBlank(cwd)) {
         return basename(cwd!) || "~";
     }

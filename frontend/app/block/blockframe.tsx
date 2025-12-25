@@ -31,7 +31,7 @@ import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { CopyButton } from "../element/copybutton";
-import { getEffectiveTitle } from "./autotitle";
+import { detectAgentFromPath, getEffectiveTitle } from "./autotitle";
 import { BlockFrameProps } from "./blocktypes";
 import { TitleBar } from "./titlebar";
 
@@ -230,6 +230,15 @@ const BlockFrame_Header = ({
 
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];
+    }
+    // Detect agent identity from CWD for terminal blocks
+    // This takes precedence over default viewName but not over explicit frame:title
+    if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
+        const cwd = blockData.meta["cmd:cwd"] as string | undefined;
+        const agentId = detectAgentFromPath(cwd);
+        if (agentId) {
+            viewName = agentId;
+        }
     }
     if (blockData?.meta?.["frame:icon"]) {
         viewIconUnion = blockData.meta["frame:icon"];

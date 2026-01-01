@@ -24,7 +24,6 @@ let isWaveSrvDead = false;
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
 let WaveBuildTime = 0; // set by WAVESRV-ESTART
-let waveSrvLockError = false; // set when wavemuxsrv fails to acquire lock
 
 export function getWaveVersion(): { version: string; buildTime: number } {
     return { version: WaveVersion, buildTime: WaveBuildTime };
@@ -45,73 +44,6 @@ export function getWaveSrvProc(): child_process.ChildProcessWithoutNullStreams |
 
 export function getIsWaveSrvDead(): boolean {
     return isWaveSrvDead;
-}
-
-export function getWaveSrvLockError(): boolean {
-    return waveSrvLockError;
-}
-
-export async function showMultiInstanceDialog(): Promise<void> {
-    try {
-        await electron.app.whenReady();
-        const { dialog, shell } = electron;
-        const dialogOpts: Electron.MessageBoxOptions = {
-            type: "info",
-            buttons: ["Close", "Learn More"],
-            defaultId: 0,
-            cancelId: 0,
-            title: "WaveMux is Already Running",
-            message: "Another instance of WaveMux is already running.",
-            detail:
-                "WaveMux is already running on this system. To run multiple instances simultaneously, " +
-                "launch WaveMux with the --instance flag:\n\n" +
-                "Example:\n" +
-                "  WaveMux.exe --instance=test\n" +
-                "  WaveMux.exe --instance=dev\n\n" +
-                "Each instance will have its own isolated data while sharing your settings.\n\n" +
-                "Click 'Learn More' for documentation on multi-instance mode.",
-            noLink: true,
-        };
-
-        const choice = dialog.showMessageBoxSync(dialogOpts);
-        if (choice === 1) {
-            // Learn More button
-            await shell.openExternal("https://docs.waveterm.dev/");
-        }
-    } catch (e) {
-        console.log("error showing multi-instance dialog:", e);
-    }
-}
-
-export async function showSingleInstanceDialog(): Promise<void> {
-    try {
-        await electron.app.whenReady();
-        const { dialog, shell } = electron;
-        const dialogOpts: Electron.MessageBoxOptions = {
-            type: "info",
-            buttons: ["Close", "Learn More"],
-            defaultId: 0,
-            cancelId: 0,
-            title: "WaveMux is Already Running in Single-Instance Mode",
-            message: "Another instance of WaveMux is already running with --single-instance flag.",
-            detail:
-                "You launched WaveMux with the --single-instance flag, which prevents multiple instances.\n\n" +
-                "To run multiple instances, simply launch WaveMux without the --single-instance flag:\n\n" +
-                "  WaveMux.exe                     (auto multi-instance)\n" +
-                "  WaveMux.exe --instance=test     (named multi-instance)\n\n" +
-                "Each instance will have its own isolated data while sharing your settings.\n\n" +
-                "Click 'Learn More' for documentation on multi-instance mode.",
-            noLink: true,
-        };
-
-        const choice = dialog.showMessageBoxSync(dialogOpts);
-        if (choice === 1) {
-            // Learn More button
-            await shell.openExternal("https://docs.waveterm.dev/");
-        }
-    } catch (e) {
-        console.log("error showing single-instance dialog:", e);
-    }
 }
 
 export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promise<boolean> {
@@ -145,12 +77,6 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
             return;
         }
         console.log("wavemuxsrv exited, shutting down");
-
-        // If wavemuxsrv failed due to lock conflict, show multi-instance dialog
-        if (waveSrvLockError) {
-            await showMultiInstanceDialog();
-        }
-
         setForceQuit(true);
         isWaveSrvDead = true;
         electron.app.quit();
@@ -201,11 +127,6 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
                 console.log("error handling WAVESRV-EVENT", e);
             }
             return;
-        }
-        // Detect lock error from wavemuxsrv
-        if (line.includes("error acquiring wave lock") || line.includes("lock already acquired")) {
-            console.log("wavemuxsrv detected lock conflict:", line);
-            waveSrvLockError = true;
         }
         console.log(line);
     });

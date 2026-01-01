@@ -28,21 +28,11 @@ if (isDevVite) {
 }
 
 /**
- * Find an available data directory for this instance (portable mode).
+ * Find the data directory for this instance.
  *
- * Searches for unlocked data directories next to the executable:
- * - wave-data/ (primary)
- * - wave-data-2/, wave-data-3/, etc. (additional instances)
- *
- * If a directory doesn't exist, it's created by copying from wave-data.
- * Directories are never deleted, allowing settings to persist across runs.
- *
- * Example flow:
- * - Launch 1: Uses wave-data/
- * - Launch 2 (while 1 running): Copies to wave-data-2/ and uses it
- * - Launch 3 (while 1&2 running): Copies to wave-data-3/ and uses it
- * - Close all → Launch 1: Uses wave-data/ (settings preserved)
- * - Launch 2: Uses wave-data-2/ (settings from last run preserved)
+ * Uses the primary data directory next to the executable (wave-data/).
+ * Multiple instances can run simultaneously - each wavemuxsrv process
+ * manages its own state within the shared data directory.
  *
  * @returns Path to the data directory to use
  */
@@ -51,95 +41,24 @@ function findAvailableDataDirectory(): string {
     const exeDir = path.dirname(app.getPath("exe"));
     const primaryDataDir = path.join(exeDir, "wave-data");
 
-    // Helper to check if a directory is locked
-    function isDirectoryLocked(dirPath: string): boolean {
-        const lockFile = path.join(dirPath, "wave.lock");
-        if (!fs.existsSync(lockFile)) {
-            return false;
-        }
-
-        try {
-            // Try to read the lock file
-            const lockContent = fs.readFileSync(lockFile, "utf-8");
-            const lockData = JSON.parse(lockContent);
-            const pid = lockData.pid;
-
-            // Check if the process is still running
-            try {
-                process.kill(pid, 0); // Signal 0 checks if process exists without killing
-                return true; // Process exists, directory is locked
-            } catch (e) {
-                // Process doesn't exist, lock is stale
-                return false;
-            }
-        } catch (e) {
-            // Can't read lock file, assume not locked
-            return false;
-        }
+    if (!fs.existsSync(primaryDataDir)) {
+        fs.mkdirSync(primaryDataDir, { recursive: true });
+        console.log(`Created data directory: ${primaryDataDir}`);
     }
 
-    // Helper to copy directory recursively
-    function copyDirectorySync(src: string, dest: string) {
-        if (!fs.existsSync(dest)) {
-            fs.mkdirSync(dest, { recursive: true });
-        }
-
-        const entries = fs.readdirSync(src, { withFileTypes: true });
-
-        for (const entry of entries) {
-            const srcPath = path.join(src, entry.name);
-            const destPath = path.join(dest, entry.name);
-
-            if (entry.isDirectory()) {
-                copyDirectorySync(srcPath, destPath);
-            } else {
-                fs.copyFileSync(srcPath, destPath);
-            }
-        }
-    }
-
-    // Try primary directory first
-    if (!isDirectoryLocked(primaryDataDir)) {
-        if (!fs.existsSync(primaryDataDir)) {
-            fs.mkdirSync(primaryDataDir, { recursive: true });
-            console.log(`Created primary data directory: ${primaryDataDir}`);
-        }
-        return primaryDataDir;
-    }
-
-    // Primary is locked, try numbered instances
-    for (let i = 2; i <= 100; i++) {
-        const dataDir = path.join(exeDir, `wave-data-${i}`);
-
-        if (!isDirectoryLocked(dataDir)) {
-            if (!fs.existsSync(dataDir)) {
-                // Clone from primary
-                console.log(`Cloning ${primaryDataDir} → ${dataDir}`);
-                copyDirectorySync(primaryDataDir, dataDir);
-            }
-            return dataDir;
-        }
-    }
-
-    // All 100 slots are locked
-    throw new Error("Too many Wave instances running (max 100)");
+    return primaryDataDir;
 }
 
 // For backward compatibility with old paths (legacy/environment variable overrides)
 const waveDirName = isDev ? "waveterm-dev" : "waveterm";
 const waveConfigDirName = waveDirName; // Config uses same directory name
 
-// Find available data directory (portable mode - next to executable)
+// Find data directory (portable mode - next to executable)
 const dataDirectory = findAvailableDataDirectory();
-const baseNameParts = path.basename(dataDirectory).split("-");
-const instanceNumber = baseNameParts.length > 2 ? baseNameParts[2] : "1";
 
-// Set app name to include instance number
+// Set app name
 const version = packageJson.version;
-let appName = isDev ? `Wave ${version} (Dev)` : `Wave ${version}`;
-if (instanceNumber !== "1") {
-    appName = `${appName} [Instance ${instanceNumber}]`;
-}
+const appName = isDev ? `WaveMux ${version} (Dev)` : `WaveMux ${version}`;
 app.setName(appName);
 
 // Override envPaths to use our portable directory
@@ -372,23 +291,13 @@ async function callWithOriginalXdgCurrentDesktopAsync(callback: () => Promise<vo
 }
 
 /**
- * Check if --single-instance flag is present in command-line arguments.
- * @returns true if --single-instance flag was passed
- */
-function hasSingleInstanceFlag(): boolean {
-    const args = process.argv.slice(1);
-    return args.includes("--single-instance");
-}
-
-/**
  * Gets multi-instance information.
- * @returns Object containing isMultiInstance flag, instanceId, and singleInstanceFlag
+ * WaveMux always allows multiple instances - no locking.
+ * @returns Object for backwards compatibility
  */
-function getMultiInstanceInfo(): { isMultiInstance: boolean; instanceId: string | null; singleInstanceFlag: boolean } {
-    const singleInstanceFlag = hasSingleInstanceFlag();
-    const isMultiInstance = instanceNumber !== "1";
-    const instanceId = isMultiInstance ? `instance-${instanceNumber}` : null;
-    return { isMultiInstance, instanceId, singleInstanceFlag };
+function getMultiInstanceInfo(): { isMultiInstance: boolean; instanceId: string | null } {
+    // Always allow multiple instances, no single-instance mode
+    return { isMultiInstance: true, instanceId: null };
 }
 
 export {

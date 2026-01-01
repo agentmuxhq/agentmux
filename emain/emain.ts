@@ -36,8 +36,6 @@ import {
     getWaveSrvReady,
     getWaveVersion,
     runWaveSrv,
-    showMultiInstanceDialog,
-    showSingleInstanceDialog,
 } from "./emain-wavemuxsrv";
 import {
     createBrowserWindow,
@@ -60,7 +58,6 @@ import {
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
-    getMultiInstanceInfo,
     getWaveConfigDir,
     getWaveDataDir,
     isDev,
@@ -718,23 +715,10 @@ async function appMain() {
         electronApp.disableHardwareAcceleration();
     }
     const startTs = Date.now();
-    const multiInstanceInfo = getMultiInstanceInfo();
 
-    // Enforce single-instance lock only if --single-instance flag is explicitly passed
-    if (multiInstanceInfo.singleInstanceFlag) {
-        const instanceLock = electronApp.requestSingleInstanceLock();
-        if (!instanceLock) {
-            console.log("waveterm-app could not get single-instance-lock (--single-instance flag used), another instance is running");
-            await showSingleInstanceDialog();
-            electronApp.quit();
-            return;
-        }
-        console.log("waveterm-app running in single-instance mode (--single-instance flag)");
-    } else if (multiInstanceInfo.isMultiInstance) {
-        console.log(`waveterm-app running in multi-instance mode (instance: ${multiInstanceInfo.instanceId})`);
-    } else {
-        console.log("waveterm-app running in default mode (wave-data/, multi-instance allowed)");
-    }
+    // WaveMux always allows multiple instances - no single-instance locking
+    console.log("wavemux-app starting (multi-instance mode, no locking)");
+
     try {
         await runWaveSrv(handleWSEvent);
     } catch (e) {

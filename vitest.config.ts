@@ -9,6 +9,11 @@ export default mergeConfig(
             outputFile: {
                 junit: "test-results.xml",
             },
+            exclude: [
+                "**/node_modules/**",
+                "**/dist/**",
+                "**/infra/cdk/**", // CDK has its own testing setup with aws-cdk-lib
+            ],
             coverage: {
                 provider: "istanbul",
                 reporter: ["lcov"],

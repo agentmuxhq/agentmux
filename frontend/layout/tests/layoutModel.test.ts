@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { atom, createStore, type PrimitiveAtom } from "jotai";
 import { LayoutModel } from "@/layout/lib/layoutModel";
 import { newLayoutNode } from "@/layout/lib/layoutNode";
@@ -77,6 +77,11 @@ describe("LayoutModel", () => {
     beforeEach(() => {
         layoutStateAtoms.clear();
         storeHolder.current = createStore();
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it("creates a root node and focuses it when inserting the first block", () => {
@@ -150,6 +155,9 @@ describe("LayoutModel", () => {
         );
 
         model.treeReducer({ type: LayoutTreeActionType.CommitPendingAction }, false);
+
+        // Advance timers to allow throttled atom to update
+        vi.advanceTimersByTime(20);
 
         const root = model.treeState.rootNode!;
         const leafBlocks = root.children

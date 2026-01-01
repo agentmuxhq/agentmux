@@ -887,3 +887,399 @@ describe("Title Bar Integration", () => {
 **Status:** Ready for Review
 **Next Steps:** Technical design review with Wave Terminal core team
 **Approvers:** [@sawka, @red, @evan]
+
+---
+
+## Addendum: Agent Identity Integration (2025-12-24)
+
+### Context: Reactive Agent Communication
+
+This pane labeling feature is a **prerequisite** for the reactive agent communication system. When multiple Claude Code agents run simultaneously in different panes, we need to:
+
+1. **Display** agent identity (agent1, agent2, agentx) in pane titles
+2. **Register** pane-to-agent mappings for webhook routing
+3. **Inject** GitHub events into the correct pane
+
+### Extended User Story
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  AGENT PANE IDENTIFICATION FLOW                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. Agent2 spawns in a WaveMux terminal pane                                │
+│          │                                                                  │
+│          ▼                                                                  │
+│  2. Pane title auto-detects agent identity:                                 │
+│     - From CWD: C:/Code/agent-workspaces/agent2 → "agent2"                  │
+│     - From env: WAVEMUX_AGENT_ID=agent2                                     │
+│     - From branch: git branch → agent2/feature-x                            │
+│          │                                                                  │
+│          ▼                                                                  │
+│  3. Pane title displays: "🤖 Agent2 | wavemux/agent2/fix-auth"              │
+│          │                                                                  │
+│          ▼                                                                  │
+│  4. Registration sent to AWS: {agent_id, pane_id, branches}                 │
+│          │                                                                  │
+│          ▼                                                                  │
+│  5. GitHub event for agent2/fix-auth → routed to this pane                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Agent-Specific Auto-Title Logic
+
+Extend `autotitle.ts` to detect agent identity:
+
+```typescript
+function generateTerminalTitle(block: Block): string {
+  const cwd = block.meta?.["term:cwd"] || "~";
+
+  // Detect agent from workspace path
+  const agentMatch = cwd.match(/agent-workspaces[\\\/](agent\d+|agentx)/i);
+  if (agentMatch) {
+    const agentId = agentMatch[1].toLowerCase();
+    const gitBranch = block.meta?.["term:git-branch"];
+
+    if (gitBranch) {
+      return `🤖 ${agentId} | ${gitBranch}`;
+    }
+    return `🤖 ${agentId} | ${basename(cwd)}`;
+  }
+
+  // Fallback to standard terminal title
+  const lastCmd = block.meta?.["term:lastcmd"];
+  if (lastCmd) {
+    return `${basename(cwd)}: ${truncate(lastCmd, 30)}`;
+  }
+  return basename(cwd) || "Terminal";
+}
+```
+
+### Agent Registry Metadata
+
+Extend block metadata for agent tracking:
+
+```go
+// pkg/waveobj/metaconsts.go
+const (
+    // ... existing pane-title constants
+    MetaKey_AgentId         = "agent:id"          // Detected agent identity
+    MetaKey_AgentBranches   = "agent:branches"    // Active git branches
+    MetaKey_AgentWorkspace  = "agent:workspace"   // Workspace path
+    MetaKey_AgentRegistered = "agent:registered"  // AWS registration status
+)
+```
+
+### Registration Hook
+
+Add to `wsh` commands:
+
+```bash
+# Auto-register on terminal spawn (via shell rc file)
+wsh register-agent --auto
+
+# Manual registration
+wsh register-agent agent2
+
+# Check registration status
+wsh agent-status
+```
+
+### Visual Design: Agent Panes
+
+**Minimal change - just replace "Terminal" text with agent identity:**
+
+```
+Before:  [🖥️] Terminal │                              │ ⚙️ ⤢ ✕
+After:   [🖥️] Agent2   │  Fixing auth bug in login.ts │ ⚙️ ⤢ ✕
+                ↑                    ↑
+         frame:title          term:activity
+```
+
+| Pane Type | Label | Activity (gap) |
+|-----------|-------|----------------|
+| agent1 | `Agent1` | `Reviewing PR #42 comments` |
+| agent2 | `Agent2` | `Fixing auth bug in login.ts` |
+| agent3 | `Agent3` | `Running integration tests` |
+| agentx | `AgentX` | `Creating database migration` |
+| non-agent | `Terminal` | *(empty or cwd)* |
+
+**No icon changes** - keep the existing terminal icon, just change the text.
+
+### Implementation Priority
+
+This addendum proposes implementing pane labels in two phases:
+
+**Phase 1: Basic Labels (existing spec)**
+- Manual title editing
+- Auto-generation for all block types
+- Settings UI
+
+**Phase 2: Agent Integration (this addendum)**
+- Agent identity detection from CWD/env
+- Git branch tracking in title
+- AWS registration integration
+- Webhook routing groundwork
+
+### Connection to Reactive Agent Communication
+
+Once pane labels with agent identity are implemented:
+
+1. **Lambda can route events** - Branch name → agent ID → pane ID
+2. **Visual confirmation** - User sees which agent is in which pane
+3. **Registration is automatic** - No manual mapping required
+4. **Terminal injection works** - Events delivered to correct pane
+
+This feature is the **foundation** for SPEC_REACTIVE_AGENT_COMMUNICATION.md.
+
+---
+
+## Extended Feature: Claude Code Title Integration
+
+### Background: Claude Code Window Titles
+
+Claude Code automatically updates the terminal window title using OSC (Operating System Command) escape sequences. These provide an AI-generated summary of current activity:
+
+```
+\033]0;Claude: Reviewing PR feedback\007
+\033]0;Claude: Running npm test\007
+\033]0;Claude: Creating commit for fix\007
+```
+
+**Current behavior:** These updates go to the OS window title (PowerShell/iTerm2/etc.)
+
+**Opportunity:** WaveMux can intercept these and display them in the pane title bar.
+
+### Proposed Integration
+
+Combine agent identity (static) with Claude's activity summary (dynamic):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 Agent2 | Fixing authentication bug in login.ts          │  ← Dynamic!
+├─────────────────────────────────────────────────────────────┤
+│ $ claude                                                    │
+│ I'll fix the authentication bug. Let me first read...      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Technical Implementation
+
+#### 1. Capture OSC Title Sequences
+
+In the terminal PTY handler, intercept OSC 0/1/2 sequences:
+
+```go
+// pkg/wshutil/ptyhandler.go
+func (h *PtyHandler) handleOSCSequence(code int, data string) {
+    switch code {
+    case 0, 2: // Set window title
+        h.updatePaneTitle(data)
+    case 1: // Set icon name (less common)
+        // ignore or handle separately
+    }
+}
+
+func (h *PtyHandler) updatePaneTitle(title string) {
+    // Strip "Claude: " prefix if present
+    activitySummary := strings.TrimPrefix(title, "Claude: ")
+
+    // Publish WPS event for title update
+    wps.Broker.Publish(wps.WaveEvent{
+        Event:  wps.Event_TermTitleUpdate,
+        Scopes: []string{h.BlockId},
+        Data: map[string]string{
+            "title":    title,
+            "activity": activitySummary,
+        },
+    })
+}
+```
+
+#### 2. Store in Block Metadata
+
+```go
+// New metadata keys
+const (
+    MetaKey_TermTitle       = "term:title"        // Raw terminal title
+    MetaKey_TermActivity    = "term:activity"     // Parsed activity summary
+    MetaKey_TermTitleTime   = "term:title-time"   // Last update timestamp
+)
+```
+
+#### 3. Frontend Title Composition
+
+```typescript
+function generateAgentTerminalTitle(block: Block): string {
+    const agentId = block.meta?.["agent:id"];
+    const activity = block.meta?.["term:activity"];
+    const gitBranch = block.meta?.["term:git-branch"];
+
+    // Priority: Activity summary > Git branch > CWD
+    if (agentId && activity) {
+        return `🤖 ${agentId} | ${activity}`;
+    }
+    if (agentId && gitBranch) {
+        return `🤖 ${agentId} | ${gitBranch}`;
+    }
+    if (agentId) {
+        return `🤖 ${agentId}`;
+    }
+
+    // Fallback for non-agent terminals
+    return activity || block.meta?.["term:cwd"] || "Terminal";
+}
+```
+
+### User Experience
+
+**Multiple agents working simultaneously:**
+
+```
+┌────────────────────────────────────────────┐  ┌────────────────────────────────────────────┐
+│ 🤖 Agent1 | Reviewing PR #42 comments      │  │ 🤖 Agent2 | Running integration tests      │
+├────────────────────────────────────────────┤  ├────────────────────────────────────────────┤
+│ Looking at the reviewer feedback...        │  │ npm test -- --integration                  │
+│                                            │  │ PASS src/api/auth.test.ts                  │
+└────────────────────────────────────────────┘  └────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────┐  ┌────────────────────────────────────────────┐
+│ 🤖 Agent3 | Creating database migration    │  │ 🤖 AgentX | Waiting for user input         │
+├────────────────────────────────────────────┤  ├────────────────────────────────────────────┤
+│ I'll create a migration for the new...     │  │ What authentication method would you...    │
+└────────────────────────────────────────────┘  └────────────────────────────────────────────┘
+```
+
+**At a glance, you see:**
+- Which agent is which
+- What each is currently doing
+- Activity updates in real-time
+
+### Title Update Debouncing
+
+Claude Code updates titles frequently. To avoid flicker:
+
+```typescript
+const TITLE_DEBOUNCE_MS = 500;
+
+// Debounce rapid title updates
+const debouncedTitleUpdate = useMemo(
+    () => debounce((title: string) => {
+        setDisplayTitle(title);
+    }, TITLE_DEBOUNCE_MS),
+    []
+);
+```
+
+### Configuration Options
+
+```json
+{
+  "pane-labels": {
+    "agent-titles": {
+      "enabled": true,
+      "show-activity": true,      // Show Claude's activity summary
+      "show-agent-id": true,      // Show agent identity prefix
+      "activity-max-length": 50,  // Truncate long summaries
+      "update-debounce-ms": 500   // Debounce rapid updates
+    }
+  }
+}
+```
+
+### Exact UI Location
+
+Replace "Terminal" label with agent identity, use the gap for activity:
+
+**Current (non-agent terminal):**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [🖥️] Terminal │                                       │ ⚙️ ⤢ ✕ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Agent terminal (proposed):**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [🖥️] Agent2   │  Fixing auth bug in login.ts          │ ⚙️ ⤢ ✕ │
+│       ↑       │              ↑                        │         │
+│  frame:title  │  block-frame-textelems-wrapper        │         │
+│  (metadata)   │  (Claude's activity via term:activity)│         │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key files:**
+
+| Element | File | Line | Change |
+|---------|------|------|--------|
+| Label | `blockframe.tsx` | 231-233 | `frame:title` metadata → "Agent2" |
+| Activity | `blockframe.tsx` | 309 | `headerTextElems` → Claude's summary |
+
+**Implementation (simplest approach):**
+
+The header already supports `frame:title` override - just set the metadata:
+
+```go
+// When agent is detected (in Go backend or via wsh command)
+blockMeta["frame:title"] = "Agent2"
+```
+
+That's it. The existing code at `blockframe.tsx:231-233` handles this:
+
+```tsx
+if (blockData?.meta?.["frame:title"]) {
+    viewName = blockData.meta["frame:title"];
+}
+```
+
+For the activity summary, populate `viewText` in the terminal view model:
+
+```typescript
+get viewText(): HeaderElem[] {
+    const activity = this.blockMeta?.["term:activity"];
+    if (activity) {
+        return [{
+            elemtype: "text",
+            text: activity,
+            className: "agent-activity-text"
+        }];
+    }
+    return [];
+}
+```
+
+### OSC Sequence Reference
+
+| Sequence | Purpose | Example |
+|----------|---------|---------|
+| `\033]0;Title\007` | Set window title + icon | Most common |
+| `\033]1;Icon\007` | Set icon name only | Rare |
+| `\033]2;Title\007` | Set window title only | Some terminals |
+
+Claude Code uses `\033]0;...\007` format.
+
+### Implementation Priority
+
+This is an **extended feature** building on the basic pane labels:
+
+1. **Phase 1:** Basic pane labels (manual + auto-generated)
+2. **Phase 2:** Agent identity detection
+3. **Phase 3:** OSC title capture + dynamic activity display ← This feature
+4. **Phase 4:** AWS registration + webhook routing
+
+### Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Real-time visibility** | See what each agent is doing without clicking into panes |
+| **Zero configuration** | Works automatically with Claude Code's existing title updates |
+| **Debugging aid** | Quickly identify stuck or waiting agents |
+| **Coordination** | Understand agent activity when managing multiple parallel tasks |
+
+### Considerations
+
+1. **Non-Claude terminals** - Fall back to CWD/git branch for regular terminals
+2. **Title spam** - Some tools update titles very frequently; debounce required
+3. **Long titles** - Truncate with ellipsis, show full title on hover
+4. **Privacy** - Activity summaries may contain sensitive info; consider hide option

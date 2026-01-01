@@ -22,8 +22,49 @@ WaveMux is an independent terminal multiplexer project, originally forked from [
 ## Repository
 
 - **GitHub:** https://github.com/a5af/wavemux
-- **Version:** 0.12.15
+- **Version:** 0.13.0
 - **License:** Apache-2.0
+
+## Agent Development Workflow (Gamerlove Sandbox)
+
+WaveMux runs on **gamerlove** (sandbox host) while code is edited on **claudius** (development host).
+
+### Quick Sync Commands
+
+```powershell
+# From claudius - sync source files to gamerlove sandbox
+robocopy C:\Code\agent-workspaces\agent2\wavemux X:\wavemux-sandbox /MIR /XD node_modules dist .task .git /NFL /NDL /NJH /NJS
+
+# Build backend on gamerlove (after Go changes)
+ssh gamerlove "powershell -Command Set-Location D:\wavemux-sandbox; task build:backend"
+
+# Start dev server on gamerlove
+ssh gamerlove "powershell -Command Set-Location D:\wavemux-sandbox; task dev"
+```
+
+### Architecture Overview
+
+```
+CLAUDIUS (Dev Host)                    GAMERLOVE (Sandbox)
+─────────────────────                  ────────────────────
+C:\Code\agent-workspaces\              D:\wavemux-sandbox\
+  └── agent2\wavemux\     ──sync──>      ├── dist\bin\wavemuxsrv.x64.exe
+      ├── pkg/ (Go)                      ├── node_modules\
+      ├── frontend/ (TS)                 └── WaveMux running (Electron)
+      └── .git (worktree)
+
+X:\wavemux-sandbox\ = mapped drive to gamerlove D$
+```
+
+### What Triggers What
+
+| Change Type | Sync | Build Backend | Restart Dev |
+|-------------|------|---------------|-------------|
+| TypeScript/React | ✅ | ❌ | ❌ (hot reload) |
+| Go backend (pkg/) | ✅ | ✅ | ✅ |
+| package.json | ✅ | ❌ | ✅ (npm install) |
+
+> **Full documentation:** See `SPEC_GAMERLOVE_WAVEMUX_WORKFLOW.md` in agent2 workspace
 
 ## Architecture
 

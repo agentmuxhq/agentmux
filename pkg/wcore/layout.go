@@ -32,28 +32,48 @@ type PortableLayout []struct {
 }
 
 func GetStarterLayout() PortableLayout {
+	// Agent-optimized layout: 4 terminals in 2x2 grid + 1 sysinfo panel
+	// Layout:
+	//   +----------+----------+
+	//   | term 1   | term 3   |
+	//   | (focus)  +----------+
+	//   +----------+ term 4   |
+	//   | term 2   +----------+
+	//   |          | sysinfo  |
+	//   +----------+----------+
 	return PortableLayout{
+		// Left column, top: Terminal 1 (focused)
 		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
 				waveobj.MetaKey_View:       "term",
 				waveobj.MetaKey_Controller: "shell",
 			},
 		}, Focused: true},
+		// Left column, bottom: Terminal 2
+		{IndexArr: []int{0, 1}, BlockDef: &waveobj.BlockDef{
+			Meta: waveobj.MetaMapType{
+				waveobj.MetaKey_View:       "term",
+				waveobj.MetaKey_Controller: "shell",
+			},
+		}},
+		// Right column, top: Terminal 3
 		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "sysinfo",
+				waveobj.MetaKey_View:       "term",
+				waveobj.MetaKey_Controller: "shell",
 			},
 		}},
+		// Right column, middle: Terminal 4
 		{IndexArr: []int{1, 1}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "web",
-				waveobj.MetaKey_Url:  "https://github.com/a5af/wavemux",
+				waveobj.MetaKey_View:       "term",
+				waveobj.MetaKey_Controller: "shell",
 			},
 		}},
+		// Right column, bottom: System Info (CPU/memory graphics)
 		{IndexArr: []int{1, 2}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "preview",
-				waveobj.MetaKey_File: "~",
+				waveobj.MetaKey_View: "sysinfo",
 			},
 		}},
 	}

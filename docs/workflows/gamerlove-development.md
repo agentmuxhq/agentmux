@@ -8,6 +8,22 @@
 
 ---
 
+## Development Mode (Hot Reload)
+
+For active development with hot reload:
+
+```bash
+# Start dev server (from container SSH)
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && npx electron-vite dev"
+```
+
+**Notes:**
+- Use `cd /d` to properly change drives on Windows CMD
+- Ignore `docs/tsconfig.json` warnings - they're non-blocking
+- Frontend changes auto-reload, Go changes require `task build:backend`
+
+---
+
 ## Portable Package Deployment
 
 Each version is deployed as a versioned folder on the desktop:
@@ -25,39 +41,39 @@ The package is **fully portable** - data is stored in `wave-data\` next to the e
 ### 1. Build on gamerlove (via SSH)
 
 ```bash
-# Pull latest code
-ssh asafe@gamerlove "cd D:/wavemux-sandbox && git fetch origin main && git reset --hard origin/main"
+# Pull latest code (use cd /d to change drives properly)
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && git fetch origin main && git reset --hard origin/main"
 
 # Build backend
-ssh asafe@gamerlove "cd D:/wavemux-sandbox && task build:backend"
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && task build:backend"
 
 # Build frontend
-ssh asafe@gamerlove "cd D:/wavemux-sandbox && npm run build:prod"
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && npm run build:prod"
 ```
 
 ### 2. Create portable package
 
 ```bash
 # Create versioned package directory
-ssh asafe@gamerlove "D: && cd D:\\wavemux-sandbox && mkdir make\\WaveMux-{VERSION}"
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && mkdir make\\WaveMux-{VERSION}"
 
 # Copy Electron framework
-ssh asafe@gamerlove "xcopy /E /Y /I node_modules\\electron\\dist make\\WaveMux-{VERSION}"
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && xcopy /E /Y /I node_modules\\electron\\dist make\\WaveMux-{VERSION}"
 
 # Copy app code
-ssh asafe@gamerlove "mkdir make\\WaveMux-{VERSION}\\resources\\app && xcopy /E /Y /I dist\\main make\\WaveMux-{VERSION}\\resources\\app\\dist\\main && xcopy /E /Y /I dist\\preload make\\WaveMux-{VERSION}\\resources\\app\\dist\\preload && xcopy /E /Y /I dist\\frontend make\\WaveMux-{VERSION}\\resources\\app\\dist\\frontend && copy package.json make\\WaveMux-{VERSION}\\resources\\app\\"
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && mkdir make\\WaveMux-{VERSION}\\resources\\app && xcopy /E /Y /I dist\\main make\\WaveMux-{VERSION}\\resources\\app\\dist\\main && xcopy /E /Y /I dist\\preload make\\WaveMux-{VERSION}\\resources\\app\\dist\\preload && xcopy /E /Y /I dist\\frontend make\\WaveMux-{VERSION}\\resources\\app\\dist\\frontend && copy package.json make\\WaveMux-{VERSION}\\resources\\app\\"
 
 # Copy binaries and schema
-ssh asafe@gamerlove "xcopy /E /Y /I dist\\bin make\\WaveMux-{VERSION}\\bin && xcopy /E /Y /I dist\\schema make\\WaveMux-{VERSION}\\resources\\app\\dist\\schema"
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && xcopy /E /Y /I dist\\bin make\\WaveMux-{VERSION}\\bin && xcopy /E /Y /I dist\\schema make\\WaveMux-{VERSION}\\resources\\app\\dist\\schema"
 
 # Rename exe
-ssh asafe@gamerlove "move /Y make\\WaveMux-{VERSION}\\electron.exe make\\WaveMux-{VERSION}\\WaveMux.exe"
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && move /Y make\\WaveMux-{VERSION}\\electron.exe make\\WaveMux-{VERSION}\\WaveMux.exe"
 ```
 
 ### 3. Deploy to desktop
 
 ```bash
-ssh asafe@gamerlove "xcopy /E /Y /I D:\\wavemux-sandbox\\make\\WaveMux-{VERSION} C:\\Users\\asafe\\Desktop\\WaveMux-{VERSION}"
+ssh asafe@gamerlove "xcopy /E /Y /I D:\\wavemux-sandbox\\make\\WaveMux-{VERSION} C:\\Users\\asafe\\Desktop\\WaveMux-{VERSION}\\"
 ```
 
 ### 4. Test via Parsec
@@ -100,8 +116,30 @@ ssh asafe@gamerlove "cd D:/wavemux-sandbox && npm install zod@latest --legacy-pe
 
 ---
 
+## Initial Setup (Fresh Clone)
+
+If the sandbox needs to be recreated:
+
+```bash
+# Remove old sandbox (backup first if needed)
+ssh asafe@gamerlove "powershell -Command \"Remove-Item -Recurse -Force D:\\wavemux-sandbox -ErrorAction SilentlyContinue\""
+
+# Clone fresh (requires PAT - get from secrets)
+PAT=$(secrets get services/infra --path gh-admin-pat --raw --no-warning)
+ssh asafe@gamerlove "cd /d D:\\ && git clone https://${PAT}@github.com/a5af/wavemux.git wavemux-sandbox"
+
+# Install dependencies
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && npm install --legacy-peer-deps"
+
+# Build backend
+ssh asafe@gamerlove "cd /d D:\\wavemux-sandbox && task build:backend"
+```
+
+---
+
 ## Version History
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 0.13.0 | 2026-01-02 | Re-cloned sandbox, fixed SSH commands, added dev mode docs |
 | 0.13.0 | 2026-01-01 | Single-instance lock removed, first portable deploy |

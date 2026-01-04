@@ -148,6 +148,7 @@ const config = {
     },
     win: {
         target: ["nsis", "msi", "zip"],
+        console: true,  // Show console window for debugging and verbose logging
         // Windows-specific files: exclude cross-platform wsh binaries (~84MB savings)
         files: [
             "!dist/bin/wsh-*-darwin.*",  // Exclude macOS binaries from Windows builds

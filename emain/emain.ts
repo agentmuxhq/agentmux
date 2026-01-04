@@ -709,55 +709,67 @@ globalEvents.on("windows-updated", () => {
 
 async function appMain() {
     // ALWAYS disable hardware acceleration (fixes GPU crashes in Windows Sandbox/RDP)
-    console.log("disabling hardware acceleration (required for Windows Sandbox/RDP compatibility)");
+    console.log("[STARTUP] Step 1/10: Disabling hardware acceleration (required for Windows Sandbox/RDP compatibility)");
     electronApp.disableHardwareAcceleration();
     const startTs = Date.now();
 
     // WaveMux always allows multiple instances - no single-instance locking
-    console.log("wavemux-app starting (multi-instance mode, no locking)");
+    console.log("[STARTUP] Step 2/10: Starting WaveMux (multi-instance mode, no locking)");
+    console.log("[STARTUP] Electron version:", process.versions.electron);
+    console.log("[STARTUP] Platform:", process.platform, process.arch);
 
+    console.log("[STARTUP] Step 3/10: Launching wavemuxsrv backend...");
     try {
         await runWaveSrv(handleWSEvent);
     } catch (e) {
-        console.log(e.toString());
+        console.log("[STARTUP ERROR] Failed to start wavemuxsrv:", e.toString());
     }
     const ready = await getWaveSrvReady();
-    console.log("wavemuxsrv ready signal received", ready, Date.now() - startTs, "ms");
+    console.log("[STARTUP] Step 4/10: wavemuxsrv ready signal received", ready, Date.now() - startTs, "ms");
+
+    console.log("[STARTUP] Step 5/10: Waiting for Electron app ready...");
     await electronApp.whenReady();
+    console.log("[STARTUP] Step 6/10: Electron app ready, configuring auth...");
     configureAuthKeyRequestInjection(electron.session.defaultSession);
 
     // Initialize crash handlers for GPU/renderer crashes
+    console.log("[STARTUP] Step 7/10: Initializing crash handlers...");
     initCrashHandlers();
 
     // Check for previous crash and show recovery modal if needed
     const previousCrash = checkForPreviousCrash();
     if (previousCrash) {
-        console.log("Previous crash detected:", previousCrash.type);
+        console.log("[STARTUP] Previous crash detected:", previousCrash.type);
         await showRecoveryModal(previousCrash);
     }
 
     // Start heartbeat monitor to detect external kills
     startHeartbeat();
 
+    console.log("[STARTUP] Step 8/10: Initializing RPC client...");
     await sleep(10); // wait a bit for wavemuxsrv to be ready
     try {
         initElectronWshClient();
         initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });
     } catch (e) {
-        console.log("error initializing wshrpc", e);
+        console.log("[STARTUP ERROR] Failed to initialize wshrpc:", e);
     }
+    console.log("[STARTUP] Step 9/10: Loading configuration and creating windows...");
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     checkIfRunningUnderARM64Translation(fullConfig);
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
+    console.log("[STARTUP] Browser windows created successfully");
     await initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     setTimeout(sendDisplaysTDataEvent, 5000);
 
+    console.log("[STARTUP] Step 10/10: Final initialization (menu, dock, auto-updater)...");
     makeAppMenu();
     makeDockTaskbar();
     await configureAutoUpdater();
     setGlobalIsStarting(false);
+    console.log("[STARTUP] ✓ WaveMux startup complete!", Date.now() - startTs, "ms");
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
     }

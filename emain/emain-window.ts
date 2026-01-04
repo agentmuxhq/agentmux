@@ -84,7 +84,9 @@ export class WaveBrowserWindow extends BaseWindow {
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
         const settings = fullConfig?.settings;
 
-        console.log("create win", waveWindow.oid);
+        console.log("[WINDOW] Creating browser window:", waveWindow.oid);
+        console.log("[WINDOW] Initial window size from DB:", waveWindow?.winsize);
+        console.log("[WINDOW] Initial window position:", waveWindow.pos);
         let winWidth = waveWindow?.winsize?.width;
         let winHeight = waveWindow?.winsize?.height;
         let winPosX = waveWindow.pos.x;
@@ -195,6 +197,7 @@ export class WaveBrowserWindow extends BaseWindow {
         }
 
         super(winOpts);
+        console.log("[WINDOW] BaseWindow created successfully with bounds:", winBounds);
         this.actionQueue = [];
         this.waveWindowId = waveWindow.oid;
         this.workspaceId = waveWindow.workspaceid;

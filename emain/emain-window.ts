@@ -116,22 +116,28 @@ export class WaveBrowserWindow extends BaseWindow {
         if (winWidth == null || winWidth == 0) {
             const primaryDisplay = screen.getPrimaryDisplay();
             const { width } = primaryDisplay.workAreaSize;
+            console.log(`[window-size-debug] Primary display workAreaSize:`, primaryDisplay.workAreaSize);
+            console.log(`[window-size-debug] Calculating winWidth from display width:${width} - winPosX:${winPosX} - 100`);
             winWidth = width - winPosX - 100;
             if (winWidth > 2000) {
                 winWidth = 2000;
             }
+            console.log(`[window-size-debug] Calculated winWidth:`, winWidth);
         }
         if (winHeight == null || winHeight == 0) {
             const primaryDisplay = screen.getPrimaryDisplay();
             const { height } = primaryDisplay.workAreaSize;
+            console.log(`[window-size-debug] Calculating winHeight from display height:${height} - winPosY:${winPosY} - 100`);
             winHeight = height - winPosY - 100;
             if (winHeight > 1200) {
                 winHeight = 1200;
             }
+            console.log(`[window-size-debug] Calculated winHeight:`, winHeight);
         }
         // Ensure dimensions meet minimum requirements
         winWidth = Math.max(winWidth, MIN_WINDOW_WIDTH);
         winHeight = Math.max(winHeight, MIN_WINDOW_HEIGHT);
+        console.log(`[window-size-debug] After MIN check - winWidth:${winWidth} winHeight:${winHeight}`);
 
         let winBounds = {
             x: winPosX,
@@ -139,7 +145,9 @@ export class WaveBrowserWindow extends BaseWindow {
             width: winWidth,
             height: winHeight,
         };
+        console.log(`[window-size-debug] Before ensureBoundsAreVisible:`, winBounds);
         winBounds = ensureBoundsAreVisible(winBounds);
+        console.log(`[window-size-debug] After ensureBoundsAreVisible:`, winBounds);
         const winOpts: BaseWindowConstructorOptions = {
             titleBarStyle:
                 opts.unamePlatform === "darwin"

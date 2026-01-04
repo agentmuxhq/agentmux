@@ -708,12 +708,9 @@ globalEvents.on("windows-updated", () => {
 });
 
 async function appMain() {
-    // Set disableHardwareAcceleration as early as possible, if required.
-    const launchSettings = getLaunchSettings();
-    if (launchSettings?.["window:disablehardwareacceleration"]) {
-        console.log("disabling hardware acceleration, per launch settings");
-        electronApp.disableHardwareAcceleration();
-    }
+    // ALWAYS disable hardware acceleration (fixes GPU crashes in Windows Sandbox/RDP)
+    console.log("disabling hardware acceleration (required for Windows Sandbox/RDP compatibility)");
+    electronApp.disableHardwareAcceleration();
     const startTs = Date.now();
 
     // WaveMux always allows multiple instances - no single-instance locking

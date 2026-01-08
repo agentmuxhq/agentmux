@@ -11,7 +11,6 @@ updates:
           dev-dependencies-patch:
               dependency-type: "development"
               exclude-patterns:
-                  - "*storybook*"
                   - "*electron*"
                   - "jotai"
                   - "react"
@@ -23,7 +22,6 @@ updates:
           dev-dependencies-minor:
               dependency-type: "development"
               exclude-patterns:
-                  - "*storybook*"
                   - "*electron*"
                   - "jotai"
                   - "react"
@@ -36,7 +34,6 @@ updates:
           prod-dependencies-patch:
               dependency-type: "production"
               exclude-patterns:
-                  - "*storybook*"
                   - "*electron*"
                   - "jotai"
                   - "react"
@@ -48,7 +45,6 @@ updates:
           prod-dependencies-minor:
               dependency-type: "production"
               exclude-patterns:
-                  - "*storybook*"
                   - "*electron*"
                   - "jotai"
                   - "react"
@@ -57,22 +53,6 @@ updates:
                   - "*docusaurus*"
               update-types:
                   - "minor"
-
-          storybook-patch:
-              patterns:
-                  - "*storybook*"
-              update-types:
-                  - "patch"
-          storybook-minor:
-              patterns:
-                  - "*storybook*"
-              update-types:
-                  - "minor"
-          storybook-major:
-              patterns:
-                  - "*storybook*"
-              update-types:
-                  - "major"
 
           electron-patch:
               patterns:

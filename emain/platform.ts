@@ -195,10 +195,12 @@ function getElectronAppUnpackedBasePath(): string {
 const wavemuxsrvBinName = `wavemuxsrv.${unameArch}`;
 
 function getWaveSrvPath(): string {
+    // Base path already includes "dist" in both dev and prod modes:
+    // - Dev: "dist" -> binaries at "dist/bin/"
+    // - Prod: "app.asar.unpacked/dist" -> binaries at "app.asar.unpacked/dist/bin/"
     if (process.platform === "win32") {
         const winBinName = `${wavemuxsrvBinName}.exe`;
-        const appPath = path.join(getElectronAppUnpackedBasePath(), "bin", winBinName);
-        return `${appPath}`;
+        return path.join(getElectronAppUnpackedBasePath(), "bin", winBinName);
     }
     return path.join(getElectronAppUnpackedBasePath(), "bin", wavemuxsrvBinName);
 }

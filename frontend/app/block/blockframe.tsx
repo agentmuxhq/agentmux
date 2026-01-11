@@ -95,7 +95,9 @@ function handleHeaderContextMenu(
             label: "Auto-Generate Title",
             click: async () => {
                 const { generateAutoTitle } = await import("./autotitle");
-                const autoTitle = generateAutoTitle(blockData);
+                const fullConfig = globalStore.get(atoms.fullConfigAtom);
+                const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
+                const autoTitle = generateAutoTitle(blockData, settingsEnv);
                 await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockData.oid),
                     meta: { "pane-title": autoTitle },

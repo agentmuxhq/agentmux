@@ -115,8 +115,10 @@ export function detectAgentFromPath(path: string | undefined, connName?: string)
 
 /**
  * Generate an automatic title for a block based on its metadata and type
+ * @param block - The block to generate a title for
+ * @param settingsEnv - Optional global settings cmd:env to check for agent identity
  */
-export function generateAutoTitle(block: Block): string {
+export function generateAutoTitle(block: Block, settingsEnv?: Record<string, string>): string {
     if (!block || !block.meta) {
         return "Untitled";
     }
@@ -125,7 +127,7 @@ export function generateAutoTitle(block: Block): string {
 
     switch (view) {
         case "term":
-            return generateTerminalTitle(block);
+            return generateTerminalTitle(block, settingsEnv);
         case "preview":
             return generatePreviewTitle(block);
         case "codeeditor":
@@ -147,26 +149,32 @@ export function generateAutoTitle(block: Block): string {
 
 /**
  * Generate title for terminal blocks
- * Priority: env vars > CWD path patterns > directory name
+ * Priority: block env vars > settings env vars > CWD path patterns > directory name
  */
-function generateTerminalTitle(block: Block): string {
+function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string>): string {
     const meta = block.meta!;
 
-    // 1. Check environment variables first (most reliable)
-    const envVars = meta["cmd:env"] as Record<string, string> | undefined;
-    const agentFromEnv = detectAgentFromEnv(envVars);
-    if (agentFromEnv) {
-        return agentFromEnv;
+    // 1. Check block-level environment variables first
+    const blockEnvVars = meta["cmd:env"] as Record<string, string> | undefined;
+    const agentFromBlockEnv = detectAgentFromEnv(blockEnvVars);
+    if (agentFromBlockEnv) {
+        return agentFromBlockEnv;
     }
 
-    // 2. Check CWD path for agent-workspaces patterns
+    // 2. Check global settings environment variables
+    const agentFromSettingsEnv = detectAgentFromEnv(settingsEnv);
+    if (agentFromSettingsEnv) {
+        return agentFromSettingsEnv;
+    }
+
+    // 3. Check CWD path for agent-workspaces patterns
     const cwd = meta["cmd:cwd"] as string | undefined;
     const agentFromPath = detectAgentFromPath(cwd);
     if (agentFromPath) {
         return agentFromPath;
     }
 
-    // 3. Fall back to directory basename
+    // 4. Fall back to directory basename
     if (!isBlank(cwd)) {
         return basename(cwd!) || "~";
     }
@@ -306,8 +314,9 @@ export function shouldAutoGenerateTitle(block: Block): boolean {
 /**
  * Get the effective title for a block
  * Returns custom title if set, otherwise auto-generates
+ * @param settingsEnv - Optional global settings cmd:env to check for agent identity
  */
-export function getEffectiveTitle(block: Block, autoGenerateEnabled: boolean): string {
+export function getEffectiveTitle(block: Block, autoGenerateEnabled: boolean, settingsEnv?: Record<string, string>): string {
     if (!block || !block.meta) {
         return "";
     }
@@ -320,7 +329,7 @@ export function getEffectiveTitle(block: Block, autoGenerateEnabled: boolean): s
 
     // Auto-generate if enabled and appropriate
     if (autoGenerateEnabled && shouldAutoGenerateTitle(block)) {
-        return generateAutoTitle(block);
+        return generateAutoTitle(block, settingsEnv);
     }
 
     return "";

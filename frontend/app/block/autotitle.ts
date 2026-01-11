@@ -40,12 +40,8 @@ export function detectAgentFromEnv(envVars: Record<string, string> | undefined):
     for (const envVar of AGENT_ENV_VARS) {
         const value = envVars[envVar];
         if (!isBlank(value)) {
-            // Normalize: agent2 -> Agent2, AgentA -> AgentA
-            const normalized = value!.trim();
-            if (normalized.toLowerCase().startsWith("agent")) {
-                return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase().replace("x", "X");
-            }
-            return normalized;
+            // Return the value as-is - user knows how they want it displayed
+            return value!.trim();
         }
     }
 

@@ -29,6 +29,47 @@ const HOSTNAME_AGENT_MAP: Record<string, string> = {
 const AGENT_ENV_VARS = ["AGENTMUX_AGENT_ID", "WAVEMUX_AGENT_ID"] as const;
 
 /**
+ * Environment variable names for agent color
+ */
+const AGENT_COLOR_ENV_VARS = ["AGENTMUX_AGENT_COLOR", "WAVEMUX_AGENT_COLOR"] as const;
+
+/**
+ * Default colors for known agents (used when no color env var is set)
+ */
+const DEFAULT_AGENT_COLORS: Record<string, string> = {
+    AgentA: "#1e3a5f",  // Dark blue
+    AgentX: "#8b5cf6",  // Purple
+    AgentG: "#f59e0b",  // Amber
+    Agent1: "#3b82f6",  // Blue
+    Agent2: "#06b6d4",  // Cyan
+    Agent3: "#ec4899",  // Pink
+    Agent4: "#ef4444",  // Red
+    Agent5: "#84cc16",  // Lime
+};
+
+/**
+ * Detect agent color from environment variables or use default
+ */
+export function detectAgentColor(envVars: Record<string, string> | undefined, agentId: string | null): string | null {
+    // First check env var
+    if (envVars) {
+        for (const envVar of AGENT_COLOR_ENV_VARS) {
+            const value = envVars[envVar];
+            if (!isBlank(value)) {
+                return value!.trim();
+            }
+        }
+    }
+
+    // Fall back to default color for known agents
+    if (agentId && DEFAULT_AGENT_COLORS[agentId]) {
+        return DEFAULT_AGENT_COLORS[agentId];
+    }
+
+    return null;
+}
+
+/**
  * Detect agent identity from environment variables in block metadata
  * Checks AGENTMUX_AGENT_ID first (containers), then WAVEMUX_AGENT_ID (host)
  */
@@ -40,12 +81,8 @@ export function detectAgentFromEnv(envVars: Record<string, string> | undefined):
     for (const envVar of AGENT_ENV_VARS) {
         const value = envVars[envVar];
         if (!isBlank(value)) {
-            // Normalize: agent2 -> Agent2, AgentA -> AgentA
-            const normalized = value!.trim();
-            if (normalized.toLowerCase().startsWith("agent")) {
-                return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase().replace("x", "X");
-            }
-            return normalized;
+            // Return the value as-is - user knows how they want it displayed
+            return value!.trim();
         }
     }
 
@@ -115,8 +152,10 @@ export function detectAgentFromPath(path: string | undefined, connName?: string)
 
 /**
  * Generate an automatic title for a block based on its metadata and type
+ * @param block - The block to generate a title for
+ * @param settingsEnv - Optional global settings cmd:env to check for agent identity
  */
-export function generateAutoTitle(block: Block): string {
+export function generateAutoTitle(block: Block, settingsEnv?: Record<string, string>): string {
     if (!block || !block.meta) {
         return "Untitled";
     }
@@ -125,7 +164,7 @@ export function generateAutoTitle(block: Block): string {
 
     switch (view) {
         case "term":
-            return generateTerminalTitle(block);
+            return generateTerminalTitle(block, settingsEnv);
         case "preview":
             return generatePreviewTitle(block);
         case "codeeditor":
@@ -147,26 +186,32 @@ export function generateAutoTitle(block: Block): string {
 
 /**
  * Generate title for terminal blocks
- * Priority: env vars > CWD path patterns > directory name
+ * Priority: block env vars > settings env vars > CWD path patterns > directory name
  */
-function generateTerminalTitle(block: Block): string {
+function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string>): string {
     const meta = block.meta!;
 
-    // 1. Check environment variables first (most reliable)
-    const envVars = meta["cmd:env"] as Record<string, string> | undefined;
-    const agentFromEnv = detectAgentFromEnv(envVars);
-    if (agentFromEnv) {
-        return agentFromEnv;
+    // 1. Check block-level environment variables first
+    const blockEnvVars = meta["cmd:env"] as Record<string, string> | undefined;
+    const agentFromBlockEnv = detectAgentFromEnv(blockEnvVars);
+    if (agentFromBlockEnv) {
+        return agentFromBlockEnv;
     }
 
-    // 2. Check CWD path for agent-workspaces patterns
+    // 2. Check global settings environment variables
+    const agentFromSettingsEnv = detectAgentFromEnv(settingsEnv);
+    if (agentFromSettingsEnv) {
+        return agentFromSettingsEnv;
+    }
+
+    // 3. Check CWD path for agent-workspaces patterns
     const cwd = meta["cmd:cwd"] as string | undefined;
     const agentFromPath = detectAgentFromPath(cwd);
     if (agentFromPath) {
         return agentFromPath;
     }
 
-    // 3. Fall back to directory basename
+    // 4. Fall back to directory basename
     if (!isBlank(cwd)) {
         return basename(cwd!) || "~";
     }
@@ -306,8 +351,9 @@ export function shouldAutoGenerateTitle(block: Block): boolean {
 /**
  * Get the effective title for a block
  * Returns custom title if set, otherwise auto-generates
+ * @param settingsEnv - Optional global settings cmd:env to check for agent identity
  */
-export function getEffectiveTitle(block: Block, autoGenerateEnabled: boolean): string {
+export function getEffectiveTitle(block: Block, autoGenerateEnabled: boolean, settingsEnv?: Record<string, string>): string {
     if (!block || !block.meta) {
         return "";
     }
@@ -320,7 +366,7 @@ export function getEffectiveTitle(block: Block, autoGenerateEnabled: boolean): s
 
     // Auto-generate if enabled and appropriate
     if (autoGenerateEnabled && shouldAutoGenerateTitle(block)) {
-        return generateAutoTitle(block);
+        return generateAutoTitle(block, settingsEnv);
     }
 
     return "";

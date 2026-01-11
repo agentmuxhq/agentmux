@@ -31,7 +31,7 @@ import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { CopyButton } from "../element/copybutton";
-import { detectAgentFromPath, getEffectiveTitle } from "./autotitle";
+import { detectAgentColor, detectAgentFromEnv, detectAgentFromPath, getEffectiveTitle } from "./autotitle";
 import { BlockFrameProps } from "./blocktypes";
 import { TitleBar } from "./titlebar";
 
@@ -95,7 +95,9 @@ function handleHeaderContextMenu(
             label: "Auto-Generate Title",
             click: async () => {
                 const { generateAutoTitle } = await import("./autotitle");
-                const autoTitle = generateAutoTitle(blockData);
+                const fullConfig = globalStore.get(atoms.fullConfigAtom);
+                const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
+                const autoTitle = generateAutoTitle(blockData, settingsEnv);
                 await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockData.oid),
                     meta: { "pane-title": autoTitle },
@@ -231,14 +233,29 @@ const BlockFrame_Header = ({
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];
     }
-    // Detect agent identity from CWD for terminal blocks
+    // Detect agent identity and color for terminal blocks
+    // Priority: block env > settings env > path heuristics
     // This takes precedence over default viewName but not over explicit frame:title
+    let agentColor: string | null = null;
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
-        const cwd = blockData.meta["cmd:cwd"] as string | undefined;
-        const connName = blockData.meta["connection"] as string | undefined;
-        const agentId = detectAgentFromPath(cwd, connName);
+        const fullConfig = globalStore.get(atoms.fullConfigAtom);
+        const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
+        const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
+        const mergedEnv = { ...settingsEnv, ...blockEnv };
+
+        // Check block env first, then settings env, then path
+        let agentId = detectAgentFromEnv(blockEnv);
+        if (!agentId) {
+            agentId = detectAgentFromEnv(settingsEnv);
+        }
+        if (!agentId) {
+            const cwd = blockData.meta["cmd:cwd"] as string | undefined;
+            const connName = blockData.meta["connection"] as string | undefined;
+            agentId = detectAgentFromPath(cwd, connName);
+        }
         if (agentId) {
             viewName = agentId;
+            agentColor = detectAgentColor(mergedEnv, agentId);
         }
     }
     if (blockData?.meta?.["frame:icon"]) {
@@ -294,12 +311,15 @@ const BlockFrame_Header = ({
     };
     const showNoWshButton = manageConnection && wshProblem && !util.isBlank(connName) && !connName.startsWith("aws:");
 
+    const headerStyle: React.CSSProperties = agentColor ? { backgroundColor: agentColor } : {};
+
     return (
         <div
             className="block-frame-default-header"
             data-role="block-header"
             ref={dragHandleRef}
             onContextMenu={onContextMenu}
+            style={headerStyle}
         >
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
@@ -673,7 +693,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     <TitleBar
                         blockId={nodeModel.blockId}
                         blockMeta={blockData.meta}
-                        title={getEffectiveTitle(blockData, true)}
+                        title={getEffectiveTitle(blockData, true, globalStore.get(atoms.fullConfigAtom)?.settings?.["cmd:env"] as Record<string, string> | undefined)}
                     />
                 )}
                 {preview ? previewElem : children}

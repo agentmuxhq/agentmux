@@ -752,6 +752,12 @@ func (bc *ShellController) getBlockData_noErr() *waveobj.Block {
 func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName string) (map[string]string, error) {
 	rtn := make(map[string]string)
 	config := wconfig.GetWatcher().GetFullConfig()
+	// First apply global settings cmd:env
+	globalEnv := config.Settings.CmdEnv
+	for k, v := range globalEnv {
+		rtn[k] = v
+	}
+	// Then apply connection-specific env (overrides global)
 	connKeywords := config.Connections[connName]
 	ckEnv := connKeywords.CmdEnv
 	for k, v := range ckEnv {

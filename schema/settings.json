@@ -101,6 +101,12 @@
         "term:shiftenternewline": {
           "type": "boolean"
         },
+        "cmd:env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },

@@ -9,11 +9,25 @@
 import { isBlank } from "@/util/util";
 
 /**
- * Detect agent identity from a directory path
- * Looks for patterns like /agent-workspaces/agent2/ or C:\Code\agent-workspaces\agent3\
- * Returns the agent ID (e.g., "Agent2") or null if not detected
+ * Known machine hostname to agent ID mappings
+ * Used when CWD path doesn't contain agent-workspaces pattern
  */
-export function detectAgentFromPath(path: string | undefined): string | null {
+const HOSTNAME_AGENT_MAP: Record<string, string> = {
+    area54: "AgentA",
+    claudius: "AgentX",
+    gamerlove: "AgentG",
+    cornelia: "Agent1",
+    starpower: "Agent2",
+    musiclove: "Agent3",
+};
+
+/**
+ * Detect agent identity from a directory path or connection info
+ * Looks for patterns like /agent-workspaces/agent2/ or C:\Code\agent-workspaces\agent3\
+ * Also checks for known machine paths (e.g., C:\Systems on area54 = AgentA)
+ * Returns the agent ID (e.g., "Agent2", "AgentA") or null if not detected
+ */
+export function detectAgentFromPath(path: string | undefined, connName?: string): string | null {
     if (isBlank(path)) {
         return null;
     }
@@ -21,12 +35,48 @@ export function detectAgentFromPath(path: string | undefined): string | null {
     // Normalize path separators for cross-platform support
     const normalizedPath = path!.replace(/\\/g, "/").toLowerCase();
 
-    // Pattern: agent-workspaces/agentX or agent-workspaces/agentX/
+    // Pattern 1: agent-workspaces/agentX or agent-workspaces/agentX/
     const agentMatch = normalizedPath.match(/agent-workspaces\/(agent\d+|agentx)/i);
     if (agentMatch) {
         const agentId = agentMatch[1];
         // Capitalize properly: agent2 -> Agent2, agentx -> AgentX
         return agentId.charAt(0).toUpperCase() + agentId.slice(1).toLowerCase().replace("x", "X");
+    }
+
+    // Pattern 2: Check for user home directory patterns
+    // e.g., C:\Users\area54\ or /home/area54/ maps to AgentA
+    for (const [hostname, agentId] of Object.entries(HOSTNAME_AGENT_MAP)) {
+        const patterns = [
+            `/users/${hostname.toLowerCase()}/`,      // /Users/area54/ (Mac)
+            `/home/${hostname.toLowerCase()}/`,       // /home/area54/ (Linux)
+            `c:/users/${hostname.toLowerCase()}/`,    // C:\Users\area54\ (Windows, normalized)
+        ];
+        for (const pattern of patterns) {
+            if (normalizedPath.includes(pattern)) {
+                return agentId;
+            }
+        }
+    }
+
+    // Pattern 2b: Check for known work directories on specific machines
+    const WORK_DIR_AGENT_MAP: Record<string, string> = {
+        "c:/systems": "AgentA",       // area54's work directory
+        "/c/systems": "AgentA",       // area54's work directory (git bash style)
+    };
+    for (const [workDir, agentId] of Object.entries(WORK_DIR_AGENT_MAP)) {
+        if (normalizedPath.startsWith(workDir)) {
+            return agentId;
+        }
+    }
+
+    // Pattern 3: Check connection name for SSH connections
+    if (!isBlank(connName)) {
+        const connLower = connName!.toLowerCase();
+        for (const [hostname, agentId] of Object.entries(HOSTNAME_AGENT_MAP)) {
+            if (connLower.includes(hostname.toLowerCase())) {
+                return agentId;
+            }
+        }
     }
 
     return null;

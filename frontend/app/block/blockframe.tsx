@@ -235,7 +235,8 @@ const BlockFrame_Header = ({
     // This takes precedence over default viewName but not over explicit frame:title
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
         const cwd = blockData.meta["cmd:cwd"] as string | undefined;
-        const agentId = detectAgentFromPath(cwd);
+        const connName = blockData.meta["connection"] as string | undefined;
+        const agentId = detectAgentFromPath(cwd, connName);
         if (agentId) {
             viewName = agentId;
         }

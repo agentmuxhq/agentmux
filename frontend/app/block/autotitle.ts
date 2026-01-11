@@ -29,6 +29,47 @@ const HOSTNAME_AGENT_MAP: Record<string, string> = {
 const AGENT_ENV_VARS = ["AGENTMUX_AGENT_ID", "WAVEMUX_AGENT_ID"] as const;
 
 /**
+ * Environment variable names for agent color
+ */
+const AGENT_COLOR_ENV_VARS = ["AGENTMUX_AGENT_COLOR", "WAVEMUX_AGENT_COLOR"] as const;
+
+/**
+ * Default colors for known agents (used when no color env var is set)
+ */
+const DEFAULT_AGENT_COLORS: Record<string, string> = {
+    AgentA: "#1e3a5f",  // Dark blue
+    AgentX: "#8b5cf6",  // Purple
+    AgentG: "#f59e0b",  // Amber
+    Agent1: "#3b82f6",  // Blue
+    Agent2: "#06b6d4",  // Cyan
+    Agent3: "#ec4899",  // Pink
+    Agent4: "#ef4444",  // Red
+    Agent5: "#84cc16",  // Lime
+};
+
+/**
+ * Detect agent color from environment variables or use default
+ */
+export function detectAgentColor(envVars: Record<string, string> | undefined, agentId: string | null): string | null {
+    // First check env var
+    if (envVars) {
+        for (const envVar of AGENT_COLOR_ENV_VARS) {
+            const value = envVars[envVar];
+            if (!isBlank(value)) {
+                return value!.trim();
+            }
+        }
+    }
+
+    // Fall back to default color for known agents
+    if (agentId && DEFAULT_AGENT_COLORS[agentId]) {
+        return DEFAULT_AGENT_COLORS[agentId];
+    }
+
+    return null;
+}
+
+/**
  * Detect agent identity from environment variables in block metadata
  * Checks AGENTMUX_AGENT_ID first (containers), then WAVEMUX_AGENT_ID (host)
  */

@@ -31,7 +31,7 @@ import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { CopyButton } from "../element/copybutton";
-import { detectAgentFromEnv, detectAgentFromPath, getEffectiveTitle } from "./autotitle";
+import { detectAgentColor, detectAgentFromEnv, detectAgentFromPath, getEffectiveTitle } from "./autotitle";
 import { BlockFrameProps } from "./blocktypes";
 import { TitleBar } from "./titlebar";
 
@@ -233,13 +233,15 @@ const BlockFrame_Header = ({
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];
     }
-    // Detect agent identity for terminal blocks
+    // Detect agent identity and color for terminal blocks
     // Priority: block env > settings env > path heuristics
     // This takes precedence over default viewName but not over explicit frame:title
+    let agentColor: string | null = null;
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
         const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
+        const mergedEnv = { ...settingsEnv, ...blockEnv };
 
         // Check block env first, then settings env, then path
         let agentId = detectAgentFromEnv(blockEnv);
@@ -253,6 +255,7 @@ const BlockFrame_Header = ({
         }
         if (agentId) {
             viewName = agentId;
+            agentColor = detectAgentColor(mergedEnv, agentId);
         }
     }
     if (blockData?.meta?.["frame:icon"]) {
@@ -308,12 +311,15 @@ const BlockFrame_Header = ({
     };
     const showNoWshButton = manageConnection && wshProblem && !util.isBlank(connName) && !connName.startsWith("aws:");
 
+    const headerStyle: React.CSSProperties = agentColor ? { backgroundColor: agentColor } : {};
+
     return (
         <div
             className="block-frame-default-header"
             data-role="block-header"
             ref={dragHandleRef}
             onContextMenu={onContextMenu}
+            style={headerStyle}
         >
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">

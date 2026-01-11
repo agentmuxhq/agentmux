@@ -2,15 +2,23 @@
 
 This document tracks the version history of the a5af/waveterm fork.
 
-## Latest Version: 0.12.14-fork
+## Latest Version: 0.14.0-fork
 
-**Main Worktree:** `D:/Code/waveterm` (branch: `feature/high-contrast-terminal-borders`)
-**This Worktree:** `D:/Code/agent-workspaces/agentx/waveterm` (branch: `agentx/merge-upstream-v0.12.0`)
 **Base:** Upstream v0.12.0 + custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.14.0-fork (2026-01-09)
+- **Agent:** agent2
+- **Changes:**
+  - Removed Storybook (unused dev tool, ~36MB savings)
+  - Removed Storybook references from Dependabot config
+  - Fixed gamerlove startup failures (reverted to simple 1-terminal layout)
+  - Disabled hardware acceleration for Windows Sandbox/RDP compatibility
+  - Added console window with verbose startup logging
+  - Multiple dependency updates (xterm, monaco, react-hook-form, etc.)
 
 ### v0.12.14-fork (2025-10-20)
 - **Location:** Main worktree (`D:/Code/waveterm`)

@@ -602,6 +602,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     };
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
+        getApi().sendLog(`[TABBAR] handleCloseTab called for tabId: ${tabId}`);
         event?.stopPropagation();
         const ws = globalStore.get(atoms.workspace);
         getApi().closeTab(ws.oid, tabId);

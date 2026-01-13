@@ -172,18 +172,12 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 	log.Printf("DeleteBlock: parentBlockCount: %d", parentBlockCount)
 	parentORef := waveobj.ParseORefNoErr(block.ParentORef)
 
+	// Note: We no longer auto-delete the tab when all blocks are removed.
+	// This was causing issues where the tab would be unexpectedly deleted.
+	// Users can manually close empty tabs if desired.
+	// See: https://github.com/a5af/wavemux/issues/xxx
 	if recursive && parentORef.OType == waveobj.OType_Tab && parentBlockCount == 0 {
-		// if parent tab has no blocks, delete the tab
-		log.Printf("DeleteBlock: parent tab has no blocks, deleting tab %s", parentORef.OID)
-		parentWorkspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, parentORef.OID)
-		if err != nil {
-			return fmt.Errorf("error finding workspace for tab to delete %s: %w", parentORef.OID, err)
-		}
-		newActiveTabId, err := DeleteTab(ctx, parentWorkspaceId, parentORef.OID, true)
-		if err != nil {
-			return fmt.Errorf("error deleting tab %s: %w", parentORef.OID, err)
-		}
-		SendActiveTabUpdate(ctx, parentWorkspaceId, newActiveTabId)
+		log.Printf("DeleteBlock: parent tab %s has no blocks remaining, but not auto-deleting", parentORef.OID)
 	}
 	go blockcontroller.StopBlockController(blockId)
 	sendBlockCloseEvent(blockId)

@@ -1,8 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getApi, getSettingsKeyAtom } from "@/app/store/global";
 import { focusManager } from "@/app/store/focusManager";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -55,6 +57,12 @@ import {
     TileLayoutContents,
 } from "./types";
 import { getCenter, navigateDirectionToOffset, setTransform } from "./utils";
+
+// Debug logging function - uses getApi().sendLog() which writes to task dev output
+function debugLog(message: string, data?: unknown): void {
+    const logLine = `[LAYOUT] ${message}${data !== undefined ? ": " + JSON.stringify(data) : ""}`;
+    getApi().sendLog(logLine);
+}
 
 interface ResizeContext {
     handleId: string;
@@ -375,8 +383,10 @@ export class LayoutModel {
     }
 
     onBackendUpdate() {
+        getApi().sendLog("[BUG-TRACE] onBackendUpdate called");
         const waveObj = this.getter(this.waveObjectAtom);
         const pendingActions = waveObj?.pendingbackendactions;
+        getApi().sendLog(`[BUG-TRACE] onBackendUpdate pendingActions: ${JSON.stringify(pendingActions)}`);
         if (pendingActions?.length) {
             fireAndForget(() => this.processPendingBackendActions());
         }
@@ -425,8 +435,10 @@ export class LayoutModel {
                 break;
             }
             case LayoutTreeActionType.DeleteNode: {
+                getApi().sendLog(`[BUG-TRACE] handleBackendAction DeleteNode triggered for blockId: ${action.blockid}`);
                 const leaf = this?.getNodeByBlockId(action.blockid);
                 if (leaf) {
+                    getApi().sendLog(`[BUG-TRACE] handleBackendAction calling closeNode for leaf: ${leaf.id}`);
                     await this.closeNode(leaf.id);
                 } else {
                     console.error(
@@ -603,9 +615,20 @@ export class LayoutModel {
                     focusManager.requestNodeFocus();
                 }
                 break;
-            case LayoutTreeActionType.DeleteNode:
-                deleteNode(this.treeState, action as LayoutTreeDeleteNodeAction);
+            case LayoutTreeActionType.DeleteNode: {
+                const delAction = action as LayoutTreeDeleteNodeAction;
+                debugLog("treeReducer DeleteNode BEFORE", {
+                    actionNodeId: delAction.nodeId,
+                    rootNodeId: this.treeState.rootNode?.id,
+                    willClearTree: delAction.nodeId === this.treeState.rootNode?.id,
+                });
+                deleteNode(this.treeState, delAction);
+                debugLog("treeReducer DeleteNode AFTER", {
+                    rootNodeExists: !!this.treeState.rootNode,
+                    rootNodeId: this.treeState.rootNode?.id,
+                });
                 break;
+            }
             case LayoutTreeActionType.Swap:
                 swapNode(this.treeState, action as LayoutTreeSwapNodeAction);
                 break;
@@ -690,6 +713,13 @@ export class LayoutModel {
      * @param balanceTree Whether the tree should also be balanced as it is walked. This should be done if the tree state has just been updated. Defaults to true.
      */
     updateTree(balanceTree = true) {
+        debugLog("updateTree ENTER", {
+            balanceTree,
+            hasDisplayContainer: !!this.displayContainerRef.current,
+            rootNodeId: this.treeState.rootNode?.id,
+            rootNodeChildren: this.treeState.rootNode?.children?.length ?? 0,
+        });
+
         if (this.displayContainerRef.current) {
             const newLeafs: LayoutNode[] = [];
             const newAdditionalProps = {};
@@ -718,6 +748,14 @@ export class LayoutModel {
             if (balanceTree) this.treeState.rootNode = balanceNode(this.treeState.rootNode, callback);
             else walkNodes(this.treeState.rootNode, callback);
 
+            debugLog("updateTree AFTER balanceNode", {
+                rootNodeId: this.treeState.rootNode?.id,
+                rootNodeExists: !!this.treeState.rootNode,
+                rootNodeChildren: this.treeState.rootNode?.children?.length ?? 0,
+                newLeafsCount: newLeafs.length,
+                newLeafIds: newLeafs.map((l) => l.id),
+            });
+
             // Process ephemeral node, if present.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
@@ -735,12 +773,26 @@ export class LayoutModel {
             this.validateFocusedNode(this.treeState.leafOrder);
             this.validateMagnifiedNode(this.treeState.leafOrder, newAdditionalProps);
             this.cleanupNodeModels(this.treeState.leafOrder);
-            this.setter(
-                this.leafs,
-                newLeafs.sort((a, b) => a.id.localeCompare(b.id))
-            );
+            const sortedLeafs = newLeafs.sort((a, b) => a.id.localeCompare(b.id));
+            debugLog("updateTree setting leafs", {
+                leafCount: sortedLeafs.length,
+                leafOrderCount: this.treeState.leafOrder.length,
+                leafIds: sortedLeafs.map((l) => l.id),
+                additionalPropsKeys: Object.keys(newAdditionalProps),
+            });
+            // DEBUG: Log before and after setter calls
+            debugLog("updateTree SETTER START", {
+                currentLeafsCount: this.getter(this.leafs)?.length,
+            });
+            this.setter(this.leafs, sortedLeafs);
             this.setter(this.leafOrder, this.treeState.leafOrder);
             this.setter(this.additionalProps, newAdditionalProps);
+            debugLog("updateTree SETTER DONE", {
+                newLeafsCount: this.getter(this.leafs)?.length,
+            });
+            debugLog("updateTree EXIT - success");
+        } else {
+            debugLog("updateTree EXIT - no displayContainerRef");
         }
     }
 
@@ -762,7 +814,25 @@ export class LayoutModel {
     ) {
         if (!node.children?.length) {
             leafs.push(node);
-            const addlProps = additionalPropsMap[node.id];
+            let addlProps = additionalPropsMap[node.id];
+
+            // BUG FIX: When a single leaf is the root node, it won't have additionalProps
+            // because those are normally set by the parent node processing its children.
+            // We need to create additionalProps for the root leaf using the full boundingRect.
+            if (!addlProps && node.id === this.treeState.rootNode?.id) {
+                debugLog("updateTreeHelper creating additionalProps for root leaf", {
+                    nodeId: node.id,
+                    boundingRect,
+                });
+                const transform = setTransform(boundingRect);
+                addlProps = {
+                    rect: boundingRect,
+                    transform,
+                    treeKey: "0",
+                };
+                additionalPropsMap[node.id] = addlProps;
+            }
+
             if (addlProps) {
                 if (this.magnifiedNodeId === node.id) {
                     const magnifiedNodeMarginPct = (1 - magnifiedNodeSizePct) / 2;
@@ -804,6 +874,14 @@ export class LayoutModel {
 
         let lastChildRect: Dimensions;
         const resizeHandles: ResizeHandleProps[] = [];
+        debugLog("updateTreeHelper processing parent node", {
+            nodeId: node.id,
+            isRoot: node.id === this.treeState.rootNode?.id,
+            childCount: node.children.length,
+            nodeRect,
+            nodeIsRow,
+        });
+
         node.children.forEach((child, i) => {
             const childSize = getNodeSize(child);
             const rect: Dimensions = {
@@ -818,6 +896,12 @@ export class LayoutModel {
                 transform,
                 treeKey: additionalProps.treeKey + i,
             };
+            debugLog("updateTreeHelper set child additionalProps", {
+                childId: child.id,
+                childBlockId: child.data?.blockId,
+                rect,
+                hasTransform: !!transform,
+            });
 
             // We only want the resize handles in between nodes, this ensures we have n-1 handles.
             if (lastChildRect) {
@@ -1051,7 +1135,10 @@ export class LayoutModel {
                 animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
-                onClose: () => fireAndForget(() => this.closeNode(nodeid)),
+                onClose: () => {
+                    getApi().sendLog(`[BUG-TRACE] onClose clicked for nodeId: ${nodeid}`);
+                    fireAndForget(() => this.closeNode(nodeid));
+                },
                 toggleMagnify: () => this.magnifyNodeToggle(nodeid),
                 focusNode: () => this.focusNode(nodeid),
                 dragHandleRef: createRef(),
@@ -1248,12 +1335,25 @@ export class LayoutModel {
      * @param nodeId The id of the node that is being closed.
      */
     async closeNode(nodeId: string) {
+        // DEBUG: Log entry to closeNode
+        debugLog("closeNode ENTER", {
+            nodeId,
+            rootNodeId: this.treeState.rootNode?.id,
+            rootNodeChildren: this.treeState.rootNode?.children?.length ?? 0,
+            isRootMatch: nodeId === this.treeState.rootNode?.id,
+        });
+
+        // DEBUG: Log full tree structure
+        const treeSnapshot = this.getTreeSnapshot(this.treeState.rootNode);
+        debugLog("closeNode tree structure", treeSnapshot);
+
         const nodeToDelete = findNode(this.treeState.rootNode, nodeId);
         if (!nodeToDelete) {
             // TODO: clean up the ephemeral node handling
             // The ephemeral node is not in the tree, so we need to handle it separately.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode?.id === nodeId) {
+                debugLog("closeNode ephemeral node path");
                 this.setter(this.ephemeralNode, undefined);
                 this.treeState.focusedNodeId = undefined;
                 this.updateTree(false);
@@ -1262,9 +1362,17 @@ export class LayoutModel {
                 await this.onNodeDelete?.(ephemeralNode.data);
                 return;
             }
+            debugLog("closeNode ERROR: node not found in tree", nodeId);
             console.error("unable to close node, cannot find it in tree", nodeId);
             return;
         }
+
+        debugLog("closeNode found nodeToDelete", {
+            nodeId: nodeToDelete.id,
+            nodeData: nodeToDelete.data,
+            hasChildren: nodeToDelete.children?.length > 0,
+        });
+
         if (nodeId === this.magnifiedNodeId) {
             this.magnifyNodeToggle(nodeId);
         }
@@ -1272,8 +1380,32 @@ export class LayoutModel {
             type: LayoutTreeActionType.DeleteNode,
             nodeId: nodeId,
         };
+
+        debugLog("closeNode calling treeReducer with deleteAction", deleteAction);
         this.treeReducer(deleteAction);
+
+        // DEBUG: Log tree state after deletion
+        debugLog("closeNode AFTER treeReducer", {
+            rootNodeId: this.treeState.rootNode?.id,
+            rootNodeExists: !!this.treeState.rootNode,
+            rootNodeChildren: this.treeState.rootNode?.children?.length ?? 0,
+        });
+
         await this.onNodeDelete?.(nodeToDelete.data);
+        debugLog("closeNode EXIT");
+    }
+
+    /**
+     * Helper to snapshot tree structure for debugging
+     */
+    private getTreeSnapshot(node: LayoutNode | undefined, depth = 0): unknown {
+        if (!node) return null;
+        return {
+            id: node.id,
+            data: node.data,
+            childCount: node.children?.length ?? 0,
+            children: node.children?.map((c) => this.getTreeSnapshot(c, depth + 1)) ?? [],
+        };
     }
 
     /**

@@ -19,6 +19,8 @@ import {
     replaceBlock,
     WOS,
 } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { TabBarModel } from "@/app/tab/tabbar-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
@@ -27,6 +29,33 @@ import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
+
+// Debug logging function - writes to file
+const DEBUG_LOG_PATH = "C:/Systems/wavemux-debug.log";
+
+function stringToBase64(str: string): string {
+    const bytes = new TextEncoder().encode(str);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+function debugLog(message: string, data?: unknown): void {
+    const timestamp = new Date().toISOString();
+    const logLine = `[${timestamp}] [KEYMODEL] ${message}${data !== undefined ? ": " + JSON.stringify(data) : ""}\n`;
+    fireAndForget(async () => {
+        try {
+            await RpcApi.FileAppendCommand(TabRpcClient, {
+                info: { path: DEBUG_LOG_PATH },
+                data64: stringToBase64(logLine),
+            });
+        } catch (e) {
+            console.error("Failed to write debug log:", e);
+        }
+    });
+}
 
 type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 
@@ -129,6 +158,7 @@ function isStaticTabPinned(): boolean {
 }
 
 function simpleCloseStaticTab() {
+    debugLog("simpleCloseStaticTab called");
     const ws = globalStore.get(atoms.workspace);
     const tabId = globalStore.get(atoms.staticTabId);
     getApi().closeTab(ws.oid, tabId);
@@ -160,6 +190,7 @@ function uxCloseBlock(blockId: string) {
 }
 
 function genericClose() {
+    debugLog("genericClose called");
     const focusType = focusManager.getFocusType();
     if (focusType === "waveai") {
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
@@ -186,10 +217,13 @@ function genericClose() {
         }
     }
     const blockCount = getStaticTabBlockCount();
+    debugLog("genericClose blockCount", blockCount);
     if (blockCount === 0) {
+        debugLog("genericClose calling simpleCloseStaticTab because blockCount is 0");
         simpleCloseStaticTab();
         return;
     }
+    debugLog("genericClose calling closeFocusedNode");
     const layoutModel = getLayoutModelForStaticTab();
     fireAndForget(layoutModel.closeFocusedNode.bind(layoutModel));
 }

@@ -165,6 +165,51 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
     return true;
 }
 
+// OSC 0/2 - Window Title (used by Claude Code for activity summaries)
+// Debounce map to prevent rapid title updates
+const titleUpdateDebounceMap = new Map<string, ReturnType<typeof setTimeout>>();
+const TITLE_UPDATE_DEBOUNCE_MS = 300;
+
+function handleOscTitleCommand(data: string, blockId: string, loaded: boolean): boolean {
+    if (!loaded) {
+        return false; // Let xterm handle it too for window title
+    }
+    if (data == null || data.length === 0) {
+        return false;
+    }
+    if (data.length > 256) {
+        // Truncate very long titles
+        data = data.substring(0, 256);
+    }
+
+    // Parse the title - strip common prefixes
+    let activity = data;
+    if (activity.startsWith("Claude: ")) {
+        activity = activity.substring(8);
+    } else if (activity.startsWith("Claude Code: ")) {
+        activity = activity.substring(13);
+    }
+
+    // Debounce rapid title updates per block
+    const existingTimeout = titleUpdateDebounceMap.get(blockId);
+    if (existingTimeout) {
+        clearTimeout(existingTimeout);
+    }
+
+    const timeout = setTimeout(() => {
+        titleUpdateDebounceMap.delete(blockId);
+        fireAndForget(async () => {
+            await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
+                "term:activity": activity,
+            });
+        });
+    }, TITLE_UPDATE_DEBOUNCE_MS);
+
+    titleUpdateDebounceMap.set(blockId, timeout);
+
+    return false; // Return false to let xterm also handle it (for native window title)
+}
+
 // OSC 16162 - Shell Integration Commands
 // See aiprompts/wave-osc-16162.md for full documentation
 type Osc16162Command =
@@ -349,6 +394,13 @@ export class TermWrap {
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
             return handleOsc16162Command(data, this.blockId, this.loaded, this.terminal);
         });
+        // OSC 0 and 2 - Window title (Claude Code activity summaries)
+        this.terminal.parser.registerOscHandler(0, (data: string) => {
+            return handleOscTitleCommand(data, this.blockId, this.loaded);
+        });
+        this.terminal.parser.registerOscHandler(2, (data: string) => {
+            return handleOscTitleCommand(data, this.blockId, this.loaded);
+        });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;
         this.mainFileSubject = null;
@@ -402,13 +454,20 @@ export class TermWrap {
     }
 
     dispose() {
-        this.terminal.dispose();
+        // Dispose subscriptions and callbacks FIRST - they may reference terminal addons
         this.toDispose.forEach((d) => {
             try {
                 d.dispose();
             } catch (_) {}
         });
         this.mainFileSubject.release();
+        // Dispose terminal LAST - this also disposes its addons internally
+        // Wrap in try-catch to prevent xterm addon disposal errors from crashing React
+        try {
+            this.terminal.dispose();
+        } catch (e) {
+            console.log("[termwrap] error disposing terminal:", e);
+        }
     }
 
     handleTermData(data: string) {

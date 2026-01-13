@@ -34,8 +34,16 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
             return <Block key={nodeModel.blockId} nodeModel={nodeModel} preview={true} />;
         };
 
-        function onNodeDelete(data: TabLayoutData) {
-            return services.ObjectService.DeleteBlock(data.blockId);
+        async function onNodeDelete(data: TabLayoutData) {
+            getApi().sendLog(`[BUG-TRACE] onNodeDelete ENTER for blockId: ${data.blockId}`);
+            try {
+                const result = await services.ObjectService.DeleteBlock(data.blockId);
+                getApi().sendLog(`[BUG-TRACE] onNodeDelete DeleteBlock returned: ${JSON.stringify(result)}`);
+                return result;
+            } catch (err) {
+                getApi().sendLog(`[BUG-TRACE] onNodeDelete ERROR: ${err}`);
+                throw err;
+            }
         }
 
         return {

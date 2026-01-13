@@ -201,6 +201,18 @@ interface DisplayNodesWrapperProps {
 const DisplayNodesWrapper = ({ layoutModel }: DisplayNodesWrapperProps) => {
     const leafs = useAtomValue(layoutModel.leafs);
 
+    // Debug logging to track leaf changes
+    useEffect(() => {
+        const logData = {
+            leafCount: leafs?.length ?? 0,
+            leafIds: leafs?.map((l) => l.id) ?? [],
+        };
+        console.log("[RENDER] DisplayNodesWrapper leafs changed:", logData);
+        if (typeof window !== "undefined" && (window as any).getApi) {
+            (window as any).getApi().sendLog(`[RENDER] DisplayNodesWrapper leafs: ${JSON.stringify(logData)}`);
+        }
+    }, [leafs]);
+
     return useMemo(
         () =>
             leafs.map((node) => {
@@ -229,6 +241,21 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
     const devicePixelRatio = useDevicePixelRatio();
     const isEphemeral = useAtomValue(nodeModel.isEphemeral);
     const isMagnified = useAtomValue(nodeModel.isMagnified);
+
+    // Debug logging to track node props
+    useEffect(() => {
+        const logData = {
+            nodeId: node.id,
+            blockId: node.data?.blockId,
+            hasAddlProps: !!addlProps,
+            hasTransform: !!addlProps?.transform,
+            rect: addlProps?.rect,
+        };
+        console.log("[RENDER] DisplayNode props:", logData);
+        if (typeof window !== "undefined" && (window as any).getApi) {
+            (window as any).getApi().sendLog(`[RENDER] DisplayNode: ${JSON.stringify(logData)}`);
+        }
+    }, [node.id, addlProps]);
 
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({

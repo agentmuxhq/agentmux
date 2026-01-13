@@ -203,6 +203,18 @@ class TermViewModel implements ViewModel {
                     },
                 });
             }
+            // Display term:activity (Claude Code's current activity summary)
+            if (!isCmd) {
+                const blockMeta = get(this.blockAtom)?.meta;
+                const activity = blockMeta?.["term:activity"] as string | undefined;
+                if (activity && activity.length > 0) {
+                    rtn.push({
+                        elemtype: "text",
+                        text: activity,
+                        className: "term-activity",
+                    });
+                }
+            }
             return rtn;
         });
         this.manageConnection = jotai.atom((get) => {

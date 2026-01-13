@@ -242,7 +242,6 @@ const BlockFrame_Header = ({
         const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
         const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
         const mergedEnv = { ...settingsEnv, ...blockEnv };
-
         // Check block env first, then settings env, then path
         let agentId = detectAgentFromEnv(blockEnv);
         if (!agentId) {

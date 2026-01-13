@@ -218,7 +218,8 @@ type Osc16162Command =
     | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string } }
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
-    | { command: "R"; data: {} };
+    | { command: "R"; data: {} }
+    | { command: "E"; data: { [key: string]: string } }; // Environment variables update
 
 function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
     if (!loaded) {
@@ -291,6 +292,19 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
         case "R":
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
+            }
+            break;
+        case "E":
+            // Environment variables update - directly update block metadata
+            if (cmd.data && Object.keys(cmd.data).length > 0) {
+                setTimeout(() => {
+                    fireAndForget(async () => {
+                        await RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", blockId),
+                            meta: { "cmd:env": cmd.data },
+                        }).catch((e) => console.log("error setting cmd:env (OSC 16162 E)", e));
+                    });
+                }, 0);
             }
             break;
     }

@@ -257,6 +257,14 @@ const BlockFrame_Header = ({
             agentColor = detectAgentColor(mergedEnv, agentId);
         }
     }
+    // Display Claude activity from OSC 0/2 title updates
+    if (blockData?.meta?.view === "term") {
+        const activity = blockData.meta["term:activity"] as string | undefined;
+        if (activity && activity !== "Idle" && activity.length > 0) {
+            // Append activity to title: "AgentA - Reading files..."
+            viewName = viewName ? `${viewName} - ${activity}` : activity;
+        }
+    }
     if (blockData?.meta?.["frame:icon"]) {
         viewIconUnion = blockData.meta["frame:icon"];
     }

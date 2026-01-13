@@ -103,6 +103,8 @@ export function detectAgentFromPath(path: string | undefined, connName?: string)
     // Normalize path separators for cross-platform support
     const normalizedPath = path!.replace(/\\/g, "/").toLowerCase();
 
+    // Add trailing slash for consistent pattern matching
+    const pathWithSlash = normalizedPath.endsWith("/") ? normalizedPath : normalizedPath + "/";
     // Pattern 1: agent-workspaces/agentX or agent-workspaces/agentX/
     const agentMatch = normalizedPath.match(/agent-workspaces\/(agent\d+|agentx)/i);
     if (agentMatch) {
@@ -120,7 +122,7 @@ export function detectAgentFromPath(path: string | undefined, connName?: string)
             `c:/users/${hostname.toLowerCase()}/`,    // C:\Users\area54\ (Windows, normalized)
         ];
         for (const pattern of patterns) {
-            if (normalizedPath.includes(pattern)) {
+            if (pathWithSlash.includes(pattern)) {
                 return agentId;
             }
         }

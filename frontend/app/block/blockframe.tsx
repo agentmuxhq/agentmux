@@ -627,6 +627,26 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
+    // Compute agent color for border styling
+    let agentColor: string | null = null;
+    if (!preview && blockData?.meta?.view === "term") {
+        const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
+        const settingsEnv = globalStore.get(atoms.fullConfigAtom)?.settings?.["cmd:env"] as Record<string, string> | undefined;
+        const mergedEnv = { ...settingsEnv, ...blockEnv };
+        let agentId = detectAgentFromEnv(blockEnv);
+        if (!agentId) {
+            agentId = detectAgentFromEnv(settingsEnv);
+        }
+        if (!agentId) {
+            const cwd = blockData.meta["cmd:cwd"] as string | undefined;
+            const connName = blockData.meta["connection"] as string | undefined;
+            agentId = detectAgentFromPath(cwd, connName);
+        }
+        if (agentId) {
+            agentColor = detectAgentColor(mergedEnv, agentId);
+        }
+    }
+
     React.useEffect(() => {
         if (!manageConnection) {
             return;
@@ -678,6 +698,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1 && !aiPanelVisible,
+                "has-agent-color": !!agentColor,
                 ephemeral: isEphemeral,
                 magnified: isMagnified,
             })}
@@ -689,6 +710,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 {
                     "--magnified-block-opacity": magnifiedBlockOpacity,
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
+                    "--block-agent-color": agentColor ?? "transparent",
                 } as React.CSSProperties
             }
             // @ts-ignore: inert does exist in the DOM, just not in react

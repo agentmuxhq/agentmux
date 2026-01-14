@@ -34,9 +34,24 @@ function Global:_waveterm_si_osc7 {
     Write-Host -NoNewline "`e]7;file://$hostname/$encoded_pwd`a"
 }
 
+$Global:_WAVETERM_SI_FIRSTPROMPT = $true
+
+# Send agent environment for per-pane identification
+function Global:_waveterm_si_agent_env {
+    if (-not $Global:_WAVETERM_SI_FIRSTPROMPT) { return }
+    $Global:_WAVETERM_SI_FIRSTPROMPT = $false
+
+    if ($env:WAVEMUX_AGENT_ID) {
+        Write-Host -NoNewline "`e]16162;E;{`"WAVEMUX_AGENT_ID`":`"$env:WAVEMUX_AGENT_ID`"}`a"
+    } elseif ($env:AGENTMUX_AGENT_ID) {
+        Write-Host -NoNewline "`e]16162;E;{`"AGENTMUX_AGENT_ID`":`"$env:AGENTMUX_AGENT_ID`"}`a"
+    }
+}
+
 # Hook OSC 7 to prompt
 function Global:_waveterm_si_prompt {
     _waveterm_si_osc7
+    _waveterm_si_agent_env
 }
 
 # Add the OSC 7 call to the prompt function

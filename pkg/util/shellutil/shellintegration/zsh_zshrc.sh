@@ -59,6 +59,12 @@ _waveterm_si_precmd() {
     local uname_info=$(uname -smr 2>/dev/null)
     printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s"}\007' "$ZSH_VERSION" "$uname_info"
     _waveterm_si_osc7
+    # Send agent environment for per-pane identification
+    if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
+      printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$WAVEMUX_AGENT_ID"
+    elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
+      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$AGENTMUX_AGENT_ID"
+    fi
   fi
   printf '\033]16162;A\007'      # start of new prompt
   _WAVETERM_SI_FIRSTPRECMD=0

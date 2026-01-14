@@ -56,8 +56,19 @@ _waveterm_si_osc7() {
 }
 
 # Hook OSC 7 into PROMPT_COMMAND
+_WAVETERM_SI_FIRSTPROMPT=1
+
 _waveterm_si_prompt_command() {
   _waveterm_si_osc7
+  # Send agent environment on first prompt for per-pane identification
+  if [[ $_WAVETERM_SI_FIRSTPROMPT -eq 1 ]]; then
+    _WAVETERM_SI_FIRSTPROMPT=0
+    if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
+      printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$WAVEMUX_AGENT_ID"
+    elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
+      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$AGENTMUX_AGENT_ID"
+    fi
+  fi
 }
 
 # Append _waveterm_si_prompt_command to PROMPT_COMMAND (v3-safe)

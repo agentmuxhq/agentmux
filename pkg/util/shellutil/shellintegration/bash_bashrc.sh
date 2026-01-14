@@ -56,8 +56,15 @@ _waveterm_si_osc7() {
 }
 
 # Hook OSC 7 into PROMPT_COMMAND
-_WAVETERM_SI_FIRSTPROMPT=1
 _WAVETERM_SI_LAST_AGENT=""
+
+# Escape string for JSON embedding (escape backslashes and quotes)
+_waveterm_si_json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"  # Escape backslashes first
+  s="${s//\"/\\\"}"  # Escape quotes
+  printf '%s' "$s"
+}
 
 # Send agent environment for per-pane identification (on every prompt if changed)
 _waveterm_si_agent_env() {
@@ -72,9 +79,14 @@ _waveterm_si_agent_env() {
   if [[ "$current_agent" != "$_WAVETERM_SI_LAST_AGENT" ]]; then
     _WAVETERM_SI_LAST_AGENT="$current_agent"
     if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
-      printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$WAVEMUX_AGENT_ID"
+      local escaped=$(_waveterm_si_json_escape "$WAVEMUX_AGENT_ID")
+      printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$escaped"
     elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
-      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$AGENTMUX_AGENT_ID"
+      local escaped=$(_waveterm_si_json_escape "$AGENTMUX_AGENT_ID")
+      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$escaped"
+    else
+      # Agent was cleared - send empty object to clear metadata
+      printf '\033]16162;E;{}\007'
     fi
   fi
 }

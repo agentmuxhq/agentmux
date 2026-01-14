@@ -186,6 +186,7 @@ tasks:
             - go:mod:tidy
             - generate
         sources:
+            - "version.cjs"
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
@@ -301,6 +302,7 @@ tasks:
             - go:mod:tidy
             - generate
         sources:
+            - "version.cjs"
             - "cmd/wsh/**/*.go"
             - "pkg/**/*.go"
         generates:

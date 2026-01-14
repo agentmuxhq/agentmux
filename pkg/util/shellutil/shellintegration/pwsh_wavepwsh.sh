@@ -34,9 +34,47 @@ function Global:_waveterm_si_osc7 {
     Write-Host -NoNewline "`e]7;file://$hostname/$encoded_pwd`a"
 }
 
+$Global:_WAVETERM_SI_LAST_AGENT = ""
+
+# Escape string for JSON embedding (escape backslashes and quotes)
+function Global:_waveterm_si_json_escape {
+    param([string]$s)
+    $s = $s.Replace('\', '\\')  # Escape backslashes first
+    $s = $s.Replace('"', '\"')  # Escape quotes
+    return $s
+}
+
+# Send agent environment for per-pane identification (on every prompt if changed)
+function Global:_waveterm_si_agent_env {
+    if (_waveterm_si_blocked) { return }
+
+    $current_agent = ""
+    if ($env:WAVEMUX_AGENT_ID) {
+        $current_agent = "WAVEMUX_AGENT_ID:$env:WAVEMUX_AGENT_ID"
+    } elseif ($env:AGENTMUX_AGENT_ID) {
+        $current_agent = "AGENTMUX_AGENT_ID:$env:AGENTMUX_AGENT_ID"
+    }
+
+    # Only send if changed
+    if ($current_agent -ne $Global:_WAVETERM_SI_LAST_AGENT) {
+        $Global:_WAVETERM_SI_LAST_AGENT = $current_agent
+        if ($env:WAVEMUX_AGENT_ID) {
+            $escaped = _waveterm_si_json_escape $env:WAVEMUX_AGENT_ID
+            Write-Host -NoNewline "`e]16162;E;{`"WAVEMUX_AGENT_ID`":`"$escaped`"}`a"
+        } elseif ($env:AGENTMUX_AGENT_ID) {
+            $escaped = _waveterm_si_json_escape $env:AGENTMUX_AGENT_ID
+            Write-Host -NoNewline "`e]16162;E;{`"AGENTMUX_AGENT_ID`":`"$escaped`"}`a"
+        } else {
+            # Agent was cleared - send empty object to clear metadata
+            Write-Host -NoNewline "`e]16162;E;{}`a"
+        }
+    }
+}
+
 # Hook OSC 7 to prompt
 function Global:_waveterm_si_prompt {
     _waveterm_si_osc7
+    _waveterm_si_agent_env
 }
 
 # Add the OSC 7 call to the prompt function

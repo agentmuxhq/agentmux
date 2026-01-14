@@ -19,6 +19,7 @@ if [[ -n ${_comps+x} ]]; then
 fi
 
 typeset -g _WAVETERM_SI_FIRSTPRECMD=1
+typeset -g _WAVETERM_SI_LAST_AGENT=""
 
 # shell integration
 _waveterm_si_blocked() {
@@ -49,6 +50,39 @@ _waveterm_si_osc7() {
   printf '\033]7;file://%s%s\007' "$HOST" "$encoded_pwd"  # OSC 7 - current directory
 }
 
+# Escape string for JSON embedding (escape backslashes and quotes)
+_waveterm_si_json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"  # Escape backslashes first
+  s="${s//\"/\\\"}"  # Escape quotes
+  printf '%s' "$s"
+}
+
+# Send agent environment for per-pane identification (on every prompt if changed)
+_waveterm_si_agent_env() {
+  _waveterm_si_blocked && return
+  local current_agent=""
+  if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
+    current_agent="WAVEMUX_AGENT_ID:$WAVEMUX_AGENT_ID"
+  elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
+    current_agent="AGENTMUX_AGENT_ID:$AGENTMUX_AGENT_ID"
+  fi
+  # Only send if changed
+  if [[ "$current_agent" != "$_WAVETERM_SI_LAST_AGENT" ]]; then
+    _WAVETERM_SI_LAST_AGENT="$current_agent"
+    if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
+      local escaped=$(_waveterm_si_json_escape "$WAVEMUX_AGENT_ID")
+      printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$escaped"
+    elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
+      local escaped=$(_waveterm_si_json_escape "$AGENTMUX_AGENT_ID")
+      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$escaped"
+    else
+      # Agent was cleared - send empty object to clear metadata
+      printf '\033]16162;E;{}\007'
+    fi
+  fi
+}
+
 _waveterm_si_precmd() {
   local _waveterm_si_status=$?
   _waveterm_si_blocked && return
@@ -60,6 +94,8 @@ _waveterm_si_precmd() {
     printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s"}\007' "$ZSH_VERSION" "$uname_info"
     _waveterm_si_osc7
   fi
+  # Send agent environment on every prompt (only if changed)
+  _waveterm_si_agent_env
   printf '\033]16162;A\007'      # start of new prompt
   _WAVETERM_SI_FIRSTPRECMD=0
 }

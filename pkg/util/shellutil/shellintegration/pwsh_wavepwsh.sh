@@ -35,16 +35,27 @@ function Global:_waveterm_si_osc7 {
 }
 
 $Global:_WAVETERM_SI_FIRSTPROMPT = $true
+$Global:_WAVETERM_SI_LAST_AGENT = ""
 
-# Send agent environment for per-pane identification
+# Send agent environment for per-pane identification (on every prompt if changed)
 function Global:_waveterm_si_agent_env {
-    if (-not $Global:_WAVETERM_SI_FIRSTPROMPT) { return }
-    $Global:_WAVETERM_SI_FIRSTPROMPT = $false
+    if (_waveterm_si_blocked) { return }
 
+    $current_agent = ""
     if ($env:WAVEMUX_AGENT_ID) {
-        Write-Host -NoNewline "`e]16162;E;{`"WAVEMUX_AGENT_ID`":`"$env:WAVEMUX_AGENT_ID`"}`a"
+        $current_agent = "WAVEMUX_AGENT_ID:$env:WAVEMUX_AGENT_ID"
     } elseif ($env:AGENTMUX_AGENT_ID) {
-        Write-Host -NoNewline "`e]16162;E;{`"AGENTMUX_AGENT_ID`":`"$env:AGENTMUX_AGENT_ID`"}`a"
+        $current_agent = "AGENTMUX_AGENT_ID:$env:AGENTMUX_AGENT_ID"
+    }
+
+    # Only send if changed
+    if ($current_agent -ne $Global:_WAVETERM_SI_LAST_AGENT) {
+        $Global:_WAVETERM_SI_LAST_AGENT = $current_agent
+        if ($env:WAVEMUX_AGENT_ID) {
+            Write-Host -NoNewline "`e]16162;E;{`"WAVEMUX_AGENT_ID`":`"$env:WAVEMUX_AGENT_ID`"}`a"
+        } elseif ($env:AGENTMUX_AGENT_ID) {
+            Write-Host -NoNewline "`e]16162;E;{`"AGENTMUX_AGENT_ID`":`"$env:AGENTMUX_AGENT_ID`"}`a"
+        }
     }
 }
 

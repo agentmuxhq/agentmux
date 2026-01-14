@@ -57,18 +57,32 @@ _waveterm_si_osc7() {
 
 # Hook OSC 7 into PROMPT_COMMAND
 _WAVETERM_SI_FIRSTPROMPT=1
+_WAVETERM_SI_LAST_AGENT=""
 
-_waveterm_si_prompt_command() {
-  _waveterm_si_osc7
-  # Send agent environment on first prompt for per-pane identification
-  if [[ $_WAVETERM_SI_FIRSTPROMPT -eq 1 ]]; then
-    _WAVETERM_SI_FIRSTPROMPT=0
+# Send agent environment for per-pane identification (on every prompt if changed)
+_waveterm_si_agent_env() {
+  _waveterm_si_blocked && return
+  local current_agent=""
+  if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
+    current_agent="WAVEMUX_AGENT_ID:$WAVEMUX_AGENT_ID"
+  elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
+    current_agent="AGENTMUX_AGENT_ID:$AGENTMUX_AGENT_ID"
+  fi
+  # Only send if changed
+  if [[ "$current_agent" != "$_WAVETERM_SI_LAST_AGENT" ]]; then
+    _WAVETERM_SI_LAST_AGENT="$current_agent"
     if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
       printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$WAVEMUX_AGENT_ID"
     elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
       printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$AGENTMUX_AGENT_ID"
     fi
   fi
+}
+
+_waveterm_si_prompt_command() {
+  _waveterm_si_osc7
+  # Send agent environment on every prompt (only if changed)
+  _waveterm_si_agent_env
 }
 
 # Append _waveterm_si_prompt_command to PROMPT_COMMAND (v3-safe)

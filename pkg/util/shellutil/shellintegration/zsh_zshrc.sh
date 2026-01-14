@@ -19,6 +19,7 @@ if [[ -n ${_comps+x} ]]; then
 fi
 
 typeset -g _WAVETERM_SI_FIRSTPRECMD=1
+typeset -g _WAVETERM_SI_LAST_AGENT=""
 
 # shell integration
 _waveterm_si_blocked() {
@@ -49,6 +50,26 @@ _waveterm_si_osc7() {
   printf '\033]7;file://%s%s\007' "$HOST" "$encoded_pwd"  # OSC 7 - current directory
 }
 
+# Send agent environment for per-pane identification (on every prompt if changed)
+_waveterm_si_agent_env() {
+  _waveterm_si_blocked && return
+  local current_agent=""
+  if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
+    current_agent="WAVEMUX_AGENT_ID:$WAVEMUX_AGENT_ID"
+  elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
+    current_agent="AGENTMUX_AGENT_ID:$AGENTMUX_AGENT_ID"
+  fi
+  # Only send if changed
+  if [[ "$current_agent" != "$_WAVETERM_SI_LAST_AGENT" ]]; then
+    _WAVETERM_SI_LAST_AGENT="$current_agent"
+    if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
+      printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$WAVEMUX_AGENT_ID"
+    elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
+      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$AGENTMUX_AGENT_ID"
+    fi
+  fi
+}
+
 _waveterm_si_precmd() {
   local _waveterm_si_status=$?
   _waveterm_si_blocked && return
@@ -59,13 +80,9 @@ _waveterm_si_precmd() {
     local uname_info=$(uname -smr 2>/dev/null)
     printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s"}\007' "$ZSH_VERSION" "$uname_info"
     _waveterm_si_osc7
-    # Send agent environment for per-pane identification
-    if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
-      printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$WAVEMUX_AGENT_ID"
-    elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
-      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$AGENTMUX_AGENT_ID"
-    fi
   fi
+  # Send agent environment on every prompt (only if changed)
+  _waveterm_si_agent_env
   printf '\033]16162;A\007'      # start of new prompt
   _WAVETERM_SI_FIRSTPRECMD=0
 }

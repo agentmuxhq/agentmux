@@ -257,12 +257,12 @@ const BlockFrame_Header = ({
             agentColor = detectAgentColor(mergedEnv, agentId);
         }
     }
-    // Display Claude activity from OSC 0/2 title updates
+    // Get Claude activity for display (shown separately, not in agent name)
+    let termActivity: string | null = null;
     if (blockData?.meta?.view === "term") {
         const activity = blockData.meta["term:activity"] as string | undefined;
         if (activity && activity !== "Idle" && activity.length > 0) {
-            // Append activity to title: "AgentA - Reading files..."
-            viewName = viewName ? `${viewName} - ${activity}` : activity;
+            termActivity = activity;
         }
     }
     if (blockData?.meta?.["frame:icon"]) {
@@ -287,6 +287,14 @@ const BlockFrame_Header = ({
     }
 
     const headerTextElems: React.ReactElement[] = [];
+    // Show terminal activity in bold (separate from agent name)
+    if (termActivity) {
+        headerTextElems.push(
+            <div key="activity" className="block-frame-text ellipsis" style={{ fontWeight: "bold" }}>
+                &lrm;{termActivity}
+            </div>
+        );
+    }
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(

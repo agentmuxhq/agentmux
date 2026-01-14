@@ -39,6 +39,7 @@ const AGENT_COLOR_ENV_VARS = ["AGENTMUX_AGENT_COLOR", "WAVEMUX_AGENT_COLOR"] as 
 const DEFAULT_AGENT_COLORS: Record<string, string> = {
     AgentA: "#1e3a5f",  // Dark blue
     AgentX: "#8b5cf6",  // Purple
+    AgentY: "#eab308",  // Yellow/Gold
     AgentG: "#f59e0b",  // Amber
     Agent1: "#3b82f6",  // Blue
     Agent2: "#06b6d4",  // Cyan

@@ -242,7 +242,6 @@ const BlockFrame_Header = ({
         const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
         const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
         const mergedEnv = { ...settingsEnv, ...blockEnv };
-
         // Check block env first, then settings env, then path
         let agentId = detectAgentFromEnv(blockEnv);
         if (!agentId) {
@@ -256,6 +255,14 @@ const BlockFrame_Header = ({
         if (agentId) {
             viewName = agentId;
             agentColor = detectAgentColor(mergedEnv, agentId);
+        }
+    }
+    // Display Claude activity from OSC 0/2 title updates
+    if (blockData?.meta?.view === "term") {
+        const activity = blockData.meta["term:activity"] as string | undefined;
+        if (activity && activity !== "Idle" && activity.length > 0) {
+            // Append activity to title: "AgentA - Reading files..."
+            viewName = viewName ? `${viewName} - ${activity}` : activity;
         }
     }
     if (blockData?.meta?.["frame:icon"]) {

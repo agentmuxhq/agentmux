@@ -708,9 +708,14 @@ globalEvents.on("windows-updated", () => {
 });
 
 async function appMain() {
-    // ALWAYS disable hardware acceleration (fixes GPU crashes in Windows Sandbox/RDP)
-    console.log("[STARTUP] Step 1/10: Disabling hardware acceleration (required for Windows Sandbox/RDP compatibility)");
-    electronApp.disableHardwareAcceleration();
+    // Disable hardware acceleration only if explicitly configured (for Windows Sandbox/RDP users)
+    const launchSettings = getLaunchSettings();
+    if (launchSettings?.["window:disablehardwareacceleration"]) {
+        console.log("[STARTUP] Step 1/10: Disabling hardware acceleration (per user settings)");
+        electronApp.disableHardwareAcceleration();
+    } else {
+        console.log("[STARTUP] Step 1/10: Hardware acceleration enabled (default)");
+    }
     const startTs = Date.now();
 
     // WaveMux always allows multiple instances - no single-instance locking

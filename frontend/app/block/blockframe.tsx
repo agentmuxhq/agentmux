@@ -234,18 +234,16 @@ const BlockFrame_Header = ({
         viewName = blockData.meta["frame:title"];
     }
     // Detect agent identity and color for terminal blocks
-    // Agent identity comes ONLY from settings-level env vars (user-controlled)
-    // Block-level cmd:env is NOT used - it persists in database and causes stale agent display
-    // For per-pane agent identity, use OSC 16162 to set term:agentid (runtime only)
+    // Agent identity comes from block's cmd:env, which is set via OSC 16162 E from the shell
+    // Each pane can have its own agent based on shell environment variables
     let agentColor: string | null = null;
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
-        const fullConfig = globalStore.get(atoms.fullConfigAtom);
-        const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
-        // Only check settings env - block env persists and causes stale agent display
-        const agentId = detectAgentFromEnv(settingsEnv);
+        // Read from block's cmd:env (set via OSC 16162 from shell integration)
+        const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
+        const agentId = detectAgentFromEnv(blockEnv);
         if (agentId) {
             viewName = agentId;
-            agentColor = detectAgentColor(settingsEnv, agentId);
+            agentColor = detectAgentColor(blockEnv, agentId);
         }
     }
     if (blockData?.meta?.["frame:icon"]) {
@@ -602,6 +600,16 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
+    // Compute agent color for border styling (matches header color)
+    let blockAgentColor: string | null = null;
+    if (!preview && blockData?.meta?.view === "term") {
+        const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
+        const agentId = detectAgentFromEnv(blockEnv);
+        if (agentId) {
+            blockAgentColor = detectAgentColor(blockEnv, agentId);
+        }
+    }
+
     React.useEffect(() => {
         if (!manageConnection) {
             return;
@@ -653,6 +661,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1 && !aiPanelVisible,
+                "has-agent-color": !!blockAgentColor,
                 ephemeral: isEphemeral,
                 magnified: isMagnified,
             })}
@@ -664,6 +673,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 {
                     "--magnified-block-opacity": magnifiedBlockOpacity,
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
+                    "--block-agent-color": blockAgentColor ?? "transparent",
                 } as React.CSSProperties
             }
             // @ts-ignore: inert does exist in the DOM, just not in react

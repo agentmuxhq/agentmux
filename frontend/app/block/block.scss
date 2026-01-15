@@ -412,7 +412,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            border: 1px solid #ffffff;
+            // 2px border per pane - dark when unfocused
+            border: 2px solid var(--border-color);
             pointer-events: none;
             border-radius: var(--block-border-radius);
             z-index: var(--zindex-block-mask-inner);
@@ -445,14 +446,20 @@
             z-index: 10; // Elevate focused block above adjacent blocks
 
             .block-mask {
+                // Focused: accent color by default
                 border: 2px solid var(--accent-color);
                 z-index: calc(var(--zindex-block-mask-inner) + 1);
+            }
+
+            // Agent color takes priority when focused
+            &.has-agent-color .block-mask {
+                border-color: var(--block-agent-color);
             }
 
             &.block-no-highlight,
             &.block-preview {
                 .block-mask {
-                    border: 1px solid rgb(from var(--border-color) r g b / 10%) !important;
+                    border: 2px solid rgb(from var(--border-color) r g b / 10%) !important;
                 }
             }
         }

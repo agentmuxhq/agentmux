@@ -31,7 +31,7 @@ import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { CopyButton } from "../element/copybutton";
-import { detectAgentColor, detectAgentFromEnv, detectAgentFromPath, getEffectiveTitle } from "./autotitle";
+import { detectAgentColor, detectAgentFromEnv, getEffectiveTitle } from "./autotitle";
 import { BlockFrameProps } from "./blocktypes";
 import { TitleBar } from "./titlebar";
 
@@ -234,23 +234,18 @@ const BlockFrame_Header = ({
         viewName = blockData.meta["frame:title"];
     }
     // Detect agent identity and color for terminal blocks
-    // Priority: block env > settings env > path heuristics
-    // This takes precedence over default viewName but not over explicit frame:title
+    // Agent identity comes ONLY from explicit env vars (WAVEMUX_AGENT_ID, AGENTMUX_AGENT_ID)
+    // No hostname or path-based inference - system context should not affect pane appearance
     let agentColor: string | null = null;
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
         const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
         const mergedEnv = { ...settingsEnv, ...blockEnv };
-        // Check block env first, then settings env, then path
+        // Check block env first, then settings env - no path fallback
         let agentId = detectAgentFromEnv(blockEnv);
         if (!agentId) {
             agentId = detectAgentFromEnv(settingsEnv);
-        }
-        if (!agentId) {
-            const cwd = blockData.meta["cmd:cwd"] as string | undefined;
-            const connName = blockData.meta["connection"] as string | undefined;
-            agentId = detectAgentFromPath(cwd, connName);
         }
         if (agentId) {
             viewName = agentId;

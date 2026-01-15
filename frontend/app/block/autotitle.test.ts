@@ -108,16 +108,15 @@ describe("generateAutoTitle", () => {
         assert.equal(title, "Agent2");
     });
 
-    test("local terminal does NOT use hostname-based detection (fix for OSC override issue)", () => {
-        // This path would trigger hostname-based detection (C:\Systems = AgentA)
-        // but for local terminals, we should fall back to directory basename
+    test("terminal does NOT use hostname-based detection", () => {
+        // Hostname-based detection has been removed entirely
+        // Agent identity should ONLY come from explicit env vars
         const block: Block = {
             oid: "test-123",
             version: 1,
             meta: {
                 view: "term",
                 "cmd:cwd": "C:\\Systems\\wavemux",
-                // No connection = local terminal
             },
         };
         const title = generateAutoTitle(block);
@@ -125,7 +124,9 @@ describe("generateAutoTitle", () => {
         assert.equal(title, "wavemux");
     });
 
-    test("SSH connection DOES use hostname-based detection", () => {
+    test("SSH connection also does NOT use hostname-based detection", () => {
+        // Even SSH connections don't infer agent from hostname anymore
+        // Agent identity must be set explicitly via env vars
         const block: Block = {
             oid: "test-123",
             version: 1,
@@ -136,11 +137,11 @@ describe("generateAutoTitle", () => {
             },
         };
         const title = generateAutoTitle(block);
-        // Should detect "AgentA" from hostname pattern for SSH
-        assert.equal(title, "AgentA");
+        // Should return directory basename, NOT "AgentA" - no hostname inference
+        assert.equal(title, "wavemux");
     });
 
-    test("env var takes priority over all path detection", () => {
+    test("env var is the ONLY way to set agent identity", () => {
         const block: Block = {
             oid: "test-123",
             version: 1,

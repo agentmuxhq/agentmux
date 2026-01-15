@@ -9,19 +9,6 @@
 import { isBlank } from "@/util/util";
 
 /**
- * Known machine hostname to agent ID mappings
- * Used when CWD path doesn't contain agent-workspaces pattern
- */
-const HOSTNAME_AGENT_MAP: Record<string, string> = {
-    area54: "AgentA",
-    claudius: "AgentX",
-    gamerlove: "AgentG",
-    cornelia: "Agent1",
-    starpower: "Agent2",
-    musiclove: "Agent3",
-};
-
-/**
  * Environment variable names for agent identity (in priority order)
  * - AGENTMUX_AGENT_ID: Set by claw's docker entrypoint for container agents
  * - WAVEMUX_AGENT_ID: Set in shell profiles for host agents
@@ -116,66 +103,15 @@ export function detectAgentFromWorkspacesPath(path: string | undefined): string 
 }
 
 /**
- * Detect agent identity from a directory path or connection info
- * Looks for patterns like /agent-workspaces/agent2/ or C:\Code\agent-workspaces\agent3\
- * Also checks for known machine paths (e.g., C:\Systems on area54 = AgentA)
- * Returns the agent ID (e.g., "Agent2", "AgentA") or null if not detected
+ * Detect agent identity from a directory path
+ * Only checks for explicit agent-workspaces pattern - no hostname inference.
+ * Agent identity should come from explicit env vars (WAVEMUX_AGENT_ID), not system context.
+ * @deprecated Use detectAgentFromWorkspacesPath instead
  */
-export function detectAgentFromPath(path: string | undefined, connName?: string): string | null {
-    if (isBlank(path)) {
-        return null;
-    }
-
-    // Normalize path separators for cross-platform support
-    const normalizedPath = path!.replace(/\\/g, "/").toLowerCase();
-
-    // Add trailing slash for consistent pattern matching
-    const pathWithSlash = normalizedPath.endsWith("/") ? normalizedPath : normalizedPath + "/";
-    // Pattern 1: agent-workspaces/agentX or agent-workspaces/agentX/
-    const agentMatch = normalizedPath.match(/agent-workspaces\/(agent\d+|agentx)/i);
-    if (agentMatch) {
-        const agentId = agentMatch[1];
-        // Capitalize properly: agent2 -> Agent2, agentx -> AgentX
-        return agentId.charAt(0).toUpperCase() + agentId.slice(1).toLowerCase().replace("x", "X");
-    }
-
-    // Pattern 2: Check for user home directory patterns
-    // e.g., C:\Users\area54\ or /home/area54/ maps to AgentA
-    for (const [hostname, agentId] of Object.entries(HOSTNAME_AGENT_MAP)) {
-        const patterns = [
-            `/users/${hostname.toLowerCase()}/`,      // /Users/area54/ (Mac)
-            `/home/${hostname.toLowerCase()}/`,       // /home/area54/ (Linux)
-            `c:/users/${hostname.toLowerCase()}/`,    // C:\Users\area54\ (Windows, normalized)
-        ];
-        for (const pattern of patterns) {
-            if (pathWithSlash.includes(pattern)) {
-                return agentId;
-            }
-        }
-    }
-
-    // Pattern 2b: Check for known work directories on specific machines
-    const WORK_DIR_AGENT_MAP: Record<string, string> = {
-        "c:/systems": "AgentA",       // area54's work directory
-        "/c/systems": "AgentA",       // area54's work directory (git bash style)
-    };
-    for (const [workDir, agentId] of Object.entries(WORK_DIR_AGENT_MAP)) {
-        if (normalizedPath.startsWith(workDir)) {
-            return agentId;
-        }
-    }
-
-    // Pattern 3: Check connection name for SSH connections
-    if (!isBlank(connName)) {
-        const connLower = connName!.toLowerCase();
-        for (const [hostname, agentId] of Object.entries(HOSTNAME_AGENT_MAP)) {
-            if (connLower.includes(hostname.toLowerCase())) {
-                return agentId;
-            }
-        }
-    }
-
-    return null;
+export function detectAgentFromPath(path: string | undefined, _connName?: string): string | null {
+    // Delegate to the explicit workspaces-only detection
+    // The connName parameter is ignored - we no longer infer from SSH hostnames
+    return detectAgentFromWorkspacesPath(path);
 }
 
 /**
@@ -214,12 +150,13 @@ export function generateAutoTitle(block: Block, settingsEnv?: Record<string, str
 
 /**
  * Generate title for terminal blocks
- * Priority: block env vars > settings env vars > agent-workspaces > hostname (SSH only) > directory name
+ * Priority: block env vars > settings env vars > agent-workspaces > directory name
+ * Note: Hostname-based detection has been removed - agent identity must be explicit via env vars
  */
 function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string>): string {
     const meta = block.meta!;
 
-    // 1. Check block-level environment variables first
+    // 1. Check block-level environment variables first (set by claw/Claude via OSC 16162 E)
     const blockEnvVars = meta["cmd:env"] as Record<string, string> | undefined;
     const agentFromBlockEnv = detectAgentFromEnv(blockEnvVars);
     if (agentFromBlockEnv) {
@@ -232,26 +169,12 @@ function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string
         return agentFromSettingsEnv;
     }
 
-    // 3. Check CWD path for agent detection
+    // 3. Check for explicit agent-workspaces directory pattern
+    // This is an intentional opt-in structure (e.g., /agent-workspaces/agent2/)
     const cwd = meta["cmd:cwd"] as string | undefined;
-    const connName = meta["connection"] as string | undefined;
-    const isRemoteConnection = !isBlank(connName) && connName !== "local";
-
-    // 3a. Always check for explicit agent-workspaces directory pattern
-    // This is an intentional opt-in structure, so it works for all connections
     const agentFromWorkspaces = detectAgentFromWorkspacesPath(cwd);
     if (agentFromWorkspaces) {
         return agentFromWorkspaces;
-    }
-
-    // 3b. For remote connections only, also check hostname-based patterns
-    // For local terminals, we don't auto-detect from hostname - users may want
-    // plain "Terminal" labels even on agent machines. Use explicit env vars instead.
-    if (isRemoteConnection) {
-        const agentFromPath = detectAgentFromPath(cwd, connName);
-        if (agentFromPath) {
-            return agentFromPath;
-        }
     }
 
     // 4. Fall back to directory basename

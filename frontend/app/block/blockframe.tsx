@@ -234,30 +234,16 @@ const BlockFrame_Header = ({
         viewName = blockData.meta["frame:title"];
     }
     // Detect agent identity and color for terminal blocks
-    // Agent identity comes ONLY from explicit env vars (WAVEMUX_AGENT_ID, AGENTMUX_AGENT_ID)
-    // No hostname or path-based inference - system context should not affect pane appearance
+    // Agent identity comes from block's cmd:env, which is set via OSC 16162 E from the shell
+    // Each pane can have its own agent based on shell environment variables
     let agentColor: string | null = null;
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
-        const fullConfig = globalStore.get(atoms.fullConfigAtom);
-        const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
+        // Read from block's cmd:env (set via OSC 16162 from shell integration)
         const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
-        const mergedEnv = { ...settingsEnv, ...blockEnv };
-        // Check block env first, then settings env - no path fallback
-        let agentId = detectAgentFromEnv(blockEnv);
-        if (!agentId) {
-            agentId = detectAgentFromEnv(settingsEnv);
-        }
+        const agentId = detectAgentFromEnv(blockEnv);
         if (agentId) {
             viewName = agentId;
-            agentColor = detectAgentColor(mergedEnv, agentId);
-        }
-    }
-    // Get Claude activity for display (shown separately, not in agent name)
-    let termActivity: string | null = null;
-    if (blockData?.meta?.view === "term") {
-        const activity = blockData.meta["term:activity"] as string | undefined;
-        if (activity && activity !== "Idle" && activity.length > 0) {
-            termActivity = activity;
+            agentColor = detectAgentColor(blockEnv, agentId);
         }
     }
     if (blockData?.meta?.["frame:icon"]) {
@@ -282,14 +268,6 @@ const BlockFrame_Header = ({
     }
 
     const headerTextElems: React.ReactElement[] = [];
-    // Show terminal activity in bold (separate from agent name)
-    if (termActivity) {
-        headerTextElems.push(
-            <div key="activity" className="block-frame-text ellipsis" style={{ fontWeight: "bold" }}>
-                &lrm;{termActivity}
-            </div>
-        );
-    }
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
@@ -622,6 +600,16 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
+    // Compute agent color for border styling (matches header color)
+    let blockAgentColor: string | null = null;
+    if (!preview && blockData?.meta?.view === "term") {
+        const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
+        const agentId = detectAgentFromEnv(blockEnv);
+        if (agentId) {
+            blockAgentColor = detectAgentColor(blockEnv, agentId);
+        }
+    }
+
     React.useEffect(() => {
         if (!manageConnection) {
             return;
@@ -673,6 +661,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1 && !aiPanelVisible,
+                "has-agent-color": !!blockAgentColor,
                 ephemeral: isEphemeral,
                 magnified: isMagnified,
             })}
@@ -684,6 +673,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 {
                     "--magnified-block-opacity": magnifiedBlockOpacity,
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
+                    "--block-agent-color": blockAgentColor ?? "transparent",
                 } as React.CSSProperties
             }
             // @ts-ignore: inert does exist in the DOM, just not in react
@@ -703,7 +693,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     <TitleBar
                         blockId={nodeModel.blockId}
                         blockMeta={blockData.meta}
-                        title={getEffectiveTitle(blockData, true, globalStore.get(atoms.fullConfigAtom)?.settings?.["cmd:env"] as Record<string, string> | undefined)}
+                        title={getEffectiveTitle(blockData, false, globalStore.get(atoms.fullConfigAtom)?.settings?.["cmd:env"] as Record<string, string> | undefined)}
                     />
                 )}
                 {preview ? previewElem : children}

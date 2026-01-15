@@ -156,14 +156,15 @@ export function generateAutoTitle(block: Block, settingsEnv?: Record<string, str
 function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string>): string {
     const meta = block.meta!;
 
-    // 1. Check block-level environment variables first (set by claw/Claude via OSC 16162 E)
-    const blockEnvVars = meta["cmd:env"] as Record<string, string> | undefined;
-    const agentFromBlockEnv = detectAgentFromEnv(blockEnvVars);
+    // 1. Check block-level cmd:env (set via OSC 16162 from shell integration)
+    // This enables per-pane agent identity
+    const blockEnv = meta["cmd:env"] as Record<string, string> | undefined;
+    const agentFromBlockEnv = detectAgentFromEnv(blockEnv);
     if (agentFromBlockEnv) {
         return agentFromBlockEnv;
     }
 
-    // 2. Check global settings environment variables
+    // 2. Check global settings environment variables (fallback)
     const agentFromSettingsEnv = detectAgentFromEnv(settingsEnv);
     if (agentFromSettingsEnv) {
         return agentFromSettingsEnv;

@@ -703,7 +703,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     <TitleBar
                         blockId={nodeModel.blockId}
                         blockMeta={blockData.meta}
-                        title={getEffectiveTitle(blockData, true, globalStore.get(atoms.fullConfigAtom)?.settings?.["cmd:env"] as Record<string, string> | undefined)}
+                        title={getEffectiveTitle(blockData, false, globalStore.get(atoms.fullConfigAtom)?.settings?.["cmd:env"] as Record<string, string> | undefined)}
                     />
                 )}
                 {preview ? previewElem : children}

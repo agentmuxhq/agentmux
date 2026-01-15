@@ -248,14 +248,6 @@ const BlockFrame_Header = ({
             agentColor = detectAgentColor(settingsEnv, agentId);
         }
     }
-    // Get Claude activity for display (shown separately, not in agent name)
-    let termActivity: string | null = null;
-    if (blockData?.meta?.view === "term") {
-        const activity = blockData.meta["term:activity"] as string | undefined;
-        if (activity && activity !== "Idle" && activity.length > 0) {
-            termActivity = activity;
-        }
-    }
     if (blockData?.meta?.["frame:icon"]) {
         viewIconUnion = blockData.meta["frame:icon"];
     }
@@ -278,14 +270,6 @@ const BlockFrame_Header = ({
     }
 
     const headerTextElems: React.ReactElement[] = [];
-    // Show terminal activity in bold (separate from agent name)
-    if (termActivity) {
-        headerTextElems.push(
-            <div key="activity" className="block-frame-text ellipsis" style={{ fontWeight: "bold" }}>
-                &lrm;{termActivity}
-            </div>
-        );
-    }
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(

@@ -234,22 +234,18 @@ const BlockFrame_Header = ({
         viewName = blockData.meta["frame:title"];
     }
     // Detect agent identity and color for terminal blocks
-    // Agent identity comes ONLY from explicit env vars (WAVEMUX_AGENT_ID, AGENTMUX_AGENT_ID)
-    // No hostname or path-based inference - system context should not affect pane appearance
+    // Agent identity comes ONLY from settings-level env vars (user-controlled)
+    // Block-level cmd:env is NOT used - it persists in database and causes stale agent display
+    // For per-pane agent identity, use OSC 16162 to set term:agentid (runtime only)
     let agentColor: string | null = null;
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const settingsEnv = fullConfig?.settings?.["cmd:env"] as Record<string, string> | undefined;
-        const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
-        const mergedEnv = { ...settingsEnv, ...blockEnv };
-        // Check block env first, then settings env - no path fallback
-        let agentId = detectAgentFromEnv(blockEnv);
-        if (!agentId) {
-            agentId = detectAgentFromEnv(settingsEnv);
-        }
+        // Only check settings env - block env persists and causes stale agent display
+        const agentId = detectAgentFromEnv(settingsEnv);
         if (agentId) {
             viewName = agentId;
-            agentColor = detectAgentColor(mergedEnv, agentId);
+            agentColor = detectAgentColor(settingsEnv, agentId);
         }
     }
     // Get Claude activity for display (shown separately, not in agent name)

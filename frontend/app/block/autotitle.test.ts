@@ -141,19 +141,34 @@ describe("generateAutoTitle", () => {
         assert.equal(title, "wavemux");
     });
 
-    test("env var is the ONLY way to set agent identity", () => {
+    test("block-level cmd:env is NOT used for agent identity (it persists in db)", () => {
         const block: Block = {
             oid: "test-123",
             version: 1,
             meta: {
                 view: "term",
                 "cmd:cwd": "C:\\Code\\agent-workspaces\\agent2\\wavemux",
-                "cmd:env": { WAVEMUX_AGENT_ID: "Terminal" },
+                "cmd:env": { WAVEMUX_AGENT_ID: "IgnoredAgent" },
             },
         };
         const title = generateAutoTitle(block);
-        // Env var should override path detection
-        assert.equal(title, "Terminal");
+        // Block env is ignored - falls through to agent-workspaces pattern
+        assert.equal(title, "Agent2");
+    });
+
+    test("settings-level env var sets agent identity", () => {
+        const block: Block = {
+            oid: "test-123",
+            version: 1,
+            meta: {
+                view: "term",
+                "cmd:cwd": "C:\\Code\\agent-workspaces\\agent2\\wavemux",
+            },
+        };
+        const settingsEnv = { WAVEMUX_AGENT_ID: "SettingsAgent" };
+        const title = generateAutoTitle(block, settingsEnv);
+        // Settings env takes priority over path detection
+        assert.equal(title, "SettingsAgent");
     });
 
     // Note: shell:lastcmd tests removed - that data is in RTInfo, not metadata

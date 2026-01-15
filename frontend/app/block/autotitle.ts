@@ -156,20 +156,14 @@ export function generateAutoTitle(block: Block, settingsEnv?: Record<string, str
 function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string>): string {
     const meta = block.meta!;
 
-    // 1. Check block-level environment variables first (set by claw/Claude via OSC 16162 E)
-    const blockEnvVars = meta["cmd:env"] as Record<string, string> | undefined;
-    const agentFromBlockEnv = detectAgentFromEnv(blockEnvVars);
-    if (agentFromBlockEnv) {
-        return agentFromBlockEnv;
-    }
-
-    // 2. Check global settings environment variables
+    // 1. Check global settings environment variables (user-controlled)
+    // NOTE: Block-level cmd:env is NOT checked - it persists in database and causes stale agent display
     const agentFromSettingsEnv = detectAgentFromEnv(settingsEnv);
     if (agentFromSettingsEnv) {
         return agentFromSettingsEnv;
     }
 
-    // 3. Check for explicit agent-workspaces directory pattern
+    // 2. Check for explicit agent-workspaces directory pattern
     // This is an intentional opt-in structure (e.g., /agent-workspaces/agent2/)
     const cwd = meta["cmd:cwd"] as string | undefined;
     const agentFromWorkspaces = detectAgentFromWorkspacesPath(cwd);
@@ -177,7 +171,7 @@ function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string
         return agentFromWorkspaces;
     }
 
-    // 4. Fall back to directory basename
+    // 3. Fall back to directory basename
     if (!isBlank(cwd)) {
         return basename(cwd!) || "~";
     }

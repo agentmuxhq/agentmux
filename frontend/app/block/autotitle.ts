@@ -91,6 +91,31 @@ export function detectAgentFromEnv(envVars: Record<string, string> | undefined):
 }
 
 /**
+ * Detect agent identity from explicit agent-workspaces directory pattern only
+ * Looks for patterns like /agent-workspaces/agent2/ or C:\Code\agent-workspaces\agent3\
+ * This is an intentional opt-in structure that works for all connection types.
+ * Returns the agent ID (e.g., "Agent2", "AgentX") or null if not detected
+ */
+export function detectAgentFromWorkspacesPath(path: string | undefined): string | null {
+    if (isBlank(path)) {
+        return null;
+    }
+
+    // Normalize path separators for cross-platform support
+    const normalizedPath = path!.replace(/\\/g, "/").toLowerCase();
+
+    // Pattern: agent-workspaces/agentX or agent-workspaces/agentX/
+    const agentMatch = normalizedPath.match(/agent-workspaces\/(agent\d+|agentx)/i);
+    if (agentMatch) {
+        const agentId = agentMatch[1];
+        // Capitalize properly: agent2 -> Agent2, agentx -> AgentX
+        return agentId.charAt(0).toUpperCase() + agentId.slice(1).toLowerCase().replace("x", "X");
+    }
+
+    return null;
+}
+
+/**
  * Detect agent identity from a directory path or connection info
  * Looks for patterns like /agent-workspaces/agent2/ or C:\Code\agent-workspaces\agent3\
  * Also checks for known machine paths (e.g., C:\Systems on area54 = AgentA)
@@ -189,7 +214,7 @@ export function generateAutoTitle(block: Block, settingsEnv?: Record<string, str
 
 /**
  * Generate title for terminal blocks
- * Priority: block env vars > settings env vars > CWD path patterns > directory name
+ * Priority: block env vars > settings env vars > agent-workspaces > hostname (SSH only) > directory name
  */
 function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string>): string {
     const meta = block.meta!;
@@ -207,11 +232,26 @@ function generateTerminalTitle(block: Block, settingsEnv?: Record<string, string
         return agentFromSettingsEnv;
     }
 
-    // 3. Check CWD path for agent-workspaces patterns
+    // 3. Check CWD path for agent detection
     const cwd = meta["cmd:cwd"] as string | undefined;
-    const agentFromPath = detectAgentFromPath(cwd);
-    if (agentFromPath) {
-        return agentFromPath;
+    const connName = meta["connection"] as string | undefined;
+    const isRemoteConnection = !isBlank(connName) && connName !== "local";
+
+    // 3a. Always check for explicit agent-workspaces directory pattern
+    // This is an intentional opt-in structure, so it works for all connections
+    const agentFromWorkspaces = detectAgentFromWorkspacesPath(cwd);
+    if (agentFromWorkspaces) {
+        return agentFromWorkspaces;
+    }
+
+    // 3b. For remote connections only, also check hostname-based patterns
+    // For local terminals, we don't auto-detect from hostname - users may want
+    // plain "Terminal" labels even on agent machines. Use explicit env vars instead.
+    if (isRemoteConnection) {
+        const agentFromPath = detectAgentFromPath(cwd, connName);
+        if (agentFromPath) {
+            return agentFromPath;
+        }
     }
 
     // 4. Fall back to directory basename

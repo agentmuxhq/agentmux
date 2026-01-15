@@ -4,10 +4,44 @@
 import { assert, describe, test } from "vitest";
 import {
     detectAgentFromPath,
+    detectAgentFromWorkspacesPath,
     generateAutoTitle,
     getEffectiveTitle,
     shouldAutoGenerateTitle,
 } from "./autotitle";
+
+describe("detectAgentFromWorkspacesPath", () => {
+    test("detects agent from Unix path", () => {
+        const path = "/home/user/agent-workspaces/agent2/wavemux";
+        const result = detectAgentFromWorkspacesPath(path);
+        assert.equal(result, "Agent2");
+    });
+
+    test("detects agent from Windows path", () => {
+        const path = "C:\\Code\\agent-workspaces\\agent3\\project";
+        const result = detectAgentFromWorkspacesPath(path);
+        assert.equal(result, "Agent3");
+    });
+
+    test("detects agentx (case-insensitive)", () => {
+        const path = "/code/agent-workspaces/agentx/task";
+        const result = detectAgentFromWorkspacesPath(path);
+        assert.equal(result, "AgentX");
+    });
+
+    test("returns null for non-workspace paths", () => {
+        const path = "/home/user/projects/myapp";
+        const result = detectAgentFromWorkspacesPath(path);
+        assert.equal(result, null);
+    });
+
+    test("returns null for hostname-based paths (only checks workspaces)", () => {
+        // This path would be detected by detectAgentFromPath but NOT by detectAgentFromWorkspacesPath
+        const path = "C:\\Systems\\wavemux";
+        const result = detectAgentFromWorkspacesPath(path);
+        assert.equal(result, null);
+    });
+});
 
 describe("detectAgentFromPath", () => {
     test("detects agent from Unix path", () => {
@@ -72,6 +106,53 @@ describe("generateAutoTitle", () => {
         };
         const title = generateAutoTitle(block);
         assert.equal(title, "Agent2");
+    });
+
+    test("local terminal does NOT use hostname-based detection (fix for OSC override issue)", () => {
+        // This path would trigger hostname-based detection (C:\Systems = AgentA)
+        // but for local terminals, we should fall back to directory basename
+        const block: Block = {
+            oid: "test-123",
+            version: 1,
+            meta: {
+                view: "term",
+                "cmd:cwd": "C:\\Systems\\wavemux",
+                // No connection = local terminal
+            },
+        };
+        const title = generateAutoTitle(block);
+        // Should return directory basename, NOT "AgentA"
+        assert.equal(title, "wavemux");
+    });
+
+    test("SSH connection DOES use hostname-based detection", () => {
+        const block: Block = {
+            oid: "test-123",
+            version: 1,
+            meta: {
+                view: "term",
+                "cmd:cwd": "C:\\Systems\\wavemux",
+                connection: "ssh:area54",
+            },
+        };
+        const title = generateAutoTitle(block);
+        // Should detect "AgentA" from hostname pattern for SSH
+        assert.equal(title, "AgentA");
+    });
+
+    test("env var takes priority over all path detection", () => {
+        const block: Block = {
+            oid: "test-123",
+            version: 1,
+            meta: {
+                view: "term",
+                "cmd:cwd": "C:\\Code\\agent-workspaces\\agent2\\wavemux",
+                "cmd:env": { WAVEMUX_AGENT_ID: "Terminal" },
+            },
+        };
+        const title = generateAutoTitle(block);
+        // Env var should override path detection
+        assert.equal(title, "Terminal");
     });
 
     // Note: shell:lastcmd tests removed - that data is in RTInfo, not metadata

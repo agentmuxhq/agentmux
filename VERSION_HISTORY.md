@@ -1,17 +1,49 @@
-# WaveTerm Fork Version History
+# WaveMux Version History
 
-This document tracks the version history of the a5af/waveterm fork.
+This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.14.0-fork
+## Latest Version: 0.15.8
 
-**Base:** Upstream v0.12.0 + custom features
+**Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
 
-### v0.14.0-fork (2026-01-09)
-- **Agent:** agent2
+### v0.15.8 (2026-01-15)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix: disable hostname-based agent detection for local terminals (#127)
+  - Local terminals no longer auto-detect agent from hostname patterns
+  - SSH connections still use hostname-based detection
+  - Explicit `agent-workspaces` directory pattern works for all connections
+  - Env vars (WAVEMUX_AGENT_ID) take highest priority
+
+### v0.15.5 (2026-01-14)
+- **Agent:** AgentX
+- **Changes:**
+  - Fix: Claude activity display - no duplicate, bold in header (#126)
+  - Fix: per-pane agent identification + build system fixes (#125)
+  - Fix: re-enable hardware acceleration by default (#123)
+
+### v0.15.4 (2026-01-13)
+- **Agent:** AgentX
+- **Changes:**
+  - Feat: add AgentY to default agent colors (#122)
+  - Feat: Display Claude activity summaries in pane title bar (#121)
+  - Feat: per-pane agent colors via shell environment variables (#120)
+  - Fix: improve agent detection path matching with trailing slash (#119)
+
+### v0.15.0 - v0.15.3 (2026-01-12)
+- **Agent:** AgentX
+- **Changes:**
+  - Feat: Add agent colors to terminal pane headers (#103)
+  - Feat: environment variable-based agent detection (#102)
+  - Disable Dependabot - causing too many blockers (#118)
+  - Sync missing aiprompts files from upstream waveterm
+
+### v0.14.0 (2026-01-09)
+- **Agent:** Agent2
 - **Changes:**
   - Removed Storybook (unused dev tool, ~36MB savings)
   - Removed Storybook references from Dependabot config
@@ -19,6 +51,12 @@ This document tracks the version history of the a5af/waveterm fork.
   - Disabled hardware acceleration for Windows Sandbox/RDP compatibility
   - Added console window with verbose startup logging
   - Multiple dependency updates (xterm, monaco, react-hook-form, etc.)
+
+### v0.13.3 - v0.13.6 (2026-01-08)
+- **Changes:**
+  - Various hardware acceleration and startup fixes
+  - Window size calculation debugging
+  - Layout fixes for gamerlove
 
 ### v0.12.14-fork (2025-10-20)
 - **Location:** Main worktree (`D:/Code/waveterm`)
@@ -104,94 +142,66 @@ This document tracks the version history of the a5af/waveterm fork.
 
 ---
 
-## Worktree Structure
+## Development Setup
 
-This repository uses **git worktrees** for parallel development:
+**Primary Development Machine:** area54 (192.168.1.26)
+**Repository:** `C:\Systems\wavemux`
 
-1. **Main Worktree:** `D:/Code/waveterm` (v0.12.10, latest features)
-   - Active development on `feature/high-contrast-terminal-borders`
-   - Has all the latest bug fixes and features
+### Agent Workspaces
 
-2. **Agent Worktree:** `D:/Code/agent-workspaces/agentx/waveterm` (v0.12.3)
-   - Agent workspace on `agentx/merge-upstream-v0.12.0`
-   - Has version management scripts and documentation updates
-
-To sync this worktree with latest from main worktree:
-```bash
-# Fetch changes from main worktree's branch into this branch
-git fetch . feature/high-contrast-terminal-borders:agentx/merge-upstream-v0.12.0
-
-# Or cherry-pick specific commits
-git cherry-pick <commit-hash>
-
-# Or merge the branch
-git merge feature/high-contrast-terminal-borders
-```
+Agents work on feature branches from `main`:
+- `agenta/feature-name` - AgentA (area54)
+- `agentx/feature-name` - AgentX (claudius)
+- `agentg/feature-name` - AgentG (gamerlove)
 
 ---
 
 ## Upstream Version Tracking
 
 - **Upstream repository:** https://github.com/wavetermdev/waveterm
-- **Latest Upstream:** v0.12.0 (wavetermdev/waveterm)
-- **Fork repository:** https://github.com/a5af/waveterm
-- **Latest Fork:** v0.12.10-fork (main worktree)
-- **This Worktree:** v0.12.3-fork
-- **Commits Ahead of Upstream:** 15+ commits with custom features
+- **Base Upstream Version:** v0.12.0
+- **Fork repository:** https://github.com/a5af/wavemux
+- **Latest Fork:** v0.15.8
+- **Commits Ahead of Upstream:** 100+ commits with custom features
 
 ---
 
 ## Key Fork Features
 
-1. **Multi-instance support** - Multiple WaveTerm instances can run simultaneously
-2. **Shared config** - Config shared across instances
-3. **High-contrast borders** - Visual improvements for terminal blocks
-4. **Enhanced packaging** - Fixed dist folder inclusion
-5. **Development docs** - Added BUILD.md and CLAUDE.md guides
-6. **Version management** - Automated version bump scripts
-7. **Crash reporting** - Comprehensive error tracking
-8. **Portable mode** - Persistent settings across instances
+1. **Per-pane agent identification** - Terminal panes show agent identity (AgentA, AgentX, etc.)
+2. **Agent color borders** - Colored borders indicate which agent owns a pane
+3. **Claude activity display** - Shows Claude Code activity summaries in title bar
+4. **Environment-based agent detection** - WAVEMUX_AGENT_ID and AGENTMUX_AGENT_ID env vars
+5. **OSC 16162 shell integration** - Shell can send agent identity via escape sequences
+6. **Multi-instance support** - Multiple WaveMux instances can run simultaneously
+7. **Portable mode** - Persistent settings across instances
+8. **High-contrast borders** - Visual improvements for terminal blocks
+9. **Version management** - Automated version bump scripts
 
 ---
 
-## How to Use This File
+## Version Bump Instructions
 
-1. **Before starting work:** Check the current version and worktree location above
-2. **After significant changes:** Use `./bump-version.sh` or `./bump-version.ps1` to bump and update this file
-3. **For new agents:** Read this file first to understand what work has been done and which worktree to use
-4. **Check worktrees:** Use `git worktree list` to see all development locations
-
-### Version Bump Instructions
-
-**Windows:**
-```powershell
-./bump-version.ps1 patch -Message "Fix multi-instance bug"
-./bump-version.ps1 minor -Message "Add new terminal borders feature"
-./bump-version.ps1 0.12.11 -Message "Next release"
-```
-
-**macOS/Linux:**
 ```bash
-./bump-version.sh patch --message "Fix multi-instance bug"
-./bump-version.sh minor --message "Add new terminal borders feature"
-./bump-version.sh 0.12.11 --message "Next release"
+# Bump patch version (0.15.8 -> 0.15.9)
+./bump-version.sh patch --message "Fix description"
+
+# Bump minor version (0.15.8 -> 0.16.0)
+./bump-version.sh minor --message "New feature"
 ```
 
 The bump scripts automatically:
 - ✅ Update `package.json` and `package-lock.json`
-- ✅ Update this `VERSION_HISTORY.md` with date, agent, and changes
 - ✅ Create git commit with version message
-- ✅ Create git tag (e.g., `v0.12.11-fork`)
-- ✅ Track which agent made the change
+- ✅ Create git tag (e.g., `v0.15.9-fork`)
 
 ---
 
-## Notes for New Agents
+## Notes for Agents
 
-- Always check this file first to understand current version state and worktree locations
-- Fork versions append `-fork` to differentiate from upstream
-- Version number should be >= upstream base version
-- The **main worktree** at `D:/Code/waveterm` has the latest code (v0.12.10)
-- This **agent worktree** at `D:/Code/agent-workspaces/agentx/waveterm` has documentation and tooling updates (v0.12.3)
-- Use `git worktree list` to see all active worktrees
-- Document all major changes in this file when bumping versions
+- Always check this file first to understand current version state
+- Create feature branches from `main`: `git checkout -b agentX/feature-name`
+- Open PRs against `main` branch (it's protected, requires PR)
+- Run `task build:backend` after Go changes
+- Run `task dev` for development with hot reload
+- Run `task package` only for final release builds

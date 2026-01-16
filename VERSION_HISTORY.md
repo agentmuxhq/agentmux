@@ -2,7 +2,7 @@
 
 This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.15.8
+## Latest Version: 0.15.14
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
@@ -10,16 +10,33 @@ This document tracks the version history of the a5af/wavemux fork (formerly a5af
 
 ## Version History (Latest First)
 
-### v0.15.8 (2026-01-15)
+### v0.15.14 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Refactor: remove AGENTMUX_AGENT_ID coupling (#135)
+  - WaveMux now only uses WAVEMUX_AGENT_ID for agent identity
+  - Shell integration scripts cleaned of AGENTMUX fallbacks
+
+### v0.15.13 (2026-01-15)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix: prevent duplicate title display in pane header and titlebar (#134)
+  - Fix: decouple system hostname from agent detection (#132)
+
+### v0.15.12 (2026-01-15)
+- **Agent:** AgentA
+- **Changes:**
+  - Docs: update VERSION_HISTORY.md to reflect current state (#130)
+
+### v0.15.9 - v0.15.11 (2026-01-15)
 - **Agent:** AgentA
 - **Changes:**
   - Fix: disable hostname-based agent detection for local terminals (#127)
   - Local terminals no longer auto-detect agent from hostname patterns
-  - SSH connections still use hostname-based detection
-  - Explicit `agent-workspaces` directory pattern works for all connections
+  - Explicit `agent-workspaces` directory pattern still works
   - Env vars (WAVEMUX_AGENT_ID) take highest priority
 
-### v0.15.5 (2026-01-14)
+### v0.15.5 - v0.15.8 (2026-01-14)
 - **Agent:** AgentX
 - **Changes:**
   - Fix: Claude activity display - no duplicate, bold in header (#126)
@@ -161,7 +178,7 @@ Agents work on feature branches from `main`:
 - **Upstream repository:** https://github.com/wavetermdev/waveterm
 - **Base Upstream Version:** v0.12.0
 - **Fork repository:** https://github.com/a5af/wavemux
-- **Latest Fork:** v0.15.8
+- **Latest Fork:** v0.15.14
 - **Commits Ahead of Upstream:** 100+ commits with custom features
 
 ---

@@ -13,8 +13,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/a5af/wavemux/pkg/wavebase"
 )
 
 // PendingInjection represents an injection waiting for delivery from AgentMux.
@@ -66,6 +69,62 @@ type PollerConfig struct {
 	AgentMuxURL   string        // e.g., "https://agentmux.asaf.cc"
 	AgentMuxToken string        // Bearer token for auth
 	PollInterval  time.Duration // How often to poll (default: 5s)
+}
+
+// AgentMuxConfigFile represents the agentmux.json config file format.
+type AgentMuxConfigFile struct {
+	URL   string `json:"url"`
+	Token string `json:"token"`
+}
+
+// AgentMuxConfigFileName is the name of the config file in the wave data directory.
+const AgentMuxConfigFileName = "agentmux.json"
+
+// LoadAgentMuxConfigFile loads the agentmux configuration from the config file.
+// Returns empty config if file doesn't exist or is invalid.
+func LoadAgentMuxConfigFile() (AgentMuxConfigFile, error) {
+	var config AgentMuxConfigFile
+
+	dataDir := wavebase.GetWaveDataDir()
+	if dataDir == "" {
+		return config, fmt.Errorf("wave data directory not set")
+	}
+
+	configPath := filepath.Join(dataDir, AgentMuxConfigFileName)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return config, nil // File doesn't exist, return empty config
+		}
+		return config, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	if err := json.Unmarshal(data, &config); err != nil {
+		return config, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	return config, nil
+}
+
+// SaveAgentMuxConfigFile saves the agentmux configuration to the config file.
+func SaveAgentMuxConfigFile(config AgentMuxConfigFile) error {
+	dataDir := wavebase.GetWaveDataDir()
+	if dataDir == "" {
+		return fmt.Errorf("wave data directory not set")
+	}
+
+	configPath := filepath.Join(dataDir, AgentMuxConfigFileName)
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	log.Printf("[reactive/poller] saved config to %s", configPath)
+	return nil
 }
 
 // NewPoller creates a new cross-host injection poller.
@@ -313,10 +372,23 @@ var (
 // GetGlobalPoller returns the global poller instance, creating it if needed.
 func GetGlobalPoller() *Poller {
 	globalPollerOnce.Do(func() {
-		// Read config from environment
-		config := PollerConfig{
-			AgentMuxURL:   os.Getenv("AGENTMUX_URL"),
-			AgentMuxToken: os.Getenv("AGENTMUX_TOKEN"),
+		config := PollerConfig{}
+
+		// Priority 1: Load from config file (auto-configuration)
+		if fileConfig, err := LoadAgentMuxConfigFile(); err != nil {
+			log.Printf("[reactive/poller] error loading config file: %v", err)
+		} else if fileConfig.URL != "" {
+			config.AgentMuxURL = fileConfig.URL
+			config.AgentMuxToken = fileConfig.Token
+			log.Printf("[reactive/poller] loaded config from file: URL=%s", fileConfig.URL)
+		}
+
+		// Priority 2: Environment variables override file config
+		if envURL := os.Getenv("AGENTMUX_URL"); envURL != "" {
+			config.AgentMuxURL = envURL
+		}
+		if envToken := os.Getenv("AGENTMUX_TOKEN"); envToken != "" {
+			config.AgentMuxToken = envToken
 		}
 
 		// Parse poll interval from env
@@ -325,9 +397,6 @@ func GetGlobalPoller() *Poller {
 				config.PollInterval = interval
 			}
 		}
-
-		// No default URL - must be explicitly configured to avoid
-		// unintended outbound requests to third-party servers
 
 		globalPoller = NewPoller(GetGlobalHandler(), config)
 	})
@@ -365,4 +434,91 @@ func StopGlobalPoller() {
 	if globalPoller != nil {
 		globalPoller.Stop()
 	}
+}
+
+// ReconfigureGlobalPoller updates the global poller configuration at runtime.
+// If agentmuxURL is empty, polling is stopped. If both URL and token are set,
+// polling is started/restarted with the new configuration.
+// This enables runtime configuration without restarting WaveMux.
+// The configuration is also persisted to the config file for future startups.
+func ReconfigureGlobalPoller(agentmuxURL, agentmuxToken string) error {
+	globalPollerMu.Lock()
+	defer globalPollerMu.Unlock()
+
+	poller := GetGlobalPoller()
+
+	// Stop existing poller if running
+	// Note: Stop() only briefly locks poller.mu and then waits on wg.
+	// The poll loop doesn't acquire globalPollerMu, so no deadlock risk.
+	poller.mu.Lock()
+	wasRunning := poller.ctx != nil
+	poller.mu.Unlock()
+
+	if wasRunning {
+		poller.Stop()
+
+		// Reset context after stop
+		poller.mu.Lock()
+		poller.ctx = nil
+		poller.cancel = nil
+		poller.mu.Unlock()
+	}
+
+	// Update configuration
+	poller.mu.Lock()
+	poller.agentmuxURL = agentmuxURL
+	poller.agentmuxToken = agentmuxToken
+	poller.mu.Unlock()
+
+	// Persist configuration to file for future startups
+	if err := SaveAgentMuxConfigFile(AgentMuxConfigFile{
+		URL:   agentmuxURL,
+		Token: agentmuxToken,
+	}); err != nil {
+		log.Printf("[reactive/poller] warning: failed to save config file: %v", err)
+		// Don't fail - runtime config still works
+	}
+
+	// If URL is empty, leave poller stopped
+	if agentmuxURL == "" {
+		log.Printf("[reactive/poller] cross-host polling disabled (URL cleared)")
+		return nil
+	}
+
+	// If token is empty, don't start (require both)
+	if agentmuxToken == "" {
+		log.Printf("[reactive/poller] cross-host polling disabled (no token)")
+		return nil
+	}
+
+	// Start the poller with new config
+	log.Printf("[reactive/poller] reconfigured: URL=%s", agentmuxURL)
+	return poller.Start()
+}
+
+// GetPollerStatus returns the current poller configuration status.
+func GetPollerStatus() map[string]interface{} {
+	globalPollerMu.Lock()
+	defer globalPollerMu.Unlock()
+
+	poller := GetGlobalPoller()
+	poller.mu.RLock()
+	defer poller.mu.RUnlock()
+
+	status := map[string]interface{}{
+		"configured": poller.agentmuxURL != "" && poller.agentmuxToken != "",
+		"running":    poller.ctx != nil,
+		"url":        poller.agentmuxURL,
+		"has_token":  poller.agentmuxToken != "",
+	}
+
+	if poller.ctx != nil {
+		status["poll_count"] = poller.pollCount
+		status["injections_count"] = poller.injectionsCount
+		if !poller.lastPollTime.IsZero() {
+			status["last_poll"] = poller.lastPollTime.Format(time.RFC3339)
+		}
+	}
+
+	return status
 }

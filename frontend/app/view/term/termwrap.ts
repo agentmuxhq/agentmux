@@ -301,7 +301,8 @@ type Osc16162Command =
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} }
-    | { command: "E"; data: { [key: string]: string } }; // Environment variables update
+    | { command: "E"; data: { [key: string]: string } } // Environment variables update
+    | { command: "X"; data: { agentmux_url?: string; agentmux_token?: string } }; // AgentMux config
 
 function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
     if (!loaded) {
@@ -393,6 +394,31 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
                 const tabId = globalStore.get(atoms.staticTabId);
                 handleAgentIdChange(blockId, agentId, tabId);
             }
+            break;
+        case "X":
+            // AgentMux configuration - update poller config at runtime
+            fireAndForget(async () => {
+                try {
+                    const url = getWebServerEndpoint() + "/wave/reactive/poller/config";
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            agentmux_url: cmd.data.agentmux_url || "",
+                            agentmux_token: cmd.data.agentmux_token || "",
+                        }),
+                    });
+                    if (!response.ok) {
+                        const data = await response.json();
+                        console.error("[reactive] failed to configure agentmux:", data.error || response.status);
+                    } else {
+                        const data = await response.json();
+                        console.log("[reactive] agentmux configured:", data.running ? "running" : "stopped");
+                    }
+                } catch (e) {
+                    console.error("[reactive] error configuring agentmux:", e);
+                }
+            });
             break;
     }
 

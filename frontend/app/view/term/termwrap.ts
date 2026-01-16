@@ -7,6 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
@@ -44,6 +45,87 @@ type TermWrapOptions = {
     useWebGl?: boolean;
     sendDataHandler?: (data: string) => void;
 };
+
+// Track registered agent IDs per block to detect changes
+const registeredAgentsByBlock = new Map<string, string>();
+
+// Register an agent with the reactive messaging backend
+async function registerAgent(agentId: string, blockId: string, tabId?: string): Promise<void> {
+    try {
+        const url = getWebServerEndpoint() + "/wave/reactive/register";
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                agent_id: agentId,
+                block_id: blockId,
+                tab_id: tabId || "",
+            }),
+        });
+        if (!response.ok) {
+            let errorMsg = `HTTP ${response.status}`;
+            try {
+                const data = await response.json();
+                errorMsg = data.error || errorMsg;
+            } catch {
+                // Response body not JSON, use status
+            }
+            console.error("[reactive] failed to register agent:", errorMsg);
+        } else {
+            console.log("[reactive] registered agent", agentId, "->", blockId);
+        }
+    } catch (e) {
+        console.error("[reactive] error registering agent:", e);
+    }
+}
+
+// Unregister an agent from the reactive messaging backend
+async function unregisterAgent(agentId: string): Promise<void> {
+    try {
+        const url = getWebServerEndpoint() + "/wave/reactive/unregister";
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agent_id: agentId }),
+        });
+        if (!response.ok) {
+            let errorMsg = `HTTP ${response.status}`;
+            try {
+                const data = await response.json();
+                errorMsg = data.error || errorMsg;
+            } catch {
+                // Response body not JSON, use status
+            }
+            console.error("[reactive] failed to unregister agent:", errorMsg);
+        } else {
+            console.log("[reactive] unregistered agent", agentId);
+        }
+    } catch (e) {
+        console.error("[reactive] error unregistering agent:", e);
+    }
+}
+
+// Handle agent ID changes from environment variables
+function handleAgentIdChange(blockId: string, newAgentId: string | undefined, tabId?: string): void {
+    const previousAgentId = registeredAgentsByBlock.get(blockId);
+
+    // No change
+    if (previousAgentId === newAgentId) {
+        return;
+    }
+
+    // Unregister previous agent if there was one
+    if (previousAgentId) {
+        fireAndForget(() => unregisterAgent(previousAgentId));
+        registeredAgentsByBlock.delete(blockId);
+    }
+
+    // Register new agent if there is one
+    if (newAgentId) {
+        registeredAgentsByBlock.set(blockId, newAgentId);
+        fireAndForget(() => registerAgent(newAgentId, blockId, tabId));
+    }
+}
 
 function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
     if (!loaded) {
@@ -305,6 +387,11 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
                         }).catch((e) => console.log("error setting cmd:env (OSC 16162 E)", e));
                     });
                 }, 0);
+
+                // Check for WAVEMUX_AGENT_ID and register/unregister with reactive backend
+                const agentId = cmd.data["WAVEMUX_AGENT_ID"] as string | undefined;
+                const tabId = globalStore.get(atoms.staticTabId);
+                handleAgentIdChange(blockId, agentId, tabId);
             }
             break;
     }
@@ -468,6 +555,13 @@ export class TermWrap {
     }
 
     dispose() {
+        // Unregister agent if this block had one registered
+        const agentId = registeredAgentsByBlock.get(this.blockId);
+        if (agentId) {
+            fireAndForget(() => unregisterAgent(agentId));
+            registeredAgentsByBlock.delete(this.blockId);
+        }
+
         // Dispose subscriptions and callbacks FIRST - they may reference terminal addons
         this.toDispose.forEach((d) => {
             try {

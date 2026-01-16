@@ -465,6 +465,8 @@ func RunWebServer(listener net.Listener) {
 	waveRouter.HandleFunc("/wave/reactive/agents", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleListAgents))
 	waveRouter.HandleFunc("/wave/reactive/agent", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleGetAgent))
 	waveRouter.HandleFunc("/wave/reactive/audit", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleAuditLog))
+	waveRouter.HandleFunc("/wave/reactive/register", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleRegisterAgent))
+	waveRouter.HandleFunc("/wave/reactive/unregister", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleUnregisterAgent))
 
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))

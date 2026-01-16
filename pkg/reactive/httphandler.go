@@ -110,6 +110,121 @@ func HandleGetAgent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(agent)
 }
 
+// AgentRegistrationRequest represents a request to register an agent.
+type AgentRegistrationRequest struct {
+	AgentID string `json:"agent_id"`
+	BlockID string `json:"block_id"`
+	TabID   string `json:"tab_id,omitempty"`
+}
+
+// HandleRegisterAgent handles POST requests to register an agent.
+// Endpoint: POST /wave/reactive/register
+func HandleRegisterAgent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Read request body
+	body, err := io.ReadAll(io.LimitReader(r.Body, 4096)) // Small payload expected
+	if err != nil {
+		writeJSONError(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Parse request
+	var req AgentRegistrationRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if req.AgentID == "" {
+		writeJSONError(w, "agent_id is required", http.StatusBadRequest)
+		return
+	}
+	if req.BlockID == "" {
+		writeJSONError(w, "block_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate agent ID format
+	if !ValidateAgentID(req.AgentID) {
+		writeJSONError(w, "invalid agent_id format", http.StatusBadRequest)
+		return
+	}
+
+	// Register the agent
+	handler := GetGlobalHandler()
+	if err := handler.RegisterAgent(req.AgentID, req.BlockID, req.TabID); err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"agent_id": req.AgentID,
+		"block_id": req.BlockID,
+	})
+}
+
+// HandleUnregisterAgent handles DELETE requests to unregister an agent.
+// Endpoint: DELETE /wave/reactive/register?agent_id=AgentX
+// Also supports: POST /wave/reactive/unregister with JSON body
+func HandleUnregisterAgent(w http.ResponseWriter, r *http.Request) {
+	var agentID string
+
+	if r.Method == http.MethodDelete {
+		agentID = r.URL.Query().Get("agent_id")
+	} else if r.Method == http.MethodPost {
+		// Support POST with JSON body for easier frontend integration
+		body, err := io.ReadAll(io.LimitReader(r.Body, 4096))
+		if err != nil {
+			writeJSONError(w, "failed to read request body", http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		var req struct {
+			AgentID string `json:"agent_id"`
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		agentID = req.AgentID
+	} else {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if agentID == "" {
+		writeJSONError(w, "agent_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate agent ID format
+	if !ValidateAgentID(agentID) {
+		writeJSONError(w, "invalid agent_id format", http.StatusBadRequest)
+		return
+	}
+
+	// Unregister the agent
+	handler := GetGlobalHandler()
+	handler.UnregisterAgent(agentID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"agent_id": agentID,
+	})
+}
+
 // HandleAuditLog handles GET requests to retrieve the audit log.
 // Endpoint: GET /wave/reactive/audit?limit=50
 func HandleAuditLog(w http.ResponseWriter, r *http.Request) {

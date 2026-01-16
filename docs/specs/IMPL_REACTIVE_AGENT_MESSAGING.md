@@ -1,6 +1,6 @@
 # Implementation Plan: Reactive Agent Messaging
 
-**Status:** Draft
+**Status:** Phase 2 Complete - HTTP API Ready
 **Priority:** P0 - Major Feature
 **Author:** AgentA
 **Date:** 2026-01-15
@@ -393,39 +393,55 @@ Or simpler, just prepend source:
 
 ## Implementation Phases
 
-### Phase 1: Backend Infrastructure (wavemuxsrv)
+### Phase 1: Backend Infrastructure (wavemuxsrv) ✅ COMPLETE
 
-**Files to create/modify:**
-- `pkg/reactive/handler.go` - Core injection logic
-- `pkg/reactive/sanitize.go` - Message sanitization
-- `pkg/wshutil/wshserver.go` - HTTP endpoint registration
-- `pkg/shellexec/shellexec.go` - Expose PTY write function
+**PR:** [#140](https://github.com/a5af/wavemux/pull/140) - Merged
 
-**Tasks:**
-1. [ ] Create `pkg/reactive/` package
-2. [ ] Implement `Handler` with agent registration
-3. [ ] Add HTTP endpoint `/api/reactive/inject`
-4. [ ] Wire up PTY write access from shell processes
-5. [ ] Add agent registration tracking when OSC 16162 received
+**Files created:**
+- `pkg/reactive/types.go` - Request/response types
+- `pkg/reactive/sanitize.go` - Message sanitization with security hardening
+- `pkg/reactive/handler.go` - Core injection handler with audit logging
+- `pkg/reactive/httphandler.go` - HTTP endpoint handlers
+
+**Files modified:**
+- `pkg/web/web.go` - Added reactive API routes
+- `cmd/server/main-server.go` - Initialize reactive handler
+
+**Tasks completed:**
+1. [x] Create `pkg/reactive/` package
+2. [x] Implement `Handler` with agent registration and audit logging
+3. [x] Add HTTP endpoints: `/wave/reactive/inject`, `/wave/reactive/agents`, etc.
+4. [x] Wire up blockcontroller.SendInput for PTY writes
+5. [x] Message sanitization: strips ANSI/OSC/CSI escape sequences
+6. [x] Input validation: ValidateAgentID, parseInt overflow protection
 
 **Estimated complexity:** Medium
 **Dependencies:** None
 
-### Phase 2: Frontend Agent Tracking
+### Phase 2: Frontend Agent Tracking ✅ COMPLETE
 
-**Files to modify:**
-- `frontend/app/block/blockframe.tsx` - Send registration to backend
-- `frontend/app/store/` - Track agent-to-block mapping
+**PR:** [#141](https://github.com/a5af/wavemux/pull/141) - In Review
 
-**Tasks:**
-1. [ ] On OSC 16162 agent env received, notify backend
-2. [ ] Track agent online/offline status
-3. [ ] Handle agent re-registration on reconnect
+**Files modified:**
+- `frontend/app/view/term/termwrap.ts` - OSC 16162 handler calls registration API
+- `pkg/reactive/httphandler.go` - Added register/unregister endpoints
+- `pkg/web/web.go` - Added register/unregister routes
+
+**Tasks completed:**
+1. [x] Add HTTP endpoints for registration: POST /wave/reactive/register, /unregister
+2. [x] On OSC 16162 "E" command with WAVEMUX_AGENT_ID, register agent with backend
+3. [x] Track registered agents per block to detect changes
+4. [x] Unregister agent when terminal is disposed
+5. [x] Handle agent ID changes (unregister old, register new)
 
 **Estimated complexity:** Low
 **Dependencies:** Phase 1
 
-### Phase 3: AgentMux Integration
+### Phase 3: AgentMux Integration ⏸️ BLOCKED
+
+**Status:** Pending AgentMux source code access
+
+The HTTP API is ready for AgentMux to consume. When AgentMux source becomes available:
 
 **Files to create/modify:**
 - `agentmux/src/tools/inject_terminal.ts` - New MCP tool
@@ -438,7 +454,128 @@ Or simpler, just prepend source:
 4. [ ] Update agent list to show injection capability
 
 **Estimated complexity:** Medium
-**Dependencies:** Phase 1
+**Dependencies:** Phase 1, AgentMux source access
+
+---
+
+## Using the HTTP API Directly
+
+Until AgentMux integration is complete, agents can call the HTTP API directly using curl or any HTTP client.
+
+### API Endpoints
+
+All endpoints are served by wavemuxsrv on the same port as other wave services (typically 1729).
+
+#### POST /wave/reactive/inject
+
+Inject a message into a target agent's terminal.
+
+```bash
+curl -X POST http://localhost:1729/wave/reactive/inject \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_agent": "AgentX",
+    "message": "Please review PR #135",
+    "source_agent": "AgentA",
+    "priority": "normal"
+  }'
+```
+
+**Response (success):**
+```json
+{
+  "success": true,
+  "request_id": "uuid-here",
+  "block_id": "abc123",
+  "timestamp": "2026-01-15T10:30:00Z"
+}
+```
+
+**Response (error):**
+```json
+{
+  "success": false,
+  "error": "agent AgentX not found or not in a WaveMux pane"
+}
+```
+
+#### GET /wave/reactive/agents
+
+List all registered agents.
+
+```bash
+curl http://localhost:1729/wave/reactive/agents
+```
+
+**Response:**
+```json
+{
+  "agents": [
+    {
+      "agent_id": "AgentX",
+      "block_id": "abc123",
+      "tab_id": "tab1",
+      "registered_at": "2026-01-15T10:00:00Z",
+      "last_seen": "2026-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### GET /wave/reactive/agent?id=AgentX
+
+Get info for a specific agent.
+
+```bash
+curl "http://localhost:1729/wave/reactive/agent?id=AgentX"
+```
+
+#### POST /wave/reactive/register
+
+Register an agent (called automatically by frontend, but can be used manually).
+
+```bash
+curl -X POST http://localhost:1729/wave/reactive/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "AgentX",
+    "block_id": "abc123",
+    "tab_id": "tab1"
+  }'
+```
+
+#### POST /wave/reactive/unregister
+
+Unregister an agent.
+
+```bash
+curl -X POST http://localhost:1729/wave/reactive/unregister \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "AgentX"}'
+```
+
+#### GET /wave/reactive/audit?limit=50
+
+Get recent injection audit log entries.
+
+```bash
+curl "http://localhost:1729/wave/reactive/audit?limit=10"
+```
+
+### Example: Agent-to-Agent Communication via Bash
+
+```bash
+# From AgentA's terminal, send message to AgentX
+curl -s -X POST http://localhost:1729/wave/reactive/inject \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_agent": "AgentX",
+    "message": "Hello from AgentA! Please acknowledge.",
+    "source_agent": "AgentA"
+  }' | jq .
+```
+
+---
 
 ### Phase 4: Testing and Hardening
 

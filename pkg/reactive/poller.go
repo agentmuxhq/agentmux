@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -185,10 +186,10 @@ func (p *Poller) pollAndInject() {
 
 // pollForAgent polls for pending injections for a specific agent.
 func (p *Poller) pollForAgent(agentID string) error {
-	// Build request URL
-	url := fmt.Sprintf("%s/reactive/pending/%s", p.agentmuxURL, agentID)
+	// Build request URL with proper escaping for defense in depth
+	reqURL := fmt.Sprintf("%s/reactive/pending/%s", p.agentmuxURL, url.PathEscape(agentID))
 
-	req, err := http.NewRequestWithContext(p.ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(p.ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -325,10 +326,8 @@ func GetGlobalPoller() *Poller {
 			}
 		}
 
-		// Default URL if not set
-		if config.AgentMuxURL == "" {
-			config.AgentMuxURL = "https://agentmux.asaf.cc"
-		}
+		// No default URL - must be explicitly configured to avoid
+		// unintended outbound requests to third-party servers
 
 		globalPoller = NewPoller(GetGlobalHandler(), config)
 	})
@@ -338,13 +337,18 @@ func GetGlobalPoller() *Poller {
 
 // StartGlobalPoller starts the global poller if configured.
 // Returns nil if cross-host polling is not configured.
+// Requires both AGENTMUX_URL and AGENTMUX_TOKEN to be set.
 func StartGlobalPoller() error {
 	globalPollerMu.Lock()
 	defer globalPollerMu.Unlock()
 
 	poller := GetGlobalPoller()
 
-	// Only start if we have a token (authenticated)
+	// Require both URL and token to be explicitly configured
+	if poller.agentmuxURL == "" {
+		log.Printf("[reactive/poller] cross-host polling disabled (no AGENTMUX_URL)")
+		return nil
+	}
 	if poller.agentmuxToken == "" {
 		log.Printf("[reactive/poller] cross-host polling disabled (no AGENTMUX_TOKEN)")
 		return nil

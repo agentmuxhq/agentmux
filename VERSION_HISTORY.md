@@ -2,13 +2,22 @@
 
 This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.16.0
+## Latest Version: 0.16.1
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.16.1 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Feat: Cross-host reactive messaging poller (#144)
+  - WaveMux polls AgentMux for pending injections from remote agents
+  - New endpoint: /wave/reactive/poller/stats for monitoring
+  - Configurable via AGENTMUX_URL, AGENTMUX_TOKEN env vars
+  - Enables agent-to-agent messaging across different machines
 
 ### v0.16.0 (2026-01-16)
 - **Agent:** AgentA

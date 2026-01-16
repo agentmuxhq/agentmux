@@ -44,6 +44,12 @@ type Handler struct {
 
 	// config
 	includeSourceInMessage bool
+
+	// Rate limiting (protects against DoS while keeping synchronous injection)
+	rateLimitMu      sync.Mutex
+	rateLimitTokens  int
+	rateLimitMax     int
+	rateLimitRefresh time.Time
 }
 
 // NewHandler creates a new reactive message handler.
@@ -57,7 +63,30 @@ func NewHandler(inputSender InputSender) *Handler {
 		auditLogSize:           100,
 		auditLogIdx:            0,
 		includeSourceInMessage: false, // Can be configured
+		rateLimitMax:           10,    // 10 injections per second max
+		rateLimitTokens:        10,
+		rateLimitRefresh:       time.Now(),
 	}
+}
+
+// checkRateLimit returns true if the request is allowed, false if rate limited.
+// Uses a simple token bucket: 10 tokens per second, refilled each second.
+func (h *Handler) checkRateLimit() bool {
+	h.rateLimitMu.Lock()
+	defer h.rateLimitMu.Unlock()
+
+	now := time.Now()
+	// Refill tokens every second
+	if now.Sub(h.rateLimitRefresh) >= time.Second {
+		h.rateLimitTokens = h.rateLimitMax
+		h.rateLimitRefresh = now
+	}
+
+	if h.rateLimitTokens > 0 {
+		h.rateLimitTokens--
+		return true
+	}
+	return false
 }
 
 // RegisterAgent associates an agent ID with a block ID.
@@ -177,6 +206,11 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 		req.RequestID = uuid.New().String()
 	}
 
+	// Rate limit check (prevents DoS while keeping synchronous injection)
+	if !h.checkRateLimit() {
+		return h.errorResponse(req, "rate limited: too many injection requests")
+	}
+
 	// Validate target agent ID
 	if !ValidateAgentID(req.TargetAgentID) {
 		return h.errorResponse(req, "invalid target agent ID")
@@ -206,56 +240,33 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	}
 
 	// IMPORTANT: Message and Enter MUST be sent separately, not atomically.
+	// Atomic writes (message + \r) do NOT reliably trigger input processing.
+	// The PTY needs to see the message first, then Enter as a distinct event.
 	//
-	// Why not send "message + \r\n" as one atomic write?
-	// - Tested and failed: atomic writes do NOT reliably trigger input processing
-	// - The PTY/terminal emulator needs to "see" the message text first
-	// - Then the Enter key must arrive as a distinct input event
-	// - This mimics how readline/input handlers work: they buffer until Enter
-	//
-	// Why the delay between message and Enter?
-	// - The terminal needs time to process and render the message text
-	// - Claude Code's input handler may have async processing
-	// - Without delay, Enter arrives before the message is fully buffered
-	// - Testing showed 100ms was unreliable, 300ms+ works better
-	//
-	// Why retry the Enter key?
-	// - Even with delays, Enter sometimes doesn't register on first attempt
-	// - Terminal focus, buffer states, and async processing cause races
-	// - Multiple Enter attempts ensure at least one gets through
-	// - Extra Enters on an empty line are harmless (just blank prompts)
+	// ALSO IMPORTANT: This MUST be synchronous, not in a goroutine.
+	// Async Enter sending was tried and failed - the Enter keys fire but
+	// don't submit the message (they create blank lines instead).
+	// The synchronous approach ensures message and Enter stay coordinated.
 
-	// Step 1: Send the message content synchronously
+	// Step 1: Send the message content
 	err := h.inputSender(blockID, []byte(finalMsg))
 	if err != nil {
 		h.logAudit(req, blockID, len(finalMsg), false, err.Error())
 		return h.errorResponse(req, fmt.Sprintf("failed to send input: %v", err))
 	}
 
-	// Log successful injection (before async Enter, since message is delivered)
+	// Step 2: Small delay to let the terminal process the message
+	time.Sleep(150 * time.Millisecond)
+
+	// Step 3: Send Enter key (carriage return only, not CRLF)
+	err = h.inputSender(blockID, []byte("\r"))
+	if err != nil {
+		// Log but don't fail - message was delivered, Enter just didn't work
+		log.Printf("[reactive] Enter key send failed for block %s: %v", blockID, err)
+	}
+
+	// Log successful injection
 	h.logAudit(req, blockID, len(finalMsg), true, "")
-
-	// Step 2: Send Enter key with delay and retry for reliability
-	// This runs async to avoid blocking the HTTP response
-	go func() {
-		// First attempt: wait for message to be processed by terminal
-		time.Sleep(300 * time.Millisecond)
-		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
-			log.Printf("[reactive] Enter key send failed for block %s: %v", blockID, err)
-		}
-
-		// Second attempt: retry for terminals/apps that need more time
-		time.Sleep(500 * time.Millisecond)
-		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
-			log.Printf("[reactive] Enter key retry 1 failed for block %s: %v", blockID, err)
-		}
-
-		// Third attempt: final fallback for slow/busy systems
-		time.Sleep(500 * time.Millisecond)
-		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
-			log.Printf("[reactive] Enter key retry 2 failed for block %s: %v", blockID, err)
-		}
-	}()
 
 	return InjectionResponse{
 		Success:   true,

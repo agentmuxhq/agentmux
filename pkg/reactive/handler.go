@@ -205,7 +205,27 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 		return h.errorResponse(req, "input sender not configured")
 	}
 
-	// First send the message content synchronously
+	// IMPORTANT: Message and Enter MUST be sent separately, not atomically.
+	//
+	// Why not send "message + \r\n" as one atomic write?
+	// - Tested and failed: atomic writes do NOT reliably trigger input processing
+	// - The PTY/terminal emulator needs to "see" the message text first
+	// - Then the Enter key must arrive as a distinct input event
+	// - This mimics how readline/input handlers work: they buffer until Enter
+	//
+	// Why the delay between message and Enter?
+	// - The terminal needs time to process and render the message text
+	// - Claude Code's input handler may have async processing
+	// - Without delay, Enter arrives before the message is fully buffered
+	// - Testing showed 100ms was unreliable, 300ms+ works better
+	//
+	// Why retry the Enter key?
+	// - Even with delays, Enter sometimes doesn't register on first attempt
+	// - Terminal focus, buffer states, and async processing cause races
+	// - Multiple Enter attempts ensure at least one gets through
+	// - Extra Enters on an empty line are harmless (just blank prompts)
+
+	// Step 1: Send the message content synchronously
 	err := h.inputSender(blockID, []byte(finalMsg))
 	if err != nil {
 		h.logAudit(req, blockID, len(finalMsg), false, err.Error())
@@ -215,20 +235,25 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	// Log successful injection (before async Enter, since message is delivered)
 	h.logAudit(req, blockID, len(finalMsg), true, "")
 
-	// Send Enter key asynchronously after delay to avoid blocking the HTTP handler
-	// Use longer delay and retry to handle timing race conditions where Claude
-	// isn't ready to receive the Enter key immediately after the message
+	// Step 2: Send Enter key with delay and retry for reliability
+	// This runs async to avoid blocking the HTTP response
 	go func() {
-		// First attempt after 300ms
+		// First attempt: wait for message to be processed by terminal
 		time.Sleep(300 * time.Millisecond)
 		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
 			log.Printf("[reactive] Enter key send failed for block %s: %v", blockID, err)
 		}
 
-		// Retry after 700ms if needed (some terminals need more time)
-		time.Sleep(700 * time.Millisecond)
+		// Second attempt: retry for terminals/apps that need more time
+		time.Sleep(500 * time.Millisecond)
 		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
-			log.Printf("[reactive] Enter key retry failed for block %s: %v", blockID, err)
+			log.Printf("[reactive] Enter key retry 1 failed for block %s: %v", blockID, err)
+		}
+
+		// Third attempt: final fallback for slow/busy systems
+		time.Sleep(500 * time.Millisecond)
+		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
+			log.Printf("[reactive] Enter key retry 2 failed for block %s: %v", blockID, err)
 		}
 	}()
 

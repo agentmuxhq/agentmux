@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 // HandleInject handles POST requests to inject messages into agent terminals.

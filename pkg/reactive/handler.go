@@ -201,14 +201,22 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	}
 
 	// Send input to the block's PTY
-	// Add newline to submit the input
-	inputData := []byte(finalMsg + "\n")
-
 	if h.inputSender == nil {
 		return h.errorResponse(req, "input sender not configured")
 	}
 
-	err := h.inputSender(blockID, inputData)
+	// First send the message content
+	err := h.inputSender(blockID, []byte(finalMsg))
+	if err != nil {
+		h.logAudit(req, blockID, len(finalMsg), false, err.Error())
+		return h.errorResponse(req, fmt.Sprintf("failed to send input: %v", err))
+	}
+
+	// Small delay to let the TUI process the input before sending Enter
+	time.Sleep(100 * time.Millisecond)
+
+	// Then send carriage return as separate input to submit (Enter key sends \r)
+	err = h.inputSender(blockID, []byte("\r"))
 	if err != nil {
 		h.logAudit(req, blockID, len(finalMsg), false, err.Error())
 		return h.errorResponse(req, fmt.Sprintf("failed to send input: %v", err))

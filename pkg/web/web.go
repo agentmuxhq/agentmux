@@ -67,6 +67,7 @@ const WSStatePacketChSize = 20
 type WebFnOpts struct {
 	AllowCaching bool
 	JsonErrors   bool
+	SkipAuth     bool // Skip authkey validation (use only for localhost-only endpoints)
 }
 
 func copyHeaders(dst, src http.Header) {
@@ -412,11 +413,14 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 			return
 		}
 
-		err := authkey.ValidateIncomingRequest(r)
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
-			return
+		// Skip auth for endpoints that opt out (e.g., reactive messaging endpoints)
+		if !opts.SkipAuth {
+			err := authkey.ValidateIncomingRequest(r)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
+				return
+			}
 		}
 		fn(w, r)
 	}
@@ -461,12 +465,13 @@ func RunWebServer(listener net.Listener) {
 	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))
 
 	// Reactive messaging endpoints for agent-to-agent communication
-	waveRouter.HandleFunc("/wave/reactive/inject", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleInject))
-	waveRouter.HandleFunc("/wave/reactive/agents", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleListAgents))
-	waveRouter.HandleFunc("/wave/reactive/agent", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleGetAgent))
-	waveRouter.HandleFunc("/wave/reactive/audit", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleAuditLog))
-	waveRouter.HandleFunc("/wave/reactive/register", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleRegisterAgent))
-	waveRouter.HandleFunc("/wave/reactive/unregister", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleUnregisterAgent))
+	// SkipAuth: true because these are localhost-only and need to be accessible from terminal processes
+	waveRouter.HandleFunc("/wave/reactive/inject", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleInject))
+	waveRouter.HandleFunc("/wave/reactive/agents", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleListAgents))
+	waveRouter.HandleFunc("/wave/reactive/agent", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleGetAgent))
+	waveRouter.HandleFunc("/wave/reactive/audit", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleAuditLog))
+	waveRouter.HandleFunc("/wave/reactive/register", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleRegisterAgent))
+	waveRouter.HandleFunc("/wave/reactive/unregister", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleUnregisterAgent))
 
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))

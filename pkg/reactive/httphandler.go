@@ -266,6 +266,66 @@ func HandlePollerStats(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
+// PollerConfigRequest represents a request to configure the poller at runtime.
+type PollerConfigRequest struct {
+	AgentMuxURL   string `json:"agentmux_url"`
+	AgentMuxToken string `json:"agentmux_token"`
+}
+
+// HandlePollerConfig handles POST requests to configure the cross-host poller at runtime.
+// Endpoint: POST /wave/reactive/poller/config
+// This allows updating AGENTMUX_URL and AGENTMUX_TOKEN without restarting WaveMux.
+func HandlePollerConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Read request body
+	body, err := io.ReadAll(io.LimitReader(r.Body, 4096)) // Small payload expected
+	if err != nil {
+		writeJSONError(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Parse request
+	var req PollerConfigRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Reconfigure the poller
+	if err := ReconfigureGlobalPoller(req.AgentMuxURL, req.AgentMuxToken); err != nil {
+		writeJSONError(w, "failed to reconfigure poller: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return current status
+	status := GetPollerStatus()
+	status["success"] = true
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(status)
+}
+
+// HandlePollerStatus handles GET requests to retrieve the current poller configuration status.
+// Endpoint: GET /wave/reactive/poller/status
+func HandlePollerStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	status := GetPollerStatus()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(status)
+}
+
 // Helper functions
 
 func writeJSONError(w http.ResponseWriter, message string, status int) {

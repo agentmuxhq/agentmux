@@ -366,3 +366,81 @@ func StopGlobalPoller() {
 		globalPoller.Stop()
 	}
 }
+
+// ReconfigureGlobalPoller updates the global poller configuration at runtime.
+// If agentmuxURL is empty, polling is stopped. If both URL and token are set,
+// polling is started/restarted with the new configuration.
+// This enables runtime configuration without restarting WaveMux.
+func ReconfigureGlobalPoller(agentmuxURL, agentmuxToken string) error {
+	globalPollerMu.Lock()
+	defer globalPollerMu.Unlock()
+
+	poller := GetGlobalPoller()
+
+	// Stop existing poller if running
+	poller.mu.Lock()
+	wasRunning := poller.ctx != nil
+	poller.mu.Unlock()
+
+	if wasRunning {
+		// Release global lock while stopping to avoid deadlock
+		globalPollerMu.Unlock()
+		poller.Stop()
+		globalPollerMu.Lock()
+
+		// Reset context after stop
+		poller.mu.Lock()
+		poller.ctx = nil
+		poller.cancel = nil
+		poller.mu.Unlock()
+	}
+
+	// Update configuration
+	poller.mu.Lock()
+	poller.agentmuxURL = agentmuxURL
+	poller.agentmuxToken = agentmuxToken
+	poller.mu.Unlock()
+
+	// If URL is empty, leave poller stopped
+	if agentmuxURL == "" {
+		log.Printf("[reactive/poller] cross-host polling disabled (URL cleared)")
+		return nil
+	}
+
+	// If token is empty, don't start (require both)
+	if agentmuxToken == "" {
+		log.Printf("[reactive/poller] cross-host polling disabled (no token)")
+		return nil
+	}
+
+	// Start the poller with new config
+	log.Printf("[reactive/poller] reconfigured: URL=%s", agentmuxURL)
+	return poller.Start()
+}
+
+// GetPollerStatus returns the current poller configuration status.
+func GetPollerStatus() map[string]interface{} {
+	globalPollerMu.Lock()
+	defer globalPollerMu.Unlock()
+
+	poller := GetGlobalPoller()
+	poller.mu.RLock()
+	defer poller.mu.RUnlock()
+
+	status := map[string]interface{}{
+		"configured": poller.agentmuxURL != "" && poller.agentmuxToken != "",
+		"running":    poller.ctx != nil,
+		"url":        poller.agentmuxURL,
+		"has_token":  poller.agentmuxToken != "",
+	}
+
+	if poller.ctx != nil {
+		status["poll_count"] = poller.pollCount
+		status["injections_count"] = poller.injectionsCount
+		if !poller.lastPollTime.IsZero() {
+			status["last_poll"] = poller.lastPollTime.Format(time.RFC3339)
+		}
+	}
+
+	return status
+}

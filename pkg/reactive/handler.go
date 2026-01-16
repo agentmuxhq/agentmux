@@ -216,12 +216,19 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	h.logAudit(req, blockID, len(finalMsg), true, "")
 
 	// Send Enter key asynchronously after delay to avoid blocking the HTTP handler
-	// Note: Each request still spawns a short-lived goroutine; rate limiting would
-	// be needed to fully prevent abuse, but localhost-only binding limits exposure
+	// Use longer delay and retry to handle timing race conditions where Claude
+	// isn't ready to receive the Enter key immediately after the message
 	go func() {
-		time.Sleep(100 * time.Millisecond)
-		if err := h.inputSender(blockID, []byte("\r")); err != nil {
-			log.Printf("[reactive] async Enter key send failed for block %s: %v", blockID, err)
+		// First attempt after 300ms
+		time.Sleep(300 * time.Millisecond)
+		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
+			log.Printf("[reactive] Enter key send failed for block %s: %v", blockID, err)
+		}
+
+		// Retry after 700ms if needed (some terminals need more time)
+		time.Sleep(700 * time.Millisecond)
+		if err := h.inputSender(blockID, []byte("\r\n")); err != nil {
+			log.Printf("[reactive] Enter key retry failed for block %s: %v", blockID, err)
 		}
 	}()
 

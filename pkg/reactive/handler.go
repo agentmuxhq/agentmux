@@ -219,7 +219,9 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	// This prevents DoS via goroutine exhaustion from concurrent requests
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		h.inputSender(blockID, []byte("\r"))
+		if err := h.inputSender(blockID, []byte("\r")); err != nil {
+			log.Printf("[reactive] async Enter key send failed for block %s: %v", blockID, err)
+		}
 	}()
 
 	return InjectionResponse{

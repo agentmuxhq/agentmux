@@ -205,25 +205,22 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 		return h.errorResponse(req, "input sender not configured")
 	}
 
-	// First send the message content
+	// First send the message content synchronously
 	err := h.inputSender(blockID, []byte(finalMsg))
 	if err != nil {
 		h.logAudit(req, blockID, len(finalMsg), false, err.Error())
 		return h.errorResponse(req, fmt.Sprintf("failed to send input: %v", err))
 	}
 
-	// Small delay to let the TUI process the input before sending Enter
-	time.Sleep(100 * time.Millisecond)
-
-	// Then send carriage return as separate input to submit (Enter key sends \r)
-	err = h.inputSender(blockID, []byte("\r"))
-	if err != nil {
-		h.logAudit(req, blockID, len(finalMsg), false, err.Error())
-		return h.errorResponse(req, fmt.Sprintf("failed to send input: %v", err))
-	}
-
-	// Log successful injection
+	// Log successful injection (before async Enter, since message is delivered)
 	h.logAudit(req, blockID, len(finalMsg), true, "")
+
+	// Send Enter key asynchronously after delay to avoid blocking the HTTP handler
+	// This prevents DoS via goroutine exhaustion from concurrent requests
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		h.inputSender(blockID, []byte("\r"))
+	}()
 
 	return InjectionResponse{
 		Success:   true,

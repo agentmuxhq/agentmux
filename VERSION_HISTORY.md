@@ -2,13 +2,48 @@
 
 This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.16.1
+## Latest Version: 0.16.6
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.16.6 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Feat: Runtime agentmux config via wsh agentmux command
+  - Add ReconfigureGlobalPoller() for runtime poller updates
+  - Add HTTP endpoints: /wave/reactive/poller/config, /status
+  - Add OSC 16162 "X" command for agentmux config
+  - New wsh commands: `wsh agentmux config`, `wsh agentmux status`
+  - Allows configuring AgentMux without restarting WaveMux
+
+### v0.16.5 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix: Revert to synchronous Enter key for reactive injection
+  - Add rate limiter (10 req/sec) for DoS protection
+  - Docs: Add REACTIVE_INJECTION_REGRESSION_REPORT.md
+
+### v0.16.4 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix: Enter key retry with 3 attempts (still broken)
+  - Added documentation for the issue
+
+### v0.16.3 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix: Enter key timing for reactive injection (300ms delay, CRLF)
+  - Added retry after 700ms (still broken)
+
+### v0.16.2 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Feat: Made Enter key async to prevent DoS (breaking change)
+  - This change broke message/Enter coordination
 
 ### v0.16.1 (2026-01-16)
 - **Agent:** AgentA

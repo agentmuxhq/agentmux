@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 // HandleInject handles POST requests to inject messages into agent terminals.
@@ -272,6 +274,44 @@ type PollerConfigRequest struct {
 	AgentMuxToken string `json:"agentmux_token"`
 }
 
+// validateAgentMuxURL validates the agentmux URL to prevent SSRF attacks.
+// Only allows https:// URLs (or http://localhost for development).
+func validateAgentMuxURL(urlStr string) error {
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		return fmt.Errorf("malformed URL: %w", err)
+	}
+
+	// Must have a scheme
+	if parsed.Scheme == "" {
+		return fmt.Errorf("URL must include scheme (https://)")
+	}
+
+	// Must have a host
+	if parsed.Host == "" {
+		return fmt.Errorf("URL must include host")
+	}
+
+	// Only allow https, or http for localhost (dev mode)
+	switch parsed.Scheme {
+	case "https":
+		// Always allowed
+	case "http":
+		// Only allow for localhost/127.0.0.1/[::1] (development)
+		host := parsed.Hostname() // Properly extracts host, handling IPv6 brackets
+		if host != "localhost" && host != "127.0.0.1" && host != "::1" {
+			return fmt.Errorf("http:// only allowed for localhost; use https:// for remote servers")
+		}
+	default:
+		return fmt.Errorf("URL scheme must be https (got %s)", parsed.Scheme)
+	}
+
+	// Block file://, ftp://, and other potentially dangerous schemes
+	// (already handled by scheme check above)
+
+	return nil
+}
+
 // HandlePollerConfig handles POST requests to configure the cross-host poller at runtime.
 // Endpoint: POST /wave/reactive/poller/config
 // This allows updating AGENTMUX_URL and AGENTMUX_TOKEN without restarting WaveMux.
@@ -294,6 +334,14 @@ func HandlePollerConfig(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Validate URL if provided (empty URL is allowed to disable polling)
+	if req.AgentMuxURL != "" {
+		if err := validateAgentMuxURL(req.AgentMuxURL); err != nil {
+			writeJSONError(w, "invalid agentmux_url: "+err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Reconfigure the poller

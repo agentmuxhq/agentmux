@@ -448,15 +448,14 @@ func ReconfigureGlobalPoller(agentmuxURL, agentmuxToken string) error {
 	poller := GetGlobalPoller()
 
 	// Stop existing poller if running
+	// Note: Stop() only briefly locks poller.mu and then waits on wg.
+	// The poll loop doesn't acquire globalPollerMu, so no deadlock risk.
 	poller.mu.Lock()
 	wasRunning := poller.ctx != nil
 	poller.mu.Unlock()
 
 	if wasRunning {
-		// Release global lock while stopping to avoid deadlock
-		globalPollerMu.Unlock()
 		poller.Stop()
-		globalPollerMu.Lock()
 
 		// Reset context after stop
 		poller.mu.Lock()

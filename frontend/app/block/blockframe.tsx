@@ -31,7 +31,7 @@ import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { CopyButton } from "../element/copybutton";
-import { detectAgentColor, detectAgentFromEnv, getEffectiveTitle } from "./autotitle";
+import { detectAgentColor, detectAgentFromEnv, detectAgentTextColor, getEffectiveTitle } from "./autotitle";
 import { BlockFrameProps } from "./blocktypes";
 import { TitleBar } from "./titlebar";
 
@@ -237,6 +237,7 @@ const BlockFrame_Header = ({
     // Agent identity comes from block's cmd:env, which is set via OSC 16162 E from the shell
     // Each pane can have its own agent based on shell environment variables
     let agentColor: string | null = null;
+    let agentTextColor: string | null = null;
     if (!blockData?.meta?.["frame:title"] && blockData?.meta?.view === "term") {
         // Read from block's cmd:env (set via OSC 16162 from shell integration)
         const blockEnv = blockData.meta["cmd:env"] as Record<string, string> | undefined;
@@ -244,6 +245,7 @@ const BlockFrame_Header = ({
         if (agentId) {
             viewName = agentId;
             agentColor = detectAgentColor(blockEnv, agentId);
+            agentTextColor = detectAgentTextColor(blockEnv, agentId);
         }
     }
     if (blockData?.meta?.["frame:icon"]) {
@@ -299,7 +301,13 @@ const BlockFrame_Header = ({
     };
     const showNoWshButton = manageConnection && wshProblem && !util.isBlank(connName) && !connName.startsWith("aws:");
 
-    const headerStyle: React.CSSProperties = agentColor ? { backgroundColor: agentColor } : {};
+    const headerStyle: React.CSSProperties = {};
+    if (agentColor) {
+        headerStyle.backgroundColor = agentColor;
+    }
+    if (agentTextColor) {
+        headerStyle.color = agentTextColor;
+    }
 
     return (
         <div

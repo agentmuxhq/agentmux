@@ -2,13 +2,20 @@
 
 This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.15.14
+## Latest Version: 0.15.15
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.15.15 (2026-01-16)
+- **Agent:** AgentX
+- **Changes:**
+  - Feat: add WAVEMUX_AGENT_TEXT_COLOR support for pane header text (#137)
+  - Customizable text color for agent pane headers
+  - Smart defaults: white text on dark backgrounds, black on light
 
 ### v0.15.14 (2026-01-16)
 - **Agent:** AgentA
@@ -178,7 +185,7 @@ Agents work on feature branches from `main`:
 - **Upstream repository:** https://github.com/wavetermdev/waveterm
 - **Base Upstream Version:** v0.12.0
 - **Fork repository:** https://github.com/a5af/wavemux
-- **Latest Fork:** v0.15.14
+- **Latest Fork:** v0.15.15
 - **Commits Ahead of Upstream:** 100+ commits with custom features
 
 ---

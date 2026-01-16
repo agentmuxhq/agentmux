@@ -14,9 +14,14 @@ import { isBlank } from "@/util/util";
 const AGENT_ENV_VAR = "WAVEMUX_AGENT_ID" as const;
 
 /**
- * Environment variable name for agent color
+ * Environment variable name for agent color (background)
  */
 const AGENT_COLOR_ENV_VAR = "WAVEMUX_AGENT_COLOR" as const;
+
+/**
+ * Environment variable name for agent text color
+ */
+const AGENT_TEXT_COLOR_ENV_VAR = "WAVEMUX_AGENT_TEXT_COLOR" as const;
 
 /**
  * Default colors for known agents (used when no color env var is set)
@@ -34,6 +39,22 @@ const DEFAULT_AGENT_COLORS: Record<string, string> = {
 };
 
 /**
+ * Default text colors for known agents (used when no text color env var is set)
+ * These are optimized for readability against the default background colors
+ */
+const DEFAULT_AGENT_TEXT_COLORS: Record<string, string> = {
+    AgentA: "#ffffff",  // White on dark blue
+    AgentX: "#ffffff",  // White on purple
+    AgentY: "#000000",  // Black on yellow/gold
+    AgentG: "#000000",  // Black on amber
+    Agent1: "#ffffff",  // White on blue
+    Agent2: "#000000",  // Black on cyan
+    Agent3: "#ffffff",  // White on pink
+    Agent4: "#ffffff",  // White on red
+    Agent5: "#000000",  // Black on lime
+};
+
+/**
  * Detect agent color from environment variable or use default
  */
 export function detectAgentColor(envVars: Record<string, string> | undefined, agentId: string | null): string | null {
@@ -48,6 +69,27 @@ export function detectAgentColor(envVars: Record<string, string> | undefined, ag
     // Fall back to default color for known agents
     if (agentId && DEFAULT_AGENT_COLORS[agentId]) {
         return DEFAULT_AGENT_COLORS[agentId];
+    }
+
+    return null;
+}
+
+/**
+ * Detect agent text color from environment variable or use default
+ * Returns the text color to use in the pane header for optimal readability
+ */
+export function detectAgentTextColor(envVars: Record<string, string> | undefined, agentId: string | null): string | null {
+    // Check env var first
+    if (envVars) {
+        const value = envVars[AGENT_TEXT_COLOR_ENV_VAR];
+        if (!isBlank(value)) {
+            return value!.trim();
+        }
+    }
+
+    // Fall back to default text color for known agents
+    if (agentId && DEFAULT_AGENT_TEXT_COLORS[agentId]) {
+        return DEFAULT_AGENT_TEXT_COLORS[agentId];
     }
 
     return null;

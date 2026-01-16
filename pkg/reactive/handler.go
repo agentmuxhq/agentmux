@@ -201,21 +201,29 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	}
 
 	// Send input to the block's PTY
-	// Add newline to submit the input
-	inputData := []byte(finalMsg + "\n")
-
 	if h.inputSender == nil {
 		return h.errorResponse(req, "input sender not configured")
 	}
 
-	err := h.inputSender(blockID, inputData)
+	// First send the message content synchronously
+	err := h.inputSender(blockID, []byte(finalMsg))
 	if err != nil {
 		h.logAudit(req, blockID, len(finalMsg), false, err.Error())
 		return h.errorResponse(req, fmt.Sprintf("failed to send input: %v", err))
 	}
 
-	// Log successful injection
+	// Log successful injection (before async Enter, since message is delivered)
 	h.logAudit(req, blockID, len(finalMsg), true, "")
+
+	// Send Enter key asynchronously after delay to avoid blocking the HTTP handler
+	// Note: Each request still spawns a short-lived goroutine; rate limiting would
+	// be needed to fully prevent abuse, but localhost-only binding limits exposure
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		if err := h.inputSender(blockID, []byte("\r")); err != nil {
+			log.Printf("[reactive] async Enter key send failed for block %s: %v", blockID, err)
+		}
+	}()
 
 	return InjectionResponse{
 		Success:   true,

@@ -472,6 +472,7 @@ func RunWebServer(listener net.Listener) {
 	waveRouter.HandleFunc("/wave/reactive/audit", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleAuditLog))
 	waveRouter.HandleFunc("/wave/reactive/register", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleRegisterAgent))
 	waveRouter.HandleFunc("/wave/reactive/unregister", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleUnregisterAgent))
+	waveRouter.HandleFunc("/wave/reactive/poller/stats", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandlePollerStats))
 
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))

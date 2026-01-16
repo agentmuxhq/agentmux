@@ -216,7 +216,8 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	h.logAudit(req, blockID, len(finalMsg), true, "")
 
 	// Send Enter key asynchronously after delay to avoid blocking the HTTP handler
-	// This prevents DoS via goroutine exhaustion from concurrent requests
+	// Note: Each request still spawns a short-lived goroutine; rate limiting would
+	// be needed to fully prevent abuse, but localhost-only binding limits exposure
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		if err := h.inputSender(blockID, []byte("\r")); err != nil {

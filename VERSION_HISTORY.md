@@ -2,13 +2,23 @@
 
 This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.16.6
+## Latest Version: 0.16.7
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.16.7 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Feat: Auto-load agentmux config from file on startup
+  - Add LoadAgentMuxConfigFile() to load ~/.waveterm/agentmux.json
+  - Add SaveAgentMuxConfigFile() to persist runtime config changes
+  - ReconfigureGlobalPoller() now saves config to file automatically
+  - No pre-configuration needed - just place agentmux.json and restart
+  - Priority: config file < env vars (env vars override file config)
 
 ### v0.16.6 (2026-01-16)
 - **Agent:** AgentA

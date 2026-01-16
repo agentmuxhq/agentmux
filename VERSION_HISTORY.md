@@ -2,13 +2,23 @@
 
 This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.15.15
+## Latest Version: 0.16.0
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.16.0 (2026-01-16)
+- **Agent:** AgentA
+- **Changes:**
+  - Feat: Reactive agent-to-agent messaging (#140, #141)
+  - Inject messages directly into running Claude Code instances
+  - New HTTP API: /wave/reactive/inject, /agents, /register, /unregister, /audit
+  - Frontend auto-registers agents via OSC 16162 WAVEMUX_AGENT_ID
+  - Message sanitization and audit logging
+  - AgentMux inject_terminal MCP tool (agentmux#69)
 
 ### v0.15.15 (2026-01-16)
 - **Agent:** AgentX

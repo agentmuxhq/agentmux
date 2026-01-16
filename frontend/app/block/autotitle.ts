@@ -9,16 +9,14 @@
 import { isBlank } from "@/util/util";
 
 /**
- * Environment variable names for agent identity (in priority order)
- * - AGENTMUX_AGENT_ID: Set by claw's docker entrypoint for container agents
- * - WAVEMUX_AGENT_ID: Set in shell profiles for host agents
+ * Environment variable name for agent identity
  */
-const AGENT_ENV_VARS = ["AGENTMUX_AGENT_ID", "WAVEMUX_AGENT_ID"] as const;
+const AGENT_ENV_VAR = "WAVEMUX_AGENT_ID" as const;
 
 /**
- * Environment variable names for agent color
+ * Environment variable name for agent color
  */
-const AGENT_COLOR_ENV_VARS = ["AGENTMUX_AGENT_COLOR", "WAVEMUX_AGENT_COLOR"] as const;
+const AGENT_COLOR_ENV_VAR = "WAVEMUX_AGENT_COLOR" as const;
 
 /**
  * Default colors for known agents (used when no color env var is set)
@@ -36,16 +34,14 @@ const DEFAULT_AGENT_COLORS: Record<string, string> = {
 };
 
 /**
- * Detect agent color from environment variables or use default
+ * Detect agent color from environment variable or use default
  */
 export function detectAgentColor(envVars: Record<string, string> | undefined, agentId: string | null): string | null {
-    // First check env var
+    // Check env var
     if (envVars) {
-        for (const envVar of AGENT_COLOR_ENV_VARS) {
-            const value = envVars[envVar];
-            if (!isBlank(value)) {
-                return value!.trim();
-            }
+        const value = envVars[AGENT_COLOR_ENV_VAR];
+        if (!isBlank(value)) {
+            return value!.trim();
         }
     }
 
@@ -58,20 +54,16 @@ export function detectAgentColor(envVars: Record<string, string> | undefined, ag
 }
 
 /**
- * Detect agent identity from environment variables in block metadata
- * Checks AGENTMUX_AGENT_ID first (containers), then WAVEMUX_AGENT_ID (host)
+ * Detect agent identity from environment variable in block metadata
  */
 export function detectAgentFromEnv(envVars: Record<string, string> | undefined): string | null {
     if (!envVars) {
         return null;
     }
 
-    for (const envVar of AGENT_ENV_VARS) {
-        const value = envVars[envVar];
-        if (!isBlank(value)) {
-            // Return the value as-is - user knows how they want it displayed
-            return value!.trim();
-        }
+    const value = envVars[AGENT_ENV_VAR];
+    if (!isBlank(value)) {
+        return value!.trim();
     }
 
     return null;

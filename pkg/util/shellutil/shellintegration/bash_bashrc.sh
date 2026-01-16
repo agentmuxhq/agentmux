@@ -72,8 +72,6 @@ _waveterm_si_agent_env() {
   local current_agent=""
   if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
     current_agent="WAVEMUX_AGENT_ID:$WAVEMUX_AGENT_ID"
-  elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
-    current_agent="AGENTMUX_AGENT_ID:$AGENTMUX_AGENT_ID"
   fi
   # Only send if changed
   if [[ "$current_agent" != "$_WAVETERM_SI_LAST_AGENT" ]]; then
@@ -81,9 +79,6 @@ _waveterm_si_agent_env() {
     if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
       local escaped=$(_waveterm_si_json_escape "$WAVEMUX_AGENT_ID")
       printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$escaped"
-    elif [[ -n "$AGENTMUX_AGENT_ID" ]]; then
-      local escaped=$(_waveterm_si_json_escape "$AGENTMUX_AGENT_ID")
-      printf '\033]16162;E;{"AGENTMUX_AGENT_ID":"%s"}\007' "$escaped"
     else
       # Agent was cleared - send empty object to clear metadata
       printf '\033]16162;E;{}\007'

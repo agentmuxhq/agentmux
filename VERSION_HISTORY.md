@@ -171,7 +171,7 @@ Agents work on feature branches from `main`:
 1. **Per-pane agent identification** - Terminal panes show agent identity (AgentA, AgentX, etc.)
 2. **Agent color borders** - Colored borders indicate which agent owns a pane
 3. **Claude activity display** - Shows Claude Code activity summaries in title bar
-4. **Environment-based agent detection** - WAVEMUX_AGENT_ID and AGENTMUX_AGENT_ID env vars
+4. **Environment-based agent detection** - WAVEMUX_AGENT_ID env var
 5. **OSC 16162 shell integration** - Shell can send agent identity via escape sequences
 6. **Multi-instance support** - Multiple WaveMux instances can run simultaneously
 7. **Portable mode** - Persistent settings across instances

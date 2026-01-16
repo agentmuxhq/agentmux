@@ -59,7 +59,7 @@ Patterns 2, 2b, and 3 are the problematic ones - they infer agent identity from 
 ### Design Principle
 
 **Agent identity should ONLY come from explicit sources:**
-1. Environment variables set by claw/Claude (`WAVEMUX_AGENT_ID`, `AGENTMUX_AGENT_ID`)
+1. Environment variables set by claw/Claude (`WAVEMUX_AGENT_ID`)
 2. OSC 16162 E escape sequences sent by shell integration
 3. Block-level configuration
 

@@ -51,8 +51,6 @@ function Global:_waveterm_si_agent_env {
     $current_agent = ""
     if ($env:WAVEMUX_AGENT_ID) {
         $current_agent = "WAVEMUX_AGENT_ID:$env:WAVEMUX_AGENT_ID"
-    } elseif ($env:AGENTMUX_AGENT_ID) {
-        $current_agent = "AGENTMUX_AGENT_ID:$env:AGENTMUX_AGENT_ID"
     }
 
     # Only send if changed
@@ -61,9 +59,6 @@ function Global:_waveterm_si_agent_env {
         if ($env:WAVEMUX_AGENT_ID) {
             $escaped = _waveterm_si_json_escape $env:WAVEMUX_AGENT_ID
             Write-Host -NoNewline "`e]16162;E;{`"WAVEMUX_AGENT_ID`":`"$escaped`"}`a"
-        } elseif ($env:AGENTMUX_AGENT_ID) {
-            $escaped = _waveterm_si_json_escape $env:AGENTMUX_AGENT_ID
-            Write-Host -NoNewline "`e]16162;E;{`"AGENTMUX_AGENT_ID`":`"$escaped`"}`a"
         } else {
             # Agent was cleared - send empty object to clear metadata
             Write-Host -NoNewline "`e]16162;E;{}`a"

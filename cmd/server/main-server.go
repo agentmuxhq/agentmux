@@ -19,6 +19,7 @@ import (
 	"github.com/a5af/wavemux/pkg/blocklogger"
 	"github.com/a5af/wavemux/pkg/filestore"
 	"github.com/a5af/wavemux/pkg/panichandler"
+	"github.com/a5af/wavemux/pkg/reactive"
 	"github.com/a5af/wavemux/pkg/remote/conncontroller"
 	"github.com/a5af/wavemux/pkg/remote/fileshare/wshfs"
 	"github.com/a5af/wavemux/pkg/service"
@@ -84,6 +85,37 @@ func doShutdown(reason string) {
 		log.Printf("shutdown complete\n")
 		os.Exit(0)
 	})
+}
+
+// initReactiveHandler initializes the reactive messaging system for agent-to-agent communication.
+// This wires up the input sender to the block controller.
+func initReactiveHandler() {
+	// Create input sender that uses blockcontroller.SendInput
+	inputSender := func(blockId string, inputData []byte) error {
+		return blockcontroller.SendInput(blockId, &blockcontroller.BlockInputUnion{
+			InputData: inputData,
+		})
+	}
+
+	// Initialize the global handler with the input sender
+	reactive.InitGlobalHandler(inputSender)
+
+	// Sync existing agent registrations from blocks (in background)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("SyncAgentsFromBlocks", recover())
+		}()
+		// Wait a bit for the system to stabilize
+		time.Sleep(2 * time.Second)
+		ctx := context.Background()
+		if err := reactive.GetGlobalHandler().SyncAgentsFromBlocks(ctx); err != nil {
+			log.Printf("warning: failed to sync agent registrations: %v\n", err)
+		} else {
+			log.Printf("[reactive] agent sync complete\n")
+		}
+	}()
+
+	log.Printf("[reactive] handler initialized\n")
 }
 
 // watch stdin, kill server if stdin is closed
@@ -435,6 +467,7 @@ func main() {
 	go updateTelemetryCountsLoop()
 	go startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
+	initReactiveHandler() // Initialize reactive messaging for agent-to-agent communication
 	go wavebase.GetSystemSummary() // get this cached (used in AI)
 
 	webListener, err := web.MakeTCPListener("web")

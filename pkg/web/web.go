@@ -25,6 +25,7 @@ import (
 	"github.com/a5af/wavemux/pkg/docsite"
 	"github.com/a5af/wavemux/pkg/filestore"
 	"github.com/a5af/wavemux/pkg/panichandler"
+	"github.com/a5af/wavemux/pkg/reactive"
 	"github.com/a5af/wavemux/pkg/remote/fileshare"
 	"github.com/a5af/wavemux/pkg/schema"
 	"github.com/a5af/wavemux/pkg/service"
@@ -458,6 +459,12 @@ func RunWebServer(listener net.Listener) {
 	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))
+
+	// Reactive messaging endpoints for agent-to-agent communication
+	waveRouter.HandleFunc("/wave/reactive/inject", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleInject))
+	waveRouter.HandleFunc("/wave/reactive/agents", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleListAgents))
+	waveRouter.HandleFunc("/wave/reactive/agent", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleGetAgent))
+	waveRouter.HandleFunc("/wave/reactive/audit", WebFnWrap(WebFnOpts{JsonErrors: true}, reactive.HandleAuditLog))
 
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))

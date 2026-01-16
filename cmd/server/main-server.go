@@ -115,6 +115,18 @@ func initReactiveHandler() {
 		}
 	}()
 
+	// Start cross-host polling service (if configured)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("StartGlobalPoller", recover())
+		}()
+		// Wait for agent sync to complete first
+		time.Sleep(3 * time.Second)
+		if err := reactive.StartGlobalPoller(); err != nil {
+			log.Printf("warning: failed to start cross-host poller: %v\n", err)
+		}
+	}()
+
 	log.Printf("[reactive] handler initialized\n")
 }
 

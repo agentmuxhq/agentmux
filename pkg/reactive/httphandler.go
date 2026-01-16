@@ -250,6 +250,22 @@ func HandleAuditLog(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandlePollerStats handles GET requests to retrieve cross-host poller statistics.
+// Endpoint: GET /wave/reactive/poller/stats
+func HandlePollerStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	poller := GetGlobalPoller()
+	stats := poller.Stats()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(stats)
+}
+
 // Helper functions
 
 func writeJSONError(w http.ResponseWriter, message string, status int) {

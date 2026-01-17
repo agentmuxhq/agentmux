@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -92,6 +93,9 @@ func (h *Handler) checkRateLimit() bool {
 // RegisterAgent associates an agent ID with a block ID.
 // Called when a pane's shell sets WAVEMUX_AGENT_ID.
 func (h *Handler) RegisterAgent(agentID, blockID, tabID string) error {
+	// Normalize agent ID to lowercase for case-insensitive matching
+	agentID = strings.ToLower(agentID)
+
 	if !ValidateAgentID(agentID) {
 		return fmt.Errorf("invalid agent ID: %s", agentID)
 	}

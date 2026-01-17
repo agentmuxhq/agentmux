@@ -1,5 +1,22 @@
 # Claude Agent Development Guide - WaveMux
 
+---
+
+## 📚 Agent Messaging Terminology
+
+| Verb | Meaning | Tool | Description |
+|------|---------|------|-------------|
+| **mux** | Send a message | `send_message` MCP | Async mailbox delivery - recipient reads when ready |
+| **ject** | Inject a message | `inject_terminal` MCP | Direct terminal injection - recipient processes immediately |
+
+**Examples:**
+- "mux to AgentY" = Send a mailbox message (`send_message`)
+- "ject to AgentA" = Inject into terminal (`inject_terminal`)
+
+**Note:** Both tools route through AgentMux cloud for cross-host delivery.
+
+---
+
 ## Repository
 
 - **Name:** WaveMux

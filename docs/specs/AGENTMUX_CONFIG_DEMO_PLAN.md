@@ -6,7 +6,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
 
 - WaveMux 0.16.7 installed
 - Access to AgentMux server (https://agentmux.asaf.cc)
-- Valid token: `Lc7qWbUWL/0lwYhNuCX0OqxpgIoCY6CaRizUMb16PXQ=`
+- Valid token: `<YOUR_AGENTMUX_TOKEN>`
 
 ---
 
@@ -20,7 +20,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
    ```json
    {
      "url": "https://agentmux.asaf.cc",
-     "token": "Lc7qWbUWL/0lwYhNuCX0OqxpgIoCY6CaRizUMb16PXQ="
+     "token": "<YOUR_AGENTMUX_TOKEN>"
    }
    ```
 
@@ -58,7 +58,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
 
 3. **Run configuration command**:
    ```bash
-   wsh agentmux config https://agentmux.asaf.cc "Lc7qWbUWL/0lwYhNuCX0OqxpgIoCY6CaRizUMb16PXQ="
+   wsh agentmux config https://agentmux.asaf.cc "<YOUR_AGENTMUX_TOKEN>"
    ```
 
 4. **Verify output**:
@@ -120,7 +120,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
    ```bash
    curl -X POST https://agentmux.asaf.cc/reactive/inject \
      -H "Content-Type: application/json" \
-     -H "Authorization: Bearer Lc7qWbUWL/0lwYhNuCX0OqxpgIoCY6CaRizUMb16PXQ=" \
+     -H "Authorization: Bearer <YOUR_AGENTMUX_TOKEN>" \
      -H "X-Agent-ID: source-agent" \
      -d '{"target_agent": "TARGET_AGENT_ID", "message": "Hello from remote agent!", "priority": "normal"}'
    ```

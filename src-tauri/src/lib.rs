@@ -56,6 +56,22 @@ pub fn run() {
             // Backend commands
             commands::backend::get_backend_endpoints,
             commands::backend::fe_log,
+            // Stub commands (to be implemented in later phases)
+            commands::stubs::show_context_menu,
+            commands::stubs::download_file,
+            commands::stubs::quicklook,
+            commands::stubs::update_wco,
+            commands::stubs::set_keyboard_chord_mode,
+            commands::stubs::register_global_webview_keys,
+            commands::stubs::create_workspace,
+            commands::stubs::switch_workspace,
+            commands::stubs::delete_workspace,
+            commands::stubs::set_active_tab,
+            commands::stubs::create_tab,
+            commands::stubs::close_tab,
+            commands::stubs::set_window_init_status,
+            commands::stubs::set_waveai_open,
+            commands::stubs::install_update,
         ])
         // Application setup
         .setup(|app| {

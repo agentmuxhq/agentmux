@@ -362,6 +362,47 @@
         }
     }
 
+    // === Error Banner ===
+    .cc-error {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 12px;
+        margin: 4px 8px;
+        background: color-mix(in srgb, var(--error-color) 10%, transparent);
+        border-left: 2px solid var(--error-color);
+        border-radius: 2px;
+        color: var(--error-color);
+        font-size: 12px;
+
+        .cc-error-icon {
+            flex-shrink: 0;
+        }
+
+        .cc-error-text {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    }
+
+    // === Tool Show More Button ===
+    .cc-tool-show-more {
+        display: block;
+        margin-top: 6px;
+        background: none;
+        border: 1px solid var(--border-color);
+        color: var(--accent-color);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 2px;
+
+        &:hover {
+            background: color-mix(in srgb, var(--main-text-color) 5%, transparent);
+        }
+    }
+
     // === Empty State ===
     .cc-empty-header {
         font-size: 1.1em;

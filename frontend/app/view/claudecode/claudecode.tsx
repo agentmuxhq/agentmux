@@ -3,20 +3,27 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Markdown } from "@/app/element/markdown";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { getFileSubject } from "@/app/store/wps";
 import { globalStore, WOS } from "@/store/global";
+import { base64ToArray, stringToBase64 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { ClaudeCodeStreamParser } from "./claudecode-parser";
+import { Subscription } from "rxjs";
+import { ClaudeCodeStreamParser, ParserCallbacks } from "./claudecode-parser";
 import type {
-    ClaudeCodeEvent,
     ConversationTurn,
+    ResultEvent,
     SessionMeta,
+    SystemEvent,
     TextTurnBlock,
     ToolTurnBlock,
-    TurnBlock,
 } from "./claudecode-types";
 import "./claudecode.scss";
+
+const TermFileName = "term";
 
 // ============================================================
 // ViewModel
@@ -39,10 +46,14 @@ export class ClaudeCodeViewModel implements ViewModel {
     sessionMetaAtom: PrimitiveAtom<SessionMeta>;
     isStreamingAtom: PrimitiveAtom<boolean>;
     showTerminalAtom: PrimitiveAtom<boolean>;
+    connectedAtom: PrimitiveAtom<boolean>;
 
     // Internal
     private parser: ClaudeCodeStreamParser;
     private currentTurnId: string | null = null;
+    private fileSubjectSub: Subscription | null = null;
+    private fileSubjectRef: any = null;
+    errorAtom: PrimitiveAtom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
@@ -64,6 +75,8 @@ export class ClaudeCodeViewModel implements ViewModel {
         });
         this.isStreamingAtom = atom(false);
         this.showTerminalAtom = atom(false);
+        this.connectedAtom = atom(false);
+        this.errorAtom = atom("");
 
         // Header text: show model + tokens + cost
         this.viewText = atom((get) => {
@@ -88,93 +101,186 @@ export class ClaudeCodeViewModel implements ViewModel {
             return parts;
         });
 
-        this.parser = new ClaudeCodeStreamParser((event) => this.handleEvent(event));
+        this.parser = new ClaudeCodeStreamParser(this.buildParserCallbacks());
+        this.connectToTerminal();
     }
 
-    // --- Event handling ---
+    // --- Parser callbacks (handle all stream-json event types) ---
 
-    handleEvent(event: ClaudeCodeEvent): void {
-        switch (event.type) {
-            case "system":
-                this.handleSystemEvent(event);
-                break;
-            case "assistant":
-                this.handleAssistantEvent(event);
-                break;
-            case "result":
-                this.handleResultEvent(event);
-                break;
-        }
-    }
-
-    private handleSystemEvent(event: any): void {
-        if (event.model) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, { ...meta, model: event.model });
-        }
-        if (event.session_id) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, { ...meta, sessionId: event.session_id });
-        }
-    }
-
-    private handleAssistantEvent(event: any): void {
-        globalStore.set(this.isStreamingAtom, true);
-        const msg = event.message;
-        if (!msg?.content) return;
-
-        // Build blocks from content
-        const newBlocks: TurnBlock[] = [];
-        for (const block of msg.content) {
-            if (block.type === "text" && block.text) {
-                newBlocks.push({ type: "text", text: block.text });
-            } else if (block.type === "tool_use") {
-                newBlocks.push({
-                    type: "tool",
-                    toolId: block.id,
-                    name: block.name,
-                    input: block.input,
-                    isCollapsed: true,
-                });
-            }
-        }
-
-        if (newBlocks.length === 0) return;
-
-        const turns = globalStore.get(this.turnsAtom);
-        if (this.currentTurnId) {
-            // Append to current turn
-            const updated = turns.map((t) => {
-                if (t.id === this.currentTurnId) {
-                    return { ...t, blocks: [...t.blocks, ...newBlocks] };
+    private buildParserCallbacks(): ParserCallbacks {
+        return {
+            onSystemEvent: (event: SystemEvent) => {
+                const meta = globalStore.get(this.sessionMetaAtom);
+                const updates: Partial<SessionMeta> = {};
+                if (event.model) updates.model = event.model;
+                if (event.session_id) updates.sessionId = event.session_id;
+                if (Object.keys(updates).length > 0) {
+                    globalStore.set(this.sessionMetaAtom, { ...meta, ...updates });
                 }
-                return t;
-            });
-            globalStore.set(this.turnsAtom, updated);
-        }
+            },
 
-        // Update token counts from usage
-        if (msg.usage) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, {
-                ...meta,
-                inputTokens: meta.inputTokens + (msg.usage.input_tokens ?? 0),
-                outputTokens: meta.outputTokens + (msg.usage.output_tokens ?? 0),
-                model: msg.model ?? meta.model,
+            onMessageStart: (_role: string, model?: string, usage?: any) => {
+                globalStore.set(this.isStreamingAtom, true);
+                globalStore.set(this.errorAtom, "");
+                if (model || usage) {
+                    const meta = globalStore.get(this.sessionMetaAtom);
+                    globalStore.set(this.sessionMetaAtom, {
+                        ...meta,
+                        model: model ?? meta.model,
+                        inputTokens: usage?.input_tokens ?? meta.inputTokens,
+                    });
+                }
+                // Ensure we have an active turn
+                if (!this.currentTurnId) {
+                    const turnId = crypto.randomUUID();
+                    this.currentTurnId = turnId;
+                    const turns = globalStore.get(this.turnsAtom);
+                    globalStore.set(this.turnsAtom, [
+                        ...turns,
+                        {
+                            id: turnId,
+                            userInput: "(continued)",
+                            blocks: [],
+                            timestamp: Date.now(),
+                        },
+                    ]);
+                }
+            },
+
+            onTextDelta: (text: string) => {
+                if (!this.currentTurnId) return;
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => {
+                    if (t.id !== this.currentTurnId) return t;
+                    const blocks = [...t.blocks];
+                    const last = blocks[blocks.length - 1];
+                    if (last && last.type === "text") {
+                        // Append to existing text block
+                        blocks[blocks.length - 1] = {
+                            ...last,
+                            text: last.text + text,
+                        };
+                    } else {
+                        // Start new text block
+                        blocks.push({ type: "text", text });
+                    }
+                    return { ...t, blocks };
+                });
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onToolUseStart: (id: string, name: string) => {
+                if (!this.currentTurnId) return;
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => {
+                    if (t.id !== this.currentTurnId) return t;
+                    return {
+                        ...t,
+                        blocks: [
+                            ...t.blocks,
+                            {
+                                type: "tool" as const,
+                                toolId: id,
+                                name,
+                                input: {},
+                                isCollapsed: true,
+                            },
+                        ],
+                    };
+                });
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onToolUseFinish: (id: string, parsedInput: Record<string, any>) => {
+                if (!this.currentTurnId) return;
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => {
+                    if (t.id !== this.currentTurnId) return t;
+                    return {
+                        ...t,
+                        blocks: t.blocks.map((b) => {
+                            if (b.type === "tool" && b.toolId === id) {
+                                return { ...b, input: parsedInput };
+                            }
+                            return b;
+                        }),
+                    };
+                });
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onToolResult: (toolUseId: string, content: string, isError?: boolean) => {
+                // Find the tool block across all turns and attach the result
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => ({
+                    ...t,
+                    blocks: t.blocks.map((b) => {
+                        if (b.type === "tool" && b.toolId === toolUseId) {
+                            return { ...b, result: content, isError: isError ?? false };
+                        }
+                        return b;
+                    }),
+                }));
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onMessageStop: () => {
+                // Message complete, but session may continue (multi-turn)
+            },
+
+            onUsageUpdate: (usage: any) => {
+                if (!usage) return;
+                const meta = globalStore.get(this.sessionMetaAtom);
+                globalStore.set(this.sessionMetaAtom, {
+                    ...meta,
+                    outputTokens: usage.output_tokens ?? meta.outputTokens,
+                });
+            },
+
+            onResultEvent: (event: ResultEvent) => {
+                globalStore.set(this.isStreamingAtom, false);
+                this.currentTurnId = null;
+                const meta = globalStore.get(this.sessionMetaAtom);
+                globalStore.set(this.sessionMetaAtom, {
+                    ...meta,
+                    totalCost: event.cost_usd ?? meta.totalCost,
+                    sessionId: event.session_id ?? meta.sessionId,
+                });
+                if (event.is_error && event.result) {
+                    globalStore.set(this.errorAtom, event.result);
+                }
+            },
+
+            onError: (errorType: string, message: string) => {
+                globalStore.set(this.errorAtom, `${errorType}: ${message}`);
+            },
+        };
+    }
+
+    // --- Terminal connection ---
+
+    private connectToTerminal(): void {
+        try {
+            this.fileSubjectRef = getFileSubject(this.blockId, TermFileName);
+            this.fileSubjectSub = this.fileSubjectRef.subscribe((msg: any) => {
+                this.handleTerminalData(msg);
             });
+            globalStore.set(this.connectedAtom, true);
+        } catch (e) {
+            console.error("[claudecode] Failed to connect to terminal file subject:", e);
+            globalStore.set(this.connectedAtom, false);
         }
     }
 
-    private handleResultEvent(event: any): void {
-        globalStore.set(this.isStreamingAtom, false);
-        if (event.total_cost != null || event.usage != null) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, {
-                ...meta,
-                totalCost: event.total_cost ?? meta.totalCost,
-                inputTokens: event.usage?.input_tokens ?? meta.inputTokens,
-                outputTokens: event.usage?.output_tokens ?? meta.outputTokens,
-            });
+    private handleTerminalData(msg: any): void {
+        if (msg.fileop === "truncate") {
+            this.parser.reset();
+            return;
+        }
+        if (msg.fileop === "append" && msg.data64) {
+            const bytes = base64ToArray(msg.data64);
+            const text = new TextDecoder().decode(bytes);
+            this.parser.feedData(text);
         }
     }
 
@@ -197,8 +303,15 @@ export class ClaudeCodeViewModel implements ViewModel {
         globalStore.set(this.turnsAtom, [...turns, newTurn]);
         globalStore.set(this.isStreamingAtom, true);
 
-        // TODO: Phase 2 - send to hidden terminal via ControllerInputCommand
-        // For now, simulate with parser feed for testing
+        // Send input to the claude process via controller
+        const b64data = stringToBase64(text + "\n");
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            inputdata64: b64data,
+        }).catch((e: any) => {
+            console.error("[claudecode] Failed to send input:", e);
+            globalStore.set(this.isStreamingAtom, false);
+        });
     }
 
     toggleTerminal(): void {
@@ -207,7 +320,13 @@ export class ClaudeCodeViewModel implements ViewModel {
     }
 
     interrupt(): void {
-        // TODO: Phase 2 - send Ctrl+C to hidden terminal
+        // Send SIGINT to the claude process
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            signame: "SIGINT",
+        }).catch((e: any) => {
+            console.error("[claudecode] Failed to send SIGINT:", e);
+        });
         globalStore.set(this.isStreamingAtom, false);
     }
 
@@ -224,7 +343,15 @@ export class ClaudeCodeViewModel implements ViewModel {
         });
         this.currentTurnId = null;
         this.parser.reset();
-        // TODO: Phase 2 - restart claude process
+
+        // Send /clear to reset Claude Code session, then Ctrl+C + restart
+        const b64data = stringToBase64("/clear\n");
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            inputdata64: b64data,
+        }).catch((e: any) => {
+            console.error("[claudecode] Failed to send /clear:", e);
+        });
     }
 
     toggleToolCollapse(turnId: string, toolId: string): void {
@@ -249,6 +376,14 @@ export class ClaudeCodeViewModel implements ViewModel {
     }
 
     dispose(): void {
+        if (this.fileSubjectSub) {
+            this.fileSubjectSub.unsubscribe();
+            this.fileSubjectSub = null;
+        }
+        if (this.fileSubjectRef) {
+            this.fileSubjectRef.release();
+            this.fileSubjectRef = null;
+        }
         this.parser.reset();
     }
 }
@@ -262,21 +397,24 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
         const turns = useAtomValue(model.turnsAtom);
         const isStreaming = useAtomValue(model.isStreamingAtom);
         const showTerminal = useAtomValue(model.showTerminalAtom);
+        const connected = useAtomValue(model.connectedAtom);
 
         return (
             <div ref={contentRef} className="claudecode-view">
                 {!showTerminal && (
                     <div className="cc-log-container">
-                        <ConversationLog turns={turns} model={model} />
+                        <ConversationLog
+                            turns={turns}
+                            model={model}
+                            connected={connected}
+                        />
                         {isStreaming && <StreamingCursor />}
                         <InputLine model={model} />
                     </div>
                 )}
                 {showTerminal && (
                     <div className="cc-raw-terminal">
-                        <div className="cc-terminal-placeholder">
-                            Raw terminal output (Phase 2)
-                        </div>
+                        <RawTerminalView blockId={model.blockId} />
                     </div>
                 )}
                 <StatusBar model={model} />
@@ -285,10 +423,63 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
     }
 );
 
+// --- Raw Terminal View (for [term] toggle) ---
+
+const RAW_OUTPUT_MAX_LENGTH = 256 * 1024; // 256KB max for raw terminal buffer
+
+const RawTerminalView = memo(({ blockId }: { blockId: string }) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [rawOutput, setRawOutput] = useState("");
+
+    useEffect(() => {
+        const fileSubject = getFileSubject(blockId, TermFileName);
+        const sub = fileSubject.subscribe((msg: any) => {
+            if (msg.fileop === "append" && msg.data64) {
+                const bytes = base64ToArray(msg.data64);
+                const text = new TextDecoder().decode(bytes);
+                setRawOutput((prev) => {
+                    const combined = prev + text;
+                    if (combined.length > RAW_OUTPUT_MAX_LENGTH) {
+                        return combined.slice(-RAW_OUTPUT_MAX_LENGTH);
+                    }
+                    return combined;
+                });
+            } else if (msg.fileop === "truncate") {
+                setRawOutput("");
+            }
+        });
+
+        return () => {
+            sub.unsubscribe();
+            fileSubject.release();
+        };
+    }, [blockId]);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [rawOutput]);
+
+    return (
+        <div className="cc-raw-output" ref={scrollRef}>
+            <pre>{rawOutput}</pre>
+        </div>
+    );
+});
+
 // --- Conversation Log ---
 
 const ConversationLog = memo(
-    ({ turns, model }: { turns: ConversationTurn[]; model: ClaudeCodeViewModel }) => {
+    ({
+        turns,
+        model,
+        connected,
+    }: {
+        turns: ConversationTurn[];
+        model: ClaudeCodeViewModel;
+        connected: boolean;
+    }) => {
         const scrollRef = useRef<HTMLDivElement>(null);
 
         useEffect(() => {
@@ -301,7 +492,19 @@ const ConversationLog = memo(
             <div className="cc-log" ref={scrollRef}>
                 {turns.length === 0 && (
                     <div className="cc-empty">
-                        <span className="cc-empty-prompt">{">"}</span> Claude Code
+                        <div className="cc-empty-header">
+                            <span className="cc-empty-prompt">{"\u276f"}</span> Claude Code
+                        </div>
+                        {!connected && (
+                            <div className="cc-empty-status">
+                                Waiting for claude process...
+                            </div>
+                        )}
+                        {connected && (
+                            <div className="cc-empty-status">
+                                Ready. Type a message below.
+                            </div>
+                        )}
                     </div>
                 )}
                 {turns.map((turn) => (

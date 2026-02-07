@@ -456,7 +456,7 @@ export class ClaudeCodeViewModel implements ViewModel {
 // ============================================================
 
 const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
-    ({ contentRef, model }) => {
+    ({ model }) => {
         const turns = useAtomValue(model.turnsAtom);
         const isStreaming = useAtomValue(model.isStreamingAtom);
         const showTerminal = useAtomValue(model.showTerminalAtom);
@@ -464,7 +464,7 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
         const error = useAtomValue(model.errorAtom);
 
         return (
-            <div ref={contentRef} className="claudecode-view">
+            <div className="claudecode-view">
                 {!showTerminal && (
                     <div className="cc-log-container">
                         <ConversationLog

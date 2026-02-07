@@ -5,7 +5,7 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getFileSubject, waveEventSubscribe } from "@/app/store/wps";
-import { atoms, globalStore, WOS } from "@/store/global";
+import { atoms, getApi, globalStore, WOS } from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToArray, stringToBase64 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom } from "jotai";
@@ -40,6 +40,7 @@ export class ClaudeCodeViewModel implements ViewModel {
     showTerminalAtom: PrimitiveAtom<boolean>;
     connectedAtom: PrimitiveAtom<boolean>;
     errorAtom: PrimitiveAtom<string>;
+    authUrlAtom: PrimitiveAtom<string>; // non-empty when auth is needed
     inputRef: React.RefObject<HTMLTextAreaElement>;
     shellProcStatusAtom: Atom<string>; // "init" | "running" | "done"
     shellProcExitCodeAtom: Atom<number>;
@@ -74,6 +75,7 @@ export class ClaudeCodeViewModel implements ViewModel {
         this.showTerminalAtom = atom(false);
         this.connectedAtom = atom(false);
         this.errorAtom = atom("");
+        this.authUrlAtom = atom("");
         this.inputRef = React.createRef<HTMLTextAreaElement>();
         this.shellProcFullStatusAtom = atom(null) as unknown as PrimitiveAtom<BlockControllerRuntimeStatus>;
         this.shellProcStatusAtom = atom((get) => {
@@ -131,11 +133,26 @@ export class ClaudeCodeViewModel implements ViewModel {
 
     private buildParserCallbacks(): ParserCallbacks {
         return {
+            onRawLine: (line: string) => {
+                // Detect auth URLs in pre-protocol plain text output
+                const urlMatch = line.match(
+                    /https:\/\/(?:console\.anthropic\.com|auth\.anthropic\.com)[^\s)>\]"]*/
+                );
+                if (urlMatch) {
+                    globalStore.set(this.authUrlAtom, urlMatch[0]);
+                    this.openAuthUrl(urlMatch[0]);
+                }
+            },
+
             onSystemEvent: (event: SystemEvent) => {
                 const meta = globalStore.get(this.sessionMetaAtom);
                 const updates: Partial<SessionMeta> = {};
                 if (event.model) updates.model = event.model;
-                if (event.session_id) updates.sessionId = event.session_id;
+                if (event.session_id) {
+                    updates.sessionId = event.session_id;
+                    // Auth succeeded — clear auth banner
+                    globalStore.set(this.authUrlAtom, "");
+                }
                 if (Object.keys(updates).length > 0) {
                     globalStore.set(this.sessionMetaAtom, { ...meta, ...updates });
                 }
@@ -144,6 +161,7 @@ export class ClaudeCodeViewModel implements ViewModel {
             onMessageStart: (_role: string, model?: string, usage?: any) => {
                 globalStore.set(this.isStreamingAtom, true);
                 globalStore.set(this.errorAtom, "");
+                globalStore.set(this.authUrlAtom, "");
                 if (model || usage) {
                     const meta = globalStore.get(this.sessionMetaAtom);
                     globalStore.set(this.sessionMetaAtom, {
@@ -327,6 +345,18 @@ export class ClaudeCodeViewModel implements ViewModel {
             console.error("[claudecode] Failed to send input:", e);
             globalStore.set(this.isStreamingAtom, false);
         });
+    }
+
+    openAuthUrl(url?: string): void {
+        const authUrl = url ?? globalStore.get(this.authUrlAtom);
+        if (!authUrl) return;
+        // Only open known Anthropic domains
+        if (
+            authUrl.startsWith("https://console.anthropic.com") ||
+            authUrl.startsWith("https://auth.anthropic.com")
+        ) {
+            getApi().openExternal(authUrl);
+        }
     }
 
     toggleTerminal(): void {

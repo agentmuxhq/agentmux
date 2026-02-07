@@ -372,6 +372,8 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
 
 // --- Raw Terminal View (for [term] toggle) ---
 
+const RAW_OUTPUT_MAX_LENGTH = 256 * 1024; // 256KB max for raw terminal buffer
+
 const RawTerminalView = memo(({ blockId }: { blockId: string }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [rawOutput, setRawOutput] = useState("");
@@ -382,7 +384,13 @@ const RawTerminalView = memo(({ blockId }: { blockId: string }) => {
             if (msg.fileop === "append" && msg.data64) {
                 const bytes = base64ToArray(msg.data64);
                 const text = new TextDecoder().decode(bytes);
-                setRawOutput((prev) => prev + text);
+                setRawOutput((prev) => {
+                    const combined = prev + text;
+                    if (combined.length > RAW_OUTPUT_MAX_LENGTH) {
+                        return combined.slice(-RAW_OUTPUT_MAX_LENGTH);
+                    }
+                    return combined;
+                });
             } else if (msg.fileop === "truncate") {
                 setRawOutput("");
             }

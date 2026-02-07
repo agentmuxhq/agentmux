@@ -59,7 +59,12 @@
         "description": "Claude Code AI terminal",
         "blockdef": {
             "meta": {
-                "view": "claudecode"
+                "view": "claudecode",
+                "controller": "cmd",
+                "cmd": "claude",
+                "cmd:args": ["--output-format", "stream-json"],
+                "cmd:interactive": true,
+                "cmd:runonstart": true
             }
         }
     }

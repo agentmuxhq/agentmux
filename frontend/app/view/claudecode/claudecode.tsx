@@ -3,13 +3,17 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Markdown } from "@/app/element/markdown";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { getFileSubject } from "@/app/store/wps";
 import { globalStore, WOS } from "@/store/global";
+import { base64ToArray, stringToBase64 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { Subscription } from "rxjs";
 import { ClaudeCodeStreamParser } from "./claudecode-parser";
 import type {
-    ClaudeCodeEvent,
     ConversationTurn,
     SessionMeta,
     TextTurnBlock,
@@ -17,6 +21,8 @@ import type {
     TurnBlock,
 } from "./claudecode-types";
 import "./claudecode.scss";
+
+const TermFileName = "term";
 
 // ============================================================
 // ViewModel
@@ -39,10 +45,13 @@ export class ClaudeCodeViewModel implements ViewModel {
     sessionMetaAtom: PrimitiveAtom<SessionMeta>;
     isStreamingAtom: PrimitiveAtom<boolean>;
     showTerminalAtom: PrimitiveAtom<boolean>;
+    connectedAtom: PrimitiveAtom<boolean>;
 
     // Internal
     private parser: ClaudeCodeStreamParser;
     private currentTurnId: string | null = null;
+    private fileSubjectSub: Subscription | null = null;
+    private fileSubjectRef: any = null;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
@@ -64,6 +73,7 @@ export class ClaudeCodeViewModel implements ViewModel {
         });
         this.isStreamingAtom = atom(false);
         this.showTerminalAtom = atom(false);
+        this.connectedAtom = atom(false);
 
         // Header text: show model + tokens + cost
         this.viewText = atom((get) => {
@@ -89,11 +99,40 @@ export class ClaudeCodeViewModel implements ViewModel {
         });
 
         this.parser = new ClaudeCodeStreamParser((event) => this.handleEvent(event));
+        this.connectToTerminal();
+    }
+
+    // --- Terminal connection ---
+
+    private connectToTerminal(): void {
+        try {
+            this.fileSubjectRef = getFileSubject(this.blockId, TermFileName);
+            this.fileSubjectSub = this.fileSubjectRef.subscribe((msg: any) => {
+                this.handleTerminalData(msg);
+            });
+            globalStore.set(this.connectedAtom, true);
+        } catch (e) {
+            console.error("[claudecode] Failed to connect to terminal file subject:", e);
+            globalStore.set(this.connectedAtom, false);
+        }
+    }
+
+    private handleTerminalData(msg: any): void {
+        if (msg.fileop === "truncate") {
+            // Terminal was cleared - reset parser buffer
+            this.parser.reset();
+            return;
+        }
+        if (msg.fileop === "append" && msg.data64) {
+            const bytes = base64ToArray(msg.data64);
+            const text = new TextDecoder().decode(bytes);
+            this.parser.feedData(text);
+        }
     }
 
     // --- Event handling ---
 
-    handleEvent(event: ClaudeCodeEvent): void {
+    handleEvent(event: any): void {
         switch (event.type) {
             case "system":
                 this.handleSystemEvent(event);
@@ -108,13 +147,12 @@ export class ClaudeCodeViewModel implements ViewModel {
     }
 
     private handleSystemEvent(event: any): void {
-        if (event.model) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, { ...meta, model: event.model });
-        }
-        if (event.session_id) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, { ...meta, sessionId: event.session_id });
+        const meta = globalStore.get(this.sessionMetaAtom);
+        const updates: Partial<SessionMeta> = {};
+        if (event.model) updates.model = event.model;
+        if (event.session_id) updates.sessionId = event.session_id;
+        if (Object.keys(updates).length > 0) {
+            globalStore.set(this.sessionMetaAtom, { ...meta, ...updates });
         }
     }
 
@@ -151,6 +189,20 @@ export class ClaudeCodeViewModel implements ViewModel {
                 return t;
             });
             globalStore.set(this.turnsAtom, updated);
+        } else {
+            // No active turn (Claude responded to something before our UI loaded)
+            // Create a synthetic turn
+            const turnId = crypto.randomUUID();
+            this.currentTurnId = turnId;
+            globalStore.set(this.turnsAtom, [
+                ...turns,
+                {
+                    id: turnId,
+                    userInput: "(previous session)",
+                    blocks: newBlocks,
+                    timestamp: Date.now(),
+                },
+            ]);
         }
 
         // Update token counts from usage
@@ -167,6 +219,7 @@ export class ClaudeCodeViewModel implements ViewModel {
 
     private handleResultEvent(event: any): void {
         globalStore.set(this.isStreamingAtom, false);
+        this.currentTurnId = null;
         if (event.total_cost != null || event.usage != null) {
             const meta = globalStore.get(this.sessionMetaAtom);
             globalStore.set(this.sessionMetaAtom, {
@@ -197,8 +250,15 @@ export class ClaudeCodeViewModel implements ViewModel {
         globalStore.set(this.turnsAtom, [...turns, newTurn]);
         globalStore.set(this.isStreamingAtom, true);
 
-        // TODO: Phase 2 - send to hidden terminal via ControllerInputCommand
-        // For now, simulate with parser feed for testing
+        // Send input to the claude process via controller
+        const b64data = stringToBase64(text + "\n");
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            inputdata64: b64data,
+        }).catch((e: any) => {
+            console.error("[claudecode] Failed to send input:", e);
+            globalStore.set(this.isStreamingAtom, false);
+        });
     }
 
     toggleTerminal(): void {
@@ -207,7 +267,13 @@ export class ClaudeCodeViewModel implements ViewModel {
     }
 
     interrupt(): void {
-        // TODO: Phase 2 - send Ctrl+C to hidden terminal
+        // Send SIGINT to the claude process
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            signame: "SIGINT",
+        }).catch((e: any) => {
+            console.error("[claudecode] Failed to send SIGINT:", e);
+        });
         globalStore.set(this.isStreamingAtom, false);
     }
 
@@ -224,7 +290,15 @@ export class ClaudeCodeViewModel implements ViewModel {
         });
         this.currentTurnId = null;
         this.parser.reset();
-        // TODO: Phase 2 - restart claude process
+
+        // Send /clear to reset Claude Code session, then Ctrl+C + restart
+        const b64data = stringToBase64("/clear\n");
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            inputdata64: b64data,
+        }).catch((e: any) => {
+            console.error("[claudecode] Failed to send /clear:", e);
+        });
     }
 
     toggleToolCollapse(turnId: string, toolId: string): void {
@@ -249,6 +323,14 @@ export class ClaudeCodeViewModel implements ViewModel {
     }
 
     dispose(): void {
+        if (this.fileSubjectSub) {
+            this.fileSubjectSub.unsubscribe();
+            this.fileSubjectSub = null;
+        }
+        if (this.fileSubjectRef) {
+            this.fileSubjectRef.release();
+            this.fileSubjectRef = null;
+        }
         this.parser.reset();
     }
 }
@@ -262,21 +344,24 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
         const turns = useAtomValue(model.turnsAtom);
         const isStreaming = useAtomValue(model.isStreamingAtom);
         const showTerminal = useAtomValue(model.showTerminalAtom);
+        const connected = useAtomValue(model.connectedAtom);
 
         return (
             <div ref={contentRef} className="claudecode-view">
                 {!showTerminal && (
                     <div className="cc-log-container">
-                        <ConversationLog turns={turns} model={model} />
+                        <ConversationLog
+                            turns={turns}
+                            model={model}
+                            connected={connected}
+                        />
                         {isStreaming && <StreamingCursor />}
                         <InputLine model={model} />
                     </div>
                 )}
                 {showTerminal && (
                     <div className="cc-raw-terminal">
-                        <div className="cc-terminal-placeholder">
-                            Raw terminal output (Phase 2)
-                        </div>
+                        <RawTerminalView blockId={model.blockId} />
                     </div>
                 )}
                 <StatusBar model={model} />
@@ -285,10 +370,55 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
     }
 );
 
+// --- Raw Terminal View (for [term] toggle) ---
+
+const RawTerminalView = memo(({ blockId }: { blockId: string }) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [rawOutput, setRawOutput] = useState("");
+
+    useEffect(() => {
+        const fileSubject = getFileSubject(blockId, TermFileName);
+        const sub = fileSubject.subscribe((msg: any) => {
+            if (msg.fileop === "append" && msg.data64) {
+                const bytes = base64ToArray(msg.data64);
+                const text = new TextDecoder().decode(bytes);
+                setRawOutput((prev) => prev + text);
+            } else if (msg.fileop === "truncate") {
+                setRawOutput("");
+            }
+        });
+
+        return () => {
+            sub.unsubscribe();
+            fileSubject.release();
+        };
+    }, [blockId]);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [rawOutput]);
+
+    return (
+        <div className="cc-raw-output" ref={scrollRef}>
+            <pre>{rawOutput}</pre>
+        </div>
+    );
+});
+
 // --- Conversation Log ---
 
 const ConversationLog = memo(
-    ({ turns, model }: { turns: ConversationTurn[]; model: ClaudeCodeViewModel }) => {
+    ({
+        turns,
+        model,
+        connected,
+    }: {
+        turns: ConversationTurn[];
+        model: ClaudeCodeViewModel;
+        connected: boolean;
+    }) => {
         const scrollRef = useRef<HTMLDivElement>(null);
 
         useEffect(() => {
@@ -301,7 +431,19 @@ const ConversationLog = memo(
             <div className="cc-log" ref={scrollRef}>
                 {turns.length === 0 && (
                     <div className="cc-empty">
-                        <span className="cc-empty-prompt">{">"}</span> Claude Code
+                        <div className="cc-empty-header">
+                            <span className="cc-empty-prompt">{"\u276f"}</span> Claude Code
+                        </div>
+                        {!connected && (
+                            <div className="cc-empty-status">
+                                Waiting for claude process...
+                            </div>
+                        )}
+                        {connected && (
+                            <div className="cc-empty-status">
+                                Ready. Type a message below.
+                            </div>
+                        )}
                     </div>
                 )}
                 {turns.map((turn) => (

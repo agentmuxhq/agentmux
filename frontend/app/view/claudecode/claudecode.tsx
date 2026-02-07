@@ -24,6 +24,7 @@ import type {
 import "./claudecode.scss";
 
 const TermFileName = "term";
+const TOOL_RESULT_MAX_LENGTH = 10 * 1024; // 10KB max for tool result display
 
 // ============================================================
 // ViewModel
@@ -398,6 +399,7 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
         const isStreaming = useAtomValue(model.isStreamingAtom);
         const showTerminal = useAtomValue(model.showTerminalAtom);
         const connected = useAtomValue(model.connectedAtom);
+        const error = useAtomValue(model.errorAtom);
 
         return (
             <div ref={contentRef} className="claudecode-view">
@@ -408,6 +410,7 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
                             model={model}
                             connected={connected}
                         />
+                        {error && <ErrorBanner message={error} />}
                         {isStreaming && <StreamingCursor />}
                         <InputLine model={model} />
                     </div>
@@ -568,9 +571,15 @@ const ToolBlockView = memo(
         model: ClaudeCodeViewModel;
     }) => {
         const summary = getToolOneLiner(block.name, block.input);
+        const [showFull, setShowFull] = useState(false);
         const handleClick = useCallback(() => {
             model.toggleToolCollapse(turnId, block.toolId);
         }, [model, turnId, block.toolId]);
+
+        const isTruncated = block.result != null && block.result.length > TOOL_RESULT_MAX_LENGTH;
+        const displayResult = isTruncated && !showFull
+            ? block.result!.slice(0, TOOL_RESULT_MAX_LENGTH)
+            : block.result;
 
         return (
             <div className={clsx("cc-tool", { expanded: !block.isCollapsed })} onClick={handleClick}>
@@ -584,15 +593,23 @@ const ToolBlockView = memo(
                     )}
                 </div>
                 {!block.isCollapsed && (
-                    <div className="cc-tool-detail">
-                        {block.name === "Edit" && block.result ? (
-                            <DiffBlock input={block.input} result={block.result} />
+                    <div className="cc-tool-detail" onClick={(e) => e.stopPropagation()}>
+                        {block.name === "Edit" && displayResult ? (
+                            <DiffBlock input={block.input} result={displayResult} />
                         ) : block.name === "Bash" ? (
-                            <BashBlock input={block.input} result={block.result} />
+                            <BashBlock input={block.input} result={displayResult} />
                         ) : (
                             <pre className="cc-tool-output">
-                                {block.result ?? JSON.stringify(block.input, null, 2)}
+                                {displayResult ?? JSON.stringify(block.input, null, 2)}
                             </pre>
+                        )}
+                        {isTruncated && !showFull && (
+                            <button
+                                className="cc-tool-show-more"
+                                onClick={(e) => { e.stopPropagation(); setShowFull(true); }}
+                            >
+                                Show full output ({(block.result!.length / 1024).toFixed(0)}KB)
+                            </button>
                         )}
                     </div>
                 )}
@@ -736,6 +753,17 @@ const StatusBar = memo(({ model }: { model: ClaudeCodeViewModel }) => {
             <button className="cc-status-btn" onClick={() => model.resetSession()}>
                 [reset]
             </button>
+        </div>
+    );
+});
+
+// --- Error Banner ---
+
+const ErrorBanner = memo(({ message }: { message: string }) => {
+    return (
+        <div className="cc-error">
+            <span className="cc-error-icon">{"\u26a0"}</span>
+            <span className="cc-error-text">{message}</span>
         </div>
     );
 });

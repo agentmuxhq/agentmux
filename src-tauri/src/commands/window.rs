@@ -1,3 +1,4 @@
+use tauri::Emitter;
 use tauri::Manager;
 
 use crate::state::AppState;

@@ -50,5 +50,17 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@claudecode": {
+        "display:order": 0,
+        "icon": "terminal",
+        "color": "#cc785c",
+        "label": "claude code",
+        "description": "Claude Code AI terminal",
+        "blockdef": {
+            "meta": {
+                "view": "claudecode"
+            }
+        }
     }
 }

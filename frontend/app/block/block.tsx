@@ -12,6 +12,7 @@ import {
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
+import { ClaudeCodeViewModel } from "@/app/view/claudecode/claudecode";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -50,6 +51,7 @@ BlockRegistry.set("tips", QuickTipsViewModel);
 BlockRegistry.set("help", HelpViewModel);
 BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
+BlockRegistry.set("claudecode", ClaudeCodeViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);

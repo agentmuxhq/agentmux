@@ -131,7 +131,7 @@ func SaveAgentMuxConfigFile(config AgentMuxConfigFile) error {
 // NewPoller creates a new cross-host injection poller.
 func NewPoller(handler *Handler, config PollerConfig) *Poller {
 	if config.PollInterval == 0 {
-		config.PollInterval = 5 * time.Second
+		config.PollInterval = 30 * time.Second
 	}
 
 	return &Poller{

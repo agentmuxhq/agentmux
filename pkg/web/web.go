@@ -436,6 +436,48 @@ func MakeTCPListener(serviceName string) (net.Listener, error) {
 	return rtn, nil
 }
 
+// RunReactiveServer starts a dedicated HTTP server for the reactive messaging API
+// on 0.0.0.0:<port>, making it accessible from Docker containers via host.docker.internal.
+// Only reactive endpoints are exposed (all SkipAuth by design).
+// Activated by setting WAVEMUX_REACTIVE_PORT env var.
+func RunReactiveServer(port string) {
+	gr := mux.NewRouter()
+	gr.HandleFunc("/wave/reactive/inject", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleInject))
+	gr.HandleFunc("/wave/reactive/agents", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleListAgents))
+	gr.HandleFunc("/wave/reactive/agent", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleGetAgent))
+	gr.HandleFunc("/wave/reactive/audit", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleAuditLog))
+	gr.HandleFunc("/wave/reactive/register", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleRegisterAgent))
+	gr.HandleFunc("/wave/reactive/unregister", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandleUnregisterAgent))
+	gr.HandleFunc("/wave/reactive/poller/stats", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandlePollerStats))
+	gr.HandleFunc("/wave/reactive/poller/config", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandlePollerConfig))
+	gr.HandleFunc("/wave/reactive/poller/status", WebFnWrap(WebFnOpts{JsonErrors: true, SkipAuth: true}, reactive.HandlePollerStatus))
+
+	// Validate port
+	portNum, err := strconv.Atoi(port)
+	if err != nil || portNum < 1 || portNum > 65535 {
+		log.Printf("error: invalid WAVEMUX_REACTIVE_PORT %q (must be 1-65535)\n", port)
+		return
+	}
+
+	addr := fmt.Sprintf("0.0.0.0:%d", portNum)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Printf("error creating reactive listener at %s: %v\n", addr, err)
+		return
+	}
+	log.Printf("Server [reactive] listening on %s (accessible from Docker containers)\n", listener.Addr())
+
+	server := &http.Server{
+		ReadTimeout:    HttpReadTimeout,
+		WriteTimeout:   HttpWriteTimeout,
+		MaxHeaderBytes: HttpMaxHeaderBytes,
+		Handler:        gr,
+	}
+	if err := server.Serve(listener); err != nil {
+		log.Printf("reactive server error: %v\n", err)
+	}
+}
+
 func MakeUnixListener() (net.Listener, error) {
 	serverAddr := wavebase.GetDomainSocketName()
 	os.Remove(serverAddr) // ignore error

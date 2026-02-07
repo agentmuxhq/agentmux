@@ -482,6 +482,11 @@ func main() {
 	initReactiveHandler() // Initialize reactive messaging for agent-to-agent communication
 	go wavebase.GetSystemSummary() // get this cached (used in AI)
 
+	// Start dedicated reactive server for Docker container access (if configured)
+	if reactivePort := os.Getenv("WAVEMUX_REACTIVE_PORT"); reactivePort != "" {
+		go web.RunReactiveServer(reactivePort)
+	}
+
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
 		log.Printf("error creating web listener: %v\n", err)

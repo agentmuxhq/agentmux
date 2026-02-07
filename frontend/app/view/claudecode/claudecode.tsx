@@ -3,7 +3,7 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Markdown } from "@/app/element/markdown";
-import { atoms, globalStore, WOS } from "@/store/global";
+import { globalStore, WOS } from "@/store/global";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -258,7 +258,7 @@ export class ClaudeCodeViewModel implements ViewModel {
 // ============================================================
 
 const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
-    ({ blockId, blockRef, contentRef, model }) => {
+    ({ contentRef, model }) => {
         const turns = useAtomValue(model.turnsAtom);
         const isStreaming = useAtomValue(model.isStreamingAtom);
         const showTerminal = useAtomValue(model.showTerminalAtom);

@@ -320,6 +320,14 @@
             flex: 1;
         }
 
+        .cc-status-exited {
+            color: var(--error-color);
+        }
+
+        .cc-restart-btn {
+            color: var(--warning-color, #e0af68);
+        }
+
         .cc-status-btn {
             background: none;
             border: none;

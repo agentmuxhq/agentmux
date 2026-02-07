@@ -21,6 +21,7 @@ export interface ParserCallbacks {
     onUsageUpdate: (usage: any) => void;
     onResultEvent: (event: ResultEvent) => void;
     onError: (errorType: string, message: string) => void;
+    onRawLine?: (line: string) => void;
 }
 
 /**
@@ -59,7 +60,8 @@ export class ClaudeCodeStreamParser {
         try {
             parsed = JSON.parse(line);
         } catch {
-            return; // Non-JSON output, ignore
+            this.callbacks.onRawLine?.(line);
+            return;
         }
 
         if (!parsed || !parsed.type) return;

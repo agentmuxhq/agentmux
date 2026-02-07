@@ -11,7 +11,7 @@ import * as services from "@/store/services";
 import { base64ToArray, stringToBase64 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import clsx from "clsx";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Subscription } from "rxjs";
 import { ClaudeCodeStreamParser, ParserCallbacks } from "./claudecode-parser";
 import type {
@@ -57,6 +57,7 @@ export class ClaudeCodeViewModel implements ViewModel {
     private fileSubjectRef: any = null;
     private procStatusUnsub: (() => void) | null = null;
     errorAtom: PrimitiveAtom<string>;
+    inputRef: React.RefObject<HTMLTextAreaElement>;
     private shellProcFullStatusAtom: PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatusAtom: Atom<string>; // "init" | "running" | "done"
     shellProcExitCodeAtom: Atom<number>;
@@ -83,6 +84,7 @@ export class ClaudeCodeViewModel implements ViewModel {
         this.showTerminalAtom = atom(false);
         this.connectedAtom = atom(false);
         this.errorAtom = atom("");
+        this.inputRef = React.createRef<HTMLTextAreaElement>();
         this.shellProcFullStatusAtom = atom(null) as unknown as PrimitiveAtom<BlockControllerRuntimeStatus>;
         this.shellProcStatusAtom = atom((get) => {
             const fullStatus = get(this.shellProcFullStatusAtom);
@@ -425,7 +427,11 @@ export class ClaudeCodeViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
-        return true;
+        if (this.inputRef.current) {
+            this.inputRef.current.focus();
+            return true;
+        }
+        return false;
     }
 
     dispose(): void {
@@ -727,13 +733,14 @@ const StreamingCursor = memo(() => {
 const InputLine = memo(({ model }: { model: ClaudeCodeViewModel }) => {
     const [text, setText] = useState("");
     const isStreaming = useAtomValue(model.isStreamingAtom);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const procStatus = useAtomValue(model.shellProcStatusAtom);
+    const inputDisabled = isStreaming || procStatus === "done";
 
     const handleSend = useCallback(() => {
-        if (!text.trim() || isStreaming) return;
+        if (!text.trim() || inputDisabled) return;
         model.sendMessage(text);
         setText("");
-    }, [text, isStreaming, model]);
+    }, [text, inputDisabled, model]);
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
@@ -754,31 +761,31 @@ const InputLine = memo(({ model }: { model: ClaudeCodeViewModel }) => {
 
     // Auto-focus input when not streaming
     useEffect(() => {
-        if (!isStreaming && textareaRef.current) {
-            textareaRef.current.focus();
+        if (!isStreaming && model.inputRef.current) {
+            model.inputRef.current.focus();
         }
-    }, [isStreaming]);
+    }, [isStreaming, model]);
 
     // Auto-expand textarea
     useEffect(() => {
-        const el = textareaRef.current;
+        const el = model.inputRef.current;
         if (el) {
             el.style.height = "auto";
             el.style.height = el.scrollHeight + "px";
         }
-    }, [text]);
+    }, [text, model]);
 
     return (
         <div className="cc-input">
             <span className="cc-input-prompt">{"\u276f"}</span>
             <textarea
-                ref={textareaRef}
+                ref={model.inputRef as React.RefObject<HTMLTextAreaElement>}
                 className="cc-input-textarea"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={isStreaming}
-                placeholder="Ask Claude..."
+                disabled={inputDisabled}
+                placeholder={procStatus === "done" ? "Process exited. Click [restart]." : "Ask Claude..."}
                 rows={1}
                 spellCheck={false}
             />

@@ -2,6 +2,7 @@ mod commands;
 mod sidecar;
 mod state;
 
+use tauri::Emitter;
 use tauri::Manager;
 
 /// Initialize and run the WaveMux Tauri application.
@@ -17,7 +18,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_global_shortcut::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
@@ -122,7 +123,7 @@ pub fn run() {
                         let _ = child.kill();
                     }
                     // Allow the close to proceed
-                    drop(api);
+                    let _ = api;
                 }
                 tauri::WindowEvent::Focused(focused) => {
                     if let Some(w) = window.app_handle().get_webview_window("main") {

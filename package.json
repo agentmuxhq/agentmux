@@ -25,7 +25,9 @@
         "build:prod": "electron-vite build --mode production",
         "coverage": "vitest run --coverage",
         "test": "vitest",
-        "postinstall": "electron-builder install-app-deps"
+        "postinstall": "electron-builder install-app-deps",
+        "tauri:dev": "tauri dev",
+        "tauri:build": "tauri build"
     },
     "devDependencies": {
         "@eslint/js": "^8.57.0",
@@ -72,7 +74,8 @@
         "vite-plugin-static-copy": "^3.1.4",
         "vite-plugin-svgr": "^4.5.0",
         "vite-tsconfig-paths": "^5.1.4",
-        "vitest": "^3.0.9"
+        "vitest": "^3.0.9",
+        "@tauri-apps/cli": "^2.5.0"
     },
     "dependencies": {
         "@ai-sdk/react": "^2.0.114",
@@ -148,7 +151,10 @@
         "use-device-pixel-ratio": "^1.1.2",
         "winston": "^3.19.0",
         "ws": "^8.19.0",
-        "yaml": "^2.8.2"
+        "yaml": "^2.8.2",
+        "@tauri-apps/api": "^2.5.0",
+        "@tauri-apps/plugin-opener": "^2.3.1",
+        "@tauri-apps/plugin-shell": "^2.2.0"
     },
     "packageManager": "npm@10.9.2",
     "workspaces": [

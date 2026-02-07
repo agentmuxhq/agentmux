@@ -1,0 +1,277 @@
+// Copyright 2026, a5af.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Tauri API shim — provides the same window.api (ElectronApi) interface
+// using Tauri's invoke() and listen() APIs.
+//
+// This file is the Tauri equivalent of emain/preload.ts.
+// It must be loaded before the React app bootstraps.
+
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { open as openUrl } from "@tauri-apps/plugin-opener";
+
+// Tauri injects this global at build time via TAURI_ENV_APP_VERSION
+declare const __TAURI_APP_VERSION__: string | undefined;
+
+// Cache for "synchronous" values that are fetched once at startup.
+// In Electron, these were ipcRenderer.sendSync() calls.
+// In Tauri, all IPC is async, so we pre-fetch and cache.
+let cachedValues: {
+    authKey: string;
+    isDev: boolean;
+    platform: string;
+    userName: string;
+    hostName: string;
+    dataDir: string;
+    configDir: string;
+    docsiteUrl: string;
+    zoomFactor: number;
+    updaterStatus: UpdaterStatus;
+    updaterChannel: string;
+} | null = null;
+
+/**
+ * Initialize the Tauri API shim by pre-fetching all cached values.
+ * Must be called before the React app renders.
+ */
+export async function initTauriApi(): Promise<void> {
+    const [
+        authKey,
+        isDev,
+        platform,
+        userName,
+        hostName,
+        dataDir,
+        configDir,
+        docsiteUrl,
+        zoomFactor,
+    ] = await Promise.all([
+        invoke<string>("get_auth_key"),
+        invoke<boolean>("get_is_dev"),
+        invoke<string>("get_platform"),
+        invoke<string>("get_user_name"),
+        invoke<string>("get_host_name"),
+        invoke<string>("get_data_dir"),
+        invoke<string>("get_config_dir"),
+        invoke<string>("get_docsite_url"),
+        invoke<number>("get_zoom_factor"),
+    ]);
+
+    cachedValues = {
+        authKey,
+        isDev,
+        platform,
+        userName,
+        hostName,
+        dataDir,
+        configDir,
+        docsiteUrl,
+        zoomFactor,
+        updaterStatus: "up-to-date" as UpdaterStatus,
+        updaterChannel: "latest",
+    };
+}
+
+/**
+ * Build the ElectronApi-compatible shim backed by Tauri invoke/listen.
+ */
+export function buildTauriApi(): ElectronApi {
+    if (!cachedValues) {
+        throw new Error("initTauriApi() must be called before buildTauriApi()");
+    }
+
+    const api: ElectronApi = {
+        // --- Synchronous getters (return cached values) ---
+        getAuthKey: () => cachedValues!.authKey,
+        getIsDev: () => cachedValues!.isDev,
+        getPlatform: () => cachedValues!.platform as NodeJS.Platform,
+        getUserName: () => cachedValues!.userName,
+        getHostName: () => cachedValues!.hostName,
+        getDataDir: () => cachedValues!.dataDir,
+        getConfigDir: () => cachedValues!.configDir,
+        getDocsiteUrl: () => cachedValues!.docsiteUrl,
+        getZoomFactor: () => cachedValues!.zoomFactor,
+        getWebviewPreload: () => "", // Not applicable in Tauri
+        getEnv: (varName: string) => {
+            // In Tauri, we can't synchronously get env vars.
+            // Fire-and-forget the invoke and return empty for now.
+            // Most env var usage should be migrated to async.
+            return "";
+        },
+
+        // --- Cursor ---
+        getCursorPoint: () => {
+            // Synchronous in Electron, but we return a default.
+            // The actual async version should be used where possible.
+            return { x: 0, y: 0 } as Electron.Point;
+        },
+
+        // --- About ---
+        getAboutModalDetails: () => {
+            // Fetch dynamically from Rust backend on first call
+            // For the sync return, use cached version from invoke
+            return {
+                version: __TAURI_APP_VERSION__ ?? "unknown",
+                buildTime: 0,
+            } as AboutModalDetails;
+        },
+
+        // --- Context menu ---
+        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => {
+            invoke("show_context_menu", { workspaceId, menu }).catch(console.error);
+        },
+        onContextMenuClick: (callback: (id: string) => void) => {
+            listen<string>("contextmenu-click", (event) => {
+                callback(event.payload);
+            });
+        },
+
+        // --- Navigation (no-ops in Tauri, handled differently) ---
+        onNavigate: (_callback: (url: string) => void) => {
+            // Navigation interception handled via Tauri's URL scheme filtering
+        },
+        onIframeNavigate: (_callback: (url: string) => void) => {
+            // No iframe navigation interception needed in Tauri
+        },
+
+        // --- File operations ---
+        downloadFile: (path: string) => {
+            invoke("download_file", { path }).catch(console.error);
+        },
+        openExternal: (url: string) => {
+            openUrl(url).catch(console.error);
+        },
+        openNativePath: (filePath: string) => {
+            openUrl(filePath).catch(console.error);
+        },
+        onQuicklook: (filePath: string) => {
+            invoke("quicklook", { filePath }).catch(console.error);
+        },
+
+        // --- Window events ---
+        onFullScreenChange: (callback: (isFullScreen: boolean) => void) => {
+            listen<boolean>("fullscreen-change", (event) => {
+                callback(event.payload);
+            });
+        },
+        onZoomFactorChange: (callback: (zoomFactor: number) => void) => {
+            listen<number>("zoom-factor-change", (event) => {
+                cachedValues!.zoomFactor = event.payload;
+                callback(event.payload);
+            });
+        },
+
+        // --- Updater ---
+        getUpdaterStatus: () => cachedValues!.updaterStatus,
+        getUpdaterChannel: () => cachedValues!.updaterChannel,
+        onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => {
+            listen<UpdaterStatus>("app-update-status", (event) => {
+                cachedValues!.updaterStatus = event.payload;
+                callback(event.payload);
+            });
+        },
+        installAppUpdate: () => {
+            invoke("install_update").catch(console.error);
+        },
+
+        // --- Menu ---
+        onMenuItemAbout: (callback: () => void) => {
+            listen("menu-item-about", () => callback());
+        },
+
+        // --- Window controls ---
+        updateWindowControlsOverlay: (rect: Dimensions) => {
+            invoke("update_wco", { rect }).catch(console.error);
+        },
+
+        // --- Keyboard ---
+        onReinjectKey: (callback: (waveEvent: WaveKeyboardEvent) => void) => {
+            listen<WaveKeyboardEvent>("reinject-key", (event) => {
+                callback(event.payload);
+            });
+        },
+        setKeyboardChordMode: () => {
+            invoke("set_keyboard_chord_mode").catch(console.error);
+        },
+        onControlShiftStateUpdate: (callback: (state: boolean) => void) => {
+            listen<boolean>("control-shift-state-update", (event) => {
+                callback(event.payload);
+            });
+        },
+
+        // --- Webview focus ---
+        setWebviewFocus: (focusedId: number) => {
+            // In Tauri, single webview per window — this is a no-op.
+            // Focus management is handled in React.
+        },
+        registerGlobalWebviewKeys: (keys: string[]) => {
+            invoke("register_global_webview_keys", { keys }).catch(console.error);
+        },
+
+        // --- Workspace & Tabs ---
+        // In Tauri, tabs are managed in the frontend (React state).
+        // These still invoke backend operations via the Go backend's WebSocket API.
+        createWorkspace: () => {
+            invoke("create_workspace").catch(console.error);
+        },
+        switchWorkspace: (workspaceId: string) => {
+            invoke("switch_workspace", { workspaceId }).catch(console.error);
+        },
+        deleteWorkspace: (workspaceId: string) => {
+            invoke("delete_workspace", { workspaceId }).catch(console.error);
+        },
+        setActiveTab: (tabId: string) => {
+            // Tab switching is frontend-only in Tauri (no WebContentsView to move)
+            // Still notify the backend for state persistence
+            invoke("set_active_tab", { tabId }).catch(console.error);
+        },
+        createTab: () => {
+            invoke("create_tab").catch(console.error);
+        },
+        closeTab: (workspaceId: string, tabId: string) => {
+            invoke("close_tab", { workspaceId, tabId }).catch(console.error);
+        },
+
+        // --- Init ---
+        setWindowInitStatus: (status: "ready" | "wave-ready") => {
+            invoke("set_window_init_status", { status }).catch(console.error);
+        },
+        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => {
+            listen<WaveInitOpts>("wave-init", (event) => {
+                callback(event.payload);
+            });
+        },
+
+        // --- Logging ---
+        sendLog: (log: string) => {
+            invoke("fe_log", { msg: log }).catch(console.error);
+        },
+
+        // --- Screenshot ---
+        captureScreenshot: async (_rect: Electron.Rectangle): Promise<string> => {
+            // No equivalent in Tauri — return empty string
+            // If needed, can be implemented with html-to-image library
+            return "";
+        },
+
+        // --- Storage ---
+        clearWebviewStorage: async (_webContentsId: number): Promise<void> => {
+            // No webContentsId concept in Tauri
+        },
+
+        // --- AI ---
+        setWaveAIOpen: (isOpen: boolean) => {
+            invoke("set_waveai_open", { isOpen }).catch(console.error);
+        },
+    };
+
+    return api;
+}
+
+/**
+ * Detect whether we're running inside Tauri.
+ */
+export function isTauri(): boolean {
+    return typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
+}

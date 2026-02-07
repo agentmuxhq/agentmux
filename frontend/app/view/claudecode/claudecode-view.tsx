@@ -3,6 +3,7 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { getFileSubject } from "@/app/store/wps";
+import { getApi } from "@/store/global";
 import { base64ToArray } from "@/util/util";
 import { useAtomValue } from "jotai";
 import clsx from "clsx";
@@ -23,12 +24,14 @@ const ClaudeCodeView: React.FC<ViewComponentProps<ClaudeCodeViewModel>> = memo(
         const showTerminal = useAtomValue(model.showTerminalAtom);
         const connected = useAtomValue(model.connectedAtom);
         const error = useAtomValue(model.errorAtom);
+        const authUrl = useAtomValue(model.authUrlAtom);
 
         return (
             <div className="claudecode-view">
                 {!showTerminal && (
                     <div className="cc-log-container">
                         <ConversationLog turns={turns} model={model} connected={connected} />
+                        {authUrl && <AuthBanner url={authUrl} model={model} />}
                         {error && <ErrorBanner message={error} />}
                         {isStreaming && <StreamingCursor />}
                         <InputLine model={model} />
@@ -335,7 +338,9 @@ const StatusBar = memo(({ model }: { model: ClaudeCodeViewModel }) => {
 
     const statusText =
         procStatus === "done"
-            ? `\u25cf exited (${exitCode})`
+            ? exitCode !== 0
+                ? `\u25cf exited (code ${exitCode})`
+                : "\u25cf exited"
             : isStreaming
               ? "\u25cf streaming"
               : procStatus === "running"
@@ -373,11 +378,66 @@ const StatusBar = memo(({ model }: { model: ClaudeCodeViewModel }) => {
     );
 });
 
+const AuthBanner = memo(({ url, model }: { url: string; model: ClaudeCodeViewModel }) => {
+    const handleOpen = useCallback(
+        (e: React.MouseEvent) => {
+            e.stopPropagation();
+            model.openAuthUrl(url);
+        },
+        [model, url]
+    );
+
+    const handleCopy = useCallback(
+        (e: React.MouseEvent) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(url);
+        },
+        [url]
+    );
+
+    return (
+        <div className="cc-auth-banner">
+            <div className="cc-auth-header">
+                <span className="cc-auth-icon">{"\u26a1"}</span>
+                <span>Claude Code requires authentication</span>
+            </div>
+            <div className="cc-auth-actions">
+                <button className="cc-auth-btn cc-auth-btn-primary" onClick={handleOpen}>
+                    Open Browser
+                </button>
+                <button className="cc-auth-btn" onClick={handleCopy}>
+                    Copy URL
+                </button>
+            </div>
+            <div className="cc-auth-url">{url}</div>
+        </div>
+    );
+});
+
 const ErrorBanner = memo(({ message }: { message: string }) => {
+    const isSubscription =
+        /subscription|billing|payment|plan required|upgrade|expired/i.test(message);
+
     return (
         <div className="cc-error">
             <span className="cc-error-icon">{"\u26a0"}</span>
-            <span className="cc-error-text">{message}</span>
+            <div className="cc-error-body">
+                <span className="cc-error-text">{message}</span>
+                {isSubscription && (
+                    <div className="cc-error-hint">
+                        A Claude Pro/Team subscription is required.{" "}
+                        <a
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                getApi().openExternal("https://console.anthropic.com/settings/billing");
+                            }}
+                        >
+                            Manage subscription
+                        </a>
+                    </div>
+                )}
+            </div>
         </div>
     );
 });

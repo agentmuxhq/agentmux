@@ -110,6 +110,7 @@ const ConversationLog = memo(
 
         return (
             <div className="cc-log" ref={scrollRef}>
+                <div className="cc-log-spacer" />
                 {turns.length === 0 && (
                     <div className="cc-empty">
                         <div className="cc-empty-header">

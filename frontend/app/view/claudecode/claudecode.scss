@@ -377,6 +377,65 @@
         }
     }
 
+    // === Auth Banner ===
+    .cc-auth-banner {
+        margin: 4px 8px;
+        padding: 10px 12px;
+        background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+        border-left: 2px solid var(--accent-color);
+        border-radius: 2px;
+
+        .cc-auth-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .cc-auth-icon {
+            font-size: 14px;
+        }
+
+        .cc-auth-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .cc-auth-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--main-text-color);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 2px;
+
+            &:hover {
+                background: color-mix(in srgb, var(--main-text-color) 8%, transparent);
+            }
+        }
+
+        .cc-auth-btn-primary {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            font-weight: 600;
+
+            &:hover {
+                background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+            }
+        }
+
+        .cc-auth-url {
+            font-size: 11px;
+            color: var(--secondary-text-color);
+            opacity: 0.6;
+            word-break: break-all;
+        }
+    }
+
     // === Error Banner ===
     .cc-error {
         display: flex;
@@ -394,9 +453,27 @@
             flex-shrink: 0;
         }
 
+        .cc-error-body {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
         .cc-error-text {
             white-space: pre-wrap;
             word-break: break-word;
+        }
+
+        .cc-error-hint {
+            font-size: 11px;
+            color: var(--secondary-text-color);
+            margin-top: 2px;
+
+            a {
+                color: var(--accent-color);
+                text-decoration: underline;
+                cursor: pointer;
+            }
         }
     }
 

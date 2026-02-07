@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -245,6 +246,9 @@ func (p *Poller) pollAndInject() {
 
 // pollForAgent polls for pending injections for a specific agent.
 func (p *Poller) pollForAgent(agentID string) error {
+	// Normalize agent ID to lowercase (AgentMux stores all IDs lowercase)
+	agentID = strings.ToLower(agentID)
+
 	// Build request URL with proper escaping for defense in depth
 	reqURL := fmt.Sprintf("%s/reactive/pending/%s", p.agentmuxURL, url.PathEscape(agentID))
 
@@ -325,6 +329,9 @@ func (p *Poller) pollForAgent(agentID string) error {
 
 // acknowledgeDelivery marks injections as delivered in AgentMux.
 func (p *Poller) acknowledgeDelivery(injectionIDs []string, agentID string) error {
+	// Normalize agent ID to lowercase (AgentMux stores all IDs lowercase)
+	agentID = strings.ToLower(agentID)
+
 	url := fmt.Sprintf("%s/reactive/ack", p.agentmuxURL)
 
 	ackReq := AckRequest{

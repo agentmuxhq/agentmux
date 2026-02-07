@@ -30,7 +30,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     let shell = app.shell();
 
     let sidecar_cmd = shell
-        .sidecar("binaries/wavemuxsrv")
+        .sidecar("wavemuxsrv")
         .map_err(|e| format!("Failed to find wavemuxsrv sidecar: {}", e))?;
 
     let (mut rx, child) = sidecar_cmd

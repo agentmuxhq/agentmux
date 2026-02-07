@@ -18,8 +18,8 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { CSSProperties, forwardRef, useCallback, useEffect } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
-import { atoms, getApi } from "../store/global";
-import { WorkspaceService } from "../store/services";
+import { atoms, getApi, globalStore } from "../store/global";
+import { WindowService, WorkspaceService } from "../store/services";
 import { getObjectValue, makeORef } from "../store/wos";
 import { waveEventSubscribe } from "../store/wps";
 import { WorkspaceEditor } from "./workspaceeditor";
@@ -71,7 +71,9 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     }, []);
 
     const onDeleteWorkspace = useCallback((workspaceId: string) => {
-        getApi().deleteWorkspace(workspaceId);
+        WorkspaceService.DeleteWorkspace(workspaceId).catch((e) => {
+            console.error("[deleteWorkspace] failed:", e);
+        });
     }, []);
 
     const isActiveWorkspaceSaved = !!(activeWorkspace.name && activeWorkspace.icon);
@@ -118,7 +120,11 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
 
                 <div className="actions">
                     {isActiveWorkspaceSaved ? (
-                        <ExpandableMenuItem onClick={() => getApi().createWorkspace()}>
+                        <ExpandableMenuItem onClick={() => {
+                            WorkspaceService.CreateWorkspace("", "", "", true).catch((e) => {
+                                console.error("[createWorkspace] failed:", e);
+                            });
+                        }}>
                             <ExpandableMenuItemLeftElement>
                                 <i className="fa-sharp fa-solid fa-plus"></i>
                             </ExpandableMenuItemLeftElement>
@@ -200,7 +206,12 @@ const WorkspaceSwitcherItem = ({
         >
             <ExpandableMenuItemGroupTitle
                 onClick={() => {
-                    getApi().switchWorkspace(workspace.oid);
+                    const ww = globalStore.get(atoms.waveWindow);
+                    if (ww != null) {
+                        WindowService.SwitchWorkspace(ww.oid, workspace.oid).catch((e) => {
+                            console.error("[switchWorkspace] failed:", e);
+                        });
+                    }
                     // Create a fake escape key event to close the popover
                     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
                 }}

@@ -21,7 +21,7 @@ import { deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } fr
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
-import { ClientService, ObjectService } from "./services";
+import { ClientService, ObjectService, WorkspaceService } from "./services";
 import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribe } from "./wps";
 
@@ -793,11 +793,19 @@ function removeNotification(id: string) {
 }
 
 function createTab() {
-    getApi().createTab();
+    const ws = globalStore.get(atoms.workspace);
+    if (ws == null) return;
+    WorkspaceService.CreateTab(ws.oid, "", true, false).catch((e) => {
+        console.error("[createTab] failed:", e);
+    });
 }
 
 function setActiveTab(tabId: string) {
-    getApi().setActiveTab(tabId);
+    const ws = globalStore.get(atoms.workspace);
+    if (ws == null) return;
+    WorkspaceService.SetActiveTab(ws.oid, tabId).catch((e) => {
+        console.error("[setActiveTab] failed:", e);
+    });
 }
 
 function recordTEvent(event: string, props?: TEventProps) {

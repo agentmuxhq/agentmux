@@ -605,7 +605,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         getApi().sendLog(`[TABBAR] handleCloseTab called for tabId: ${tabId}`);
         event?.stopPropagation();
         const ws = globalStore.get(atoms.workspace);
-        getApi().closeTab(ws.oid, tabId);
+        WorkspaceService.CloseTab(ws.oid, tabId, false).catch((e) => {
+            console.error("[closeTab] failed:", e);
+        });
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
     };

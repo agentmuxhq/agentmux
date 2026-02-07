@@ -17,8 +17,10 @@ import {
     globalStore,
     refocusNode,
     replaceBlock,
+    setActiveTab,
     WOS,
 } from "@/app/store/global";
+import { WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { TabBarModel } from "@/app/tab/tabbar-model";
@@ -161,7 +163,9 @@ function simpleCloseStaticTab() {
     debugLog("simpleCloseStaticTab called");
     const ws = globalStore.get(atoms.workspace);
     const tabId = globalStore.get(atoms.staticTabId);
-    getApi().closeTab(ws.oid, tabId);
+    WorkspaceService.CloseTab(ws.oid, tabId, false).catch((e) => {
+        console.error("[closeTab] failed:", e);
+    });
     deleteLayoutModelForTab(tabId);
 }
 
@@ -283,7 +287,7 @@ function switchTabAbs(index: number) {
         return;
     }
     const newActiveTabId = tabids[newTabIdx];
-    getApi().setActiveTab(newActiveTabId);
+    setActiveTab(newActiveTabId);
 }
 
 function switchTab(offset: number) {
@@ -303,7 +307,7 @@ function switchTab(offset: number) {
     }
     const newTabIdx = (tabIdx + offset + tabids.length) % tabids.length;
     const newActiveTabId = tabids[newTabIdx];
-    getApi().setActiveTab(newActiveTabId);
+    setActiveTab(newActiveTabId);
 }
 
 function handleCmdI() {

@@ -12,13 +12,14 @@ import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Subscription } from "rxjs";
-import { ClaudeCodeStreamParser } from "./claudecode-parser";
+import { ClaudeCodeStreamParser, ParserCallbacks } from "./claudecode-parser";
 import type {
     ConversationTurn,
+    ResultEvent,
     SessionMeta,
+    SystemEvent,
     TextTurnBlock,
     ToolTurnBlock,
-    TurnBlock,
 } from "./claudecode-types";
 import "./claudecode.scss";
 
@@ -52,6 +53,7 @@ export class ClaudeCodeViewModel implements ViewModel {
     private currentTurnId: string | null = null;
     private fileSubjectSub: Subscription | null = null;
     private fileSubjectRef: any = null;
+    errorAtom: PrimitiveAtom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
@@ -74,6 +76,7 @@ export class ClaudeCodeViewModel implements ViewModel {
         this.isStreamingAtom = atom(false);
         this.showTerminalAtom = atom(false);
         this.connectedAtom = atom(false);
+        this.errorAtom = atom("");
 
         // Header text: show model + tokens + cost
         this.viewText = atom((get) => {
@@ -98,8 +101,160 @@ export class ClaudeCodeViewModel implements ViewModel {
             return parts;
         });
 
-        this.parser = new ClaudeCodeStreamParser((event) => this.handleEvent(event));
+        this.parser = new ClaudeCodeStreamParser(this.buildParserCallbacks());
         this.connectToTerminal();
+    }
+
+    // --- Parser callbacks (handle all stream-json event types) ---
+
+    private buildParserCallbacks(): ParserCallbacks {
+        return {
+            onSystemEvent: (event: SystemEvent) => {
+                const meta = globalStore.get(this.sessionMetaAtom);
+                const updates: Partial<SessionMeta> = {};
+                if (event.model) updates.model = event.model;
+                if (event.session_id) updates.sessionId = event.session_id;
+                if (Object.keys(updates).length > 0) {
+                    globalStore.set(this.sessionMetaAtom, { ...meta, ...updates });
+                }
+            },
+
+            onMessageStart: (_role: string, model?: string, usage?: any) => {
+                globalStore.set(this.isStreamingAtom, true);
+                globalStore.set(this.errorAtom, "");
+                if (model || usage) {
+                    const meta = globalStore.get(this.sessionMetaAtom);
+                    globalStore.set(this.sessionMetaAtom, {
+                        ...meta,
+                        model: model ?? meta.model,
+                        inputTokens: usage?.input_tokens ?? meta.inputTokens,
+                    });
+                }
+                // Ensure we have an active turn
+                if (!this.currentTurnId) {
+                    const turnId = crypto.randomUUID();
+                    this.currentTurnId = turnId;
+                    const turns = globalStore.get(this.turnsAtom);
+                    globalStore.set(this.turnsAtom, [
+                        ...turns,
+                        {
+                            id: turnId,
+                            userInput: "(continued)",
+                            blocks: [],
+                            timestamp: Date.now(),
+                        },
+                    ]);
+                }
+            },
+
+            onTextDelta: (text: string) => {
+                if (!this.currentTurnId) return;
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => {
+                    if (t.id !== this.currentTurnId) return t;
+                    const blocks = [...t.blocks];
+                    const last = blocks[blocks.length - 1];
+                    if (last && last.type === "text") {
+                        // Append to existing text block
+                        blocks[blocks.length - 1] = {
+                            ...last,
+                            text: last.text + text,
+                        };
+                    } else {
+                        // Start new text block
+                        blocks.push({ type: "text", text });
+                    }
+                    return { ...t, blocks };
+                });
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onToolUseStart: (id: string, name: string) => {
+                if (!this.currentTurnId) return;
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => {
+                    if (t.id !== this.currentTurnId) return t;
+                    return {
+                        ...t,
+                        blocks: [
+                            ...t.blocks,
+                            {
+                                type: "tool" as const,
+                                toolId: id,
+                                name,
+                                input: {},
+                                isCollapsed: true,
+                            },
+                        ],
+                    };
+                });
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onToolUseFinish: (id: string, parsedInput: Record<string, any>) => {
+                if (!this.currentTurnId) return;
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => {
+                    if (t.id !== this.currentTurnId) return t;
+                    return {
+                        ...t,
+                        blocks: t.blocks.map((b) => {
+                            if (b.type === "tool" && b.toolId === id) {
+                                return { ...b, input: parsedInput };
+                            }
+                            return b;
+                        }),
+                    };
+                });
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onToolResult: (toolUseId: string, content: string, isError?: boolean) => {
+                // Find the tool block across all turns and attach the result
+                const turns = globalStore.get(this.turnsAtom);
+                const updated = turns.map((t) => ({
+                    ...t,
+                    blocks: t.blocks.map((b) => {
+                        if (b.type === "tool" && b.toolId === toolUseId) {
+                            return { ...b, result: content, isError: isError ?? false };
+                        }
+                        return b;
+                    }),
+                }));
+                globalStore.set(this.turnsAtom, updated);
+            },
+
+            onMessageStop: () => {
+                // Message complete, but session may continue (multi-turn)
+            },
+
+            onUsageUpdate: (usage: any) => {
+                if (!usage) return;
+                const meta = globalStore.get(this.sessionMetaAtom);
+                globalStore.set(this.sessionMetaAtom, {
+                    ...meta,
+                    outputTokens: usage.output_tokens ?? meta.outputTokens,
+                });
+            },
+
+            onResultEvent: (event: ResultEvent) => {
+                globalStore.set(this.isStreamingAtom, false);
+                this.currentTurnId = null;
+                const meta = globalStore.get(this.sessionMetaAtom);
+                globalStore.set(this.sessionMetaAtom, {
+                    ...meta,
+                    totalCost: event.cost_usd ?? meta.totalCost,
+                    sessionId: event.session_id ?? meta.sessionId,
+                });
+                if (event.is_error && event.result) {
+                    globalStore.set(this.errorAtom, event.result);
+                }
+            },
+
+            onError: (errorType: string, message: string) => {
+                globalStore.set(this.errorAtom, `${errorType}: ${message}`);
+            },
+        };
     }
 
     // --- Terminal connection ---
@@ -119,7 +274,6 @@ export class ClaudeCodeViewModel implements ViewModel {
 
     private handleTerminalData(msg: any): void {
         if (msg.fileop === "truncate") {
-            // Terminal was cleared - reset parser buffer
             this.parser.reset();
             return;
         }
@@ -127,107 +281,6 @@ export class ClaudeCodeViewModel implements ViewModel {
             const bytes = base64ToArray(msg.data64);
             const text = new TextDecoder().decode(bytes);
             this.parser.feedData(text);
-        }
-    }
-
-    // --- Event handling ---
-
-    handleEvent(event: any): void {
-        switch (event.type) {
-            case "system":
-                this.handleSystemEvent(event);
-                break;
-            case "assistant":
-                this.handleAssistantEvent(event);
-                break;
-            case "result":
-                this.handleResultEvent(event);
-                break;
-        }
-    }
-
-    private handleSystemEvent(event: any): void {
-        const meta = globalStore.get(this.sessionMetaAtom);
-        const updates: Partial<SessionMeta> = {};
-        if (event.model) updates.model = event.model;
-        if (event.session_id) updates.sessionId = event.session_id;
-        if (Object.keys(updates).length > 0) {
-            globalStore.set(this.sessionMetaAtom, { ...meta, ...updates });
-        }
-    }
-
-    private handleAssistantEvent(event: any): void {
-        globalStore.set(this.isStreamingAtom, true);
-        const msg = event.message;
-        if (!msg?.content) return;
-
-        // Build blocks from content
-        const newBlocks: TurnBlock[] = [];
-        for (const block of msg.content) {
-            if (block.type === "text" && block.text) {
-                newBlocks.push({ type: "text", text: block.text });
-            } else if (block.type === "tool_use") {
-                newBlocks.push({
-                    type: "tool",
-                    toolId: block.id,
-                    name: block.name,
-                    input: block.input,
-                    isCollapsed: true,
-                });
-            }
-        }
-
-        if (newBlocks.length === 0) return;
-
-        const turns = globalStore.get(this.turnsAtom);
-        if (this.currentTurnId) {
-            // Append to current turn
-            const updated = turns.map((t) => {
-                if (t.id === this.currentTurnId) {
-                    return { ...t, blocks: [...t.blocks, ...newBlocks] };
-                }
-                return t;
-            });
-            globalStore.set(this.turnsAtom, updated);
-        } else {
-            // No active turn (Claude responded to something before our UI loaded)
-            // Create a synthetic turn
-            const turnId = crypto.randomUUID();
-            this.currentTurnId = turnId;
-            globalStore.set(this.turnsAtom, [
-                ...turns,
-                {
-                    id: turnId,
-                    userInput: "(previous session)",
-                    blocks: newBlocks,
-                    timestamp: Date.now(),
-                },
-            ]);
-        }
-
-        // Update token counts from usage
-        if (msg.usage) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, {
-                ...meta,
-                inputTokens: meta.inputTokens + (msg.usage.input_tokens ?? 0),
-                outputTokens: meta.outputTokens + (msg.usage.output_tokens ?? 0),
-                model: msg.model ?? meta.model,
-            });
-        }
-    }
-
-    private handleResultEvent(event: any): void {
-        globalStore.set(this.isStreamingAtom, false);
-        this.currentTurnId = null;
-        if (event.total_cost != null || event.usage != null) {
-            const meta = globalStore.get(this.sessionMetaAtom);
-            globalStore.set(this.sessionMetaAtom, {
-                ...meta,
-                totalCost: event.total_cost ?? meta.totalCost,
-                inputTokens: event.usage?.input_tokens ?? meta.inputTokens,
-                outputTokens: event.usage?.output_tokens ?? meta.outputTokens,
-            });
         }
     }
 

@@ -5,8 +5,8 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Markdown } from "@/app/element/markdown";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getFileSubject } from "@/app/store/wps";
-import { globalStore, WOS } from "@/store/global";
+import { getFileSubject, waveEventSubscribe } from "@/app/store/wps";
+import { atoms, globalStore, WOS } from "@/store/global";
 import { base64ToArray, stringToBase64 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import clsx from "clsx";
@@ -54,7 +54,10 @@ export class ClaudeCodeViewModel implements ViewModel {
     private currentTurnId: string | null = null;
     private fileSubjectSub: Subscription | null = null;
     private fileSubjectRef: any = null;
+    private procStatusUnsub: (() => void) | null = null;
     errorAtom: PrimitiveAtom<string>;
+    shellProcStatusAtom: PrimitiveAtom<string>; // "init" | "running" | "done"
+    shellProcExitCodeAtom: PrimitiveAtom<number>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
@@ -78,6 +81,22 @@ export class ClaudeCodeViewModel implements ViewModel {
         this.showTerminalAtom = atom(false);
         this.connectedAtom = atom(false);
         this.errorAtom = atom("");
+        this.shellProcStatusAtom = atom("init");
+        this.shellProcExitCodeAtom = atom(0);
+
+        // Subscribe to controller status events (process lifecycle)
+        this.procStatusUnsub = waveEventSubscribe({
+            eventType: "controllerstatus",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                const rts = event.data as BlockControllerRuntimeStatus;
+                globalStore.set(this.shellProcStatusAtom, rts.shellprocstatus ?? "init");
+                globalStore.set(this.shellProcExitCodeAtom, rts.shellprocexitcode);
+                if (rts.shellprocstatus === "running") {
+                    globalStore.set(this.connectedAtom, true);
+                }
+            },
+        });
 
         // Header text: show model + tokens + cost
         this.viewText = atom((get) => {
@@ -355,6 +374,18 @@ export class ClaudeCodeViewModel implements ViewModel {
         });
     }
 
+    restartProcess(): void {
+        globalStore.set(this.shellProcStatusAtom, "init");
+        RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: true,
+        }).catch((e: any) => {
+            console.error("[claudecode] Failed to restart process:", e);
+            globalStore.set(this.errorAtom, "Failed to restart claude process");
+        });
+    }
+
     toggleToolCollapse(turnId: string, toolId: string): void {
         const turns = globalStore.get(this.turnsAtom);
         const updated = turns.map((t) => {
@@ -384,6 +415,10 @@ export class ClaudeCodeViewModel implements ViewModel {
         if (this.fileSubjectRef) {
             this.fileSubjectRef.release();
             this.fileSubjectRef = null;
+        }
+        if (this.procStatusUnsub) {
+            this.procStatusUnsub();
+            this.procStatusUnsub = null;
         }
         this.parser.reset();
     }
@@ -688,9 +723,20 @@ const InputLine = memo(({ model }: { model: ClaudeCodeViewModel }) => {
             if (e.key === "Escape") {
                 model.interrupt();
             }
+            if (e.key === "l" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                model.resetSession();
+            }
         },
         [handleSend, model]
     );
+
+    // Auto-focus input when not streaming
+    useEffect(() => {
+        if (!isStreaming && textareaRef.current) {
+            textareaRef.current.focus();
+        }
+    }, [isStreaming]);
 
     // Auto-expand textarea
     useEffect(() => {
@@ -711,6 +757,7 @@ const InputLine = memo(({ model }: { model: ClaudeCodeViewModel }) => {
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={isStreaming}
+                placeholder="Ask Claude..."
                 rows={1}
                 spellCheck={false}
             />
@@ -724,11 +771,21 @@ const StatusBar = memo(({ model }: { model: ClaudeCodeViewModel }) => {
     const meta = useAtomValue(model.sessionMetaAtom);
     const isStreaming = useAtomValue(model.isStreamingAtom);
     const showTerminal = useAtomValue(model.showTerminalAtom);
+    const procStatus = useAtomValue(model.shellProcStatusAtom);
+    const exitCode = useAtomValue(model.shellProcExitCodeAtom);
+
+    const statusText = procStatus === "done"
+        ? `\u25cf exited (${exitCode})`
+        : isStreaming
+            ? "\u25cf streaming"
+            : procStatus === "running"
+                ? "\u25cb idle"
+                : "\u25cb init";
 
     return (
         <div className="cc-statusbar">
-            <span className="cc-status-item">
-                {isStreaming ? "\u25cf streaming" : "\u25cb idle"}
+            <span className={clsx("cc-status-item", { "cc-status-exited": procStatus === "done" })}>
+                {statusText}
             </span>
             {meta.model && <span className="cc-status-item">{meta.model}</span>}
             {meta.inputTokens + meta.outputTokens > 0 && (
@@ -740,6 +797,11 @@ const StatusBar = memo(({ model }: { model: ClaudeCodeViewModel }) => {
                 <span className="cc-status-item">${meta.totalCost.toFixed(3)}</span>
             )}
             <span className="cc-status-spacer" />
+            {procStatus === "done" && (
+                <button className="cc-status-btn cc-restart-btn" onClick={() => model.restartProcess()}>
+                    [restart]
+                </button>
+            )}
             <button className="cc-status-btn" onClick={() => model.toggleTerminal()}>
                 {showTerminal ? "[chat]" : "[term]"}
             </button>

@@ -9,6 +9,7 @@
 // the camelCase keys sent by TypeScript invoke() calls.
 
 use serde_json::Value;
+use tauri::{Emitter, Manager};
 
 #[tauri::command(rename_all = "camelCase")]
 pub fn show_context_menu(workspace_id: String, menu: Option<Value>) {

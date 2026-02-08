@@ -11,5 +11,5 @@ use crate::state::AppState;
 /// query parameter).
 #[tauri::command]
 pub fn get_auth_key(state: tauri::State<'_, AppState>) -> String {
-    state.auth_key.clone()
+    state.auth_key.lock().unwrap().clone()
 }

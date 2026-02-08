@@ -35,10 +35,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .map_err(|e| format!("Failed to create config dir: {}", e))?;
 
     // Get auth key from app state
-    let auth_key = {
-        let state = app.state::<crate::state::AppState>();
-        state.auth_key.clone()
-    };
+    let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
 
     let shell = app.shell();
 

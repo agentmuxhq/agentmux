@@ -4,7 +4,8 @@ use std::sync::Mutex;
 /// Replaces the scattered state across emain/*.ts files.
 pub struct AppState {
     /// Auth key for backend communication (replaces emain/authkey.ts)
-    pub auth_key: String,
+    /// Can be updated after querying database for existing client
+    pub auth_key: Mutex<String>,
 
     /// Backend (wavemuxsrv) connection endpoints
     pub backend_endpoints: Mutex<BackendEndpoints>,
@@ -40,7 +41,7 @@ pub struct BackendEndpoints {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            auth_key: uuid::Uuid::new_v4().to_string(),
+            auth_key: Mutex::new(uuid::Uuid::new_v4().to_string()),
             backend_endpoints: Mutex::new(BackendEndpoints::default()),
             sidecar_child: Mutex::new(None),
             zoom_factor: Mutex::new(1.0),

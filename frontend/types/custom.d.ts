@@ -95,6 +95,13 @@ declare global {
         setWebviewFocus: (focusedId: number) => void; // webview-focus, focusedId is the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void; // register-global-webview-keys
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void; // control-shift-state-update
+        // Window management (multi-window support)
+        openNewWindow: () => Promise<string>; // open-new-window, returns window label
+        closeWindow: (label?: string) => Promise<void>; // close-window
+        getWindowLabel: () => Promise<string>; // get-window-label
+        isMainWindow: () => Promise<boolean>; // is-main-window
+        listWindows: () => Promise<string[]>; // list-windows
+        focusWindow: (label: string) => Promise<void>; // focus-window
         createWorkspace: () => void; // create-workspace
         switchWorkspace: (workspaceId: string) => void; // switch-workspace
         deleteWorkspace: (workspaceId: string) => void; // delete-workspace

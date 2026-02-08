@@ -134,6 +134,78 @@ async function initTauriWave(): Promise<void> {
     }
 }
 
+/**
+ * Initialize a new (non-main) Tauri window by creating new backend objects.
+ * Unlike initTauriWave() which reuses existing Window/Workspace/Tab,
+ * this creates a fresh set for the new window.
+ */
+async function initTauriNewWindow(): Promise<void> {
+    try {
+        getApi().sendLog("[initTauriNewWindow] Creating new backend objects");
+
+        // Get client data (reuse existing client)
+        const clientData = await ClientService.GetClientData();
+        getApi().sendLog(`[initTauriNewWindow] Client ID: ${clientData.oid}`);
+
+        // Create NEW window (not reuse)
+        const newWindow = await WindowService.CreateWindow(null, "");
+        getApi().sendLog(`[initTauriNewWindow] Created Window ID: ${newWindow.oid}`);
+
+        // Get the workspace that was auto-created with the window
+        const workspace = await WorkspaceService.GetWorkspace(newWindow.workspaceid);
+        if (!workspace) {
+            throw new Error("Workspace not created with new window");
+        }
+        getApi().sendLog(`[initTauriNewWindow] Workspace ID: ${workspace.oid}`);
+
+        // Get the active tab ID from the workspace
+        const tabId = workspace.activetabid ||
+                     workspace.tabids?.[0] ||
+                     workspace.pinnedtabids?.[0] ||
+                     "";
+
+        if (!tabId) {
+            throw new Error("No tab found in new workspace");
+        }
+        getApi().sendLog(`[initTauriNewWindow] Tab ID: ${tabId}`);
+
+        // Create complete init options with NEW IDs
+        const initOpts: WaveInitOpts = {
+            clientId: clientData.oid,
+            windowId: newWindow.oid,
+            tabId: tabId,
+            activate: true,
+            primaryTabStartup: false, // Not primary (main window is primary)
+        };
+
+        getApi().sendLog("[initTauriNewWindow] Initializing wave with new objects");
+
+        // Initialize wave (this will render the UI)
+        await initWaveWrap(initOpts);
+
+        getApi().sendLog("[initTauriNewWindow] ✅ New window initialized successfully");
+
+        // Show the window now that it's initialized
+        try {
+            const { getCurrent } = await import("@tauri-apps/api/window");
+            const currentWindow = getCurrent();
+            await currentWindow.show();
+            await currentWindow.setFocus();
+            getApi().sendLog("[initTauriNewWindow] Window shown and focused");
+        } catch (showError) {
+            console.warn("[initTauriNewWindow] Failed to show window:", showError);
+        }
+
+    } catch (error) {
+        console.error("[initTauriNewWindow] Initialization failed:", error);
+        getApi().sendLog(`[initTauriNewWindow] ❌ Error: ${error}`);
+        pushFlashError("Failed to initialize new window: " + String(error));
+        // Show error UI instead of grey screen
+        document.body.style.visibility = "visible";
+        document.body.style.opacity = "1";
+    }
+}
+
 async function initBare() {
     getApi().sendLog("Init Bare");
     document.body.style.visibility = "hidden";
@@ -169,7 +241,19 @@ async function initBare() {
         if (isTauri) {
             getApi().sendLog("Starting Tauri initialization");
             try {
-                await initTauriWave();
+                // Check if this is a new window or the main window
+                const isMain = await getApi().isMainWindow();
+                getApi().sendLog(`Window type: ${isMain ? "main" : "new window"}`);
+
+                if (isMain) {
+                    // Main window: standard initialization
+                    await initTauriWave();
+                } else {
+                    // New window: create backend objects first
+                    const label = await getApi().getWindowLabel();
+                    getApi().sendLog(`Initializing new window: ${label}`);
+                    await initTauriNewWindow();
+                }
             } catch (error) {
                 console.error("[initBare] Tauri initialization failed:", error);
                 getApi().sendLog(`Tauri init error: ${error}`);

@@ -71,8 +71,14 @@ pub fn close_tab(workspace_id: String, tab_id: String) {
 }
 
 #[tauri::command]
-pub fn set_window_init_status(status: String) {
-    tracing::debug!("stub: set_window_init_status status={}", status);
+pub fn set_window_init_status(
+    status: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) {
+    tracing::debug!("set_window_init_status status={}", status);
+
+    // Just store the status - frontend will handle initialization
+    *state.window_init_status.lock().unwrap() = status;
 }
 
 #[tauri::command(rename_all = "camelCase")]

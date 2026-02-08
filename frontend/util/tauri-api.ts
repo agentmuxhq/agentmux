@@ -9,7 +9,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { open as openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 // Tauri injects this global at build time via TAURI_ENV_APP_VERSION
 declare const __TAURI_APP_VERSION__: string | undefined;
@@ -36,6 +36,29 @@ let cachedValues: {
  * Must be called before the React app renders.
  */
 export async function initTauriApi(): Promise<void> {
+    // Try fetching backend endpoints first (in case backend is already ready)
+    // If it fails, wait for the backend-ready event
+    console.log("[tauri-api] Checking if backend is ready...");
+    let backendEndpoints: { ws: string; web: string };
+
+    try {
+        backendEndpoints = await invoke<{ ws: string; web: string }>("get_backend_endpoints");
+        console.log("[tauri-api] Backend already ready:", backendEndpoints);
+    } catch (e) {
+        console.log("[tauri-api] Backend not ready yet, waiting for backend-ready event...");
+        backendEndpoints = await new Promise<{ ws: string; web: string }>((resolve) => {
+            listen<{ ws: string; web: string }>("backend-ready", (event) => {
+                console.log("[tauri-api] Backend ready:", event.payload);
+                resolve(event.payload);
+            });
+        });
+    }
+    console.log("[tauri-api] Using backend endpoints:", backendEndpoints);
+
+    // Set endpoints as window globals for getEnv() to find
+    (window as any).__WAVE_SERVER_WS_ENDPOINT__ = backendEndpoints.ws;
+    (window as any).__WAVE_SERVER_WEB_ENDPOINT__ = backendEndpoints.web;
+
     const [
         authKey,
         isDev,
@@ -111,8 +134,11 @@ export function buildTauriApi(): ElectronApi {
         getAboutModalDetails: () => {
             // Fetch dynamically from Rust backend on first call
             // For the sync return, use cached version from invoke
+            const version = typeof __TAURI_APP_VERSION__ !== "undefined"
+                ? __TAURI_APP_VERSION__
+                : cachedValues?.aboutDetails?.version ?? "0.17.17-dev";
             return {
-                version: __TAURI_APP_VERSION__ ?? "unknown",
+                version,
                 buildTime: 0,
             } as AboutModalDetails;
         },

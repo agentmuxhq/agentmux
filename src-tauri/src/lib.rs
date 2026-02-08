@@ -59,6 +59,7 @@ pub fn run() {
             commands::window::get_cursor_point,
             // Backend commands
             commands::backend::get_backend_endpoints,
+            commands::backend::get_wave_init_opts,
             commands::backend::fe_log,
             // Stub commands (to be implemented in later phases)
             commands::stubs::show_context_menu,
@@ -105,6 +106,15 @@ pub fn run() {
                 }
             }
 
+            // Set window title with version
+            if let Some(window) = handle.get_webview_window("main") {
+                let version = env!("CARGO_PKG_VERSION");
+                let title = format!("WaveMux {}", version);
+                if let Err(e) = window.set_title(&title) {
+                    tracing::error!("Failed to set window title: {}", e);
+                }
+            }
+
             // Spawn the Go backend as a sidecar
             tauri::async_runtime::spawn(async move {
                 match sidecar::spawn_backend(&handle).await {
@@ -116,6 +126,12 @@ pub fn run() {
                         endpoints.web_endpoint = backend_state.web_endpoint;
                         tracing::info!("Backend ready: ws={}, web={}",
                             endpoints.ws_endpoint, endpoints.web_endpoint);
+
+                        // TODO: Query backend RPC for client data instead of database
+                        // For now, let backend create client/window/tab on first connection
+                        // The frontend will need to query the backend for these IDs
+                        tracing::info!("Backend will create client/window/tab on first connection");
+                        tracing::info!("Frontend should call backend RPC to get initialized client data");
 
                         // Emit event to frontend that backend is ready
                         if let Some(window) = handle.get_webview_window("main") {

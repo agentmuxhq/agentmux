@@ -11,6 +11,7 @@ import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { globalStore } from "./jotaiStore";
 import { ObjectService } from "./services";
+import { getApi } from "./global";
 
 type WaveObjectDataItemType<T extends WaveObj> = {
     value: T;
@@ -91,7 +92,7 @@ function wpsSubscribeToObject(oref: string): () => void {
 function callBackendService(service: string, method: string, args: any[], noUIContext?: boolean): Promise<any> {
     const startTs = Date.now();
     let uiContext: UIContext = null;
-    if (!noUIContext && globalThis.window != null) {
+    if (!noUIContext && globalThis.window != null && (window as any).globalAtoms) {
         uiContext = globalStore.get(((window as any).globalAtoms as GlobalAtomsType).uiContext);
     }
     const waveCall: WebCallType = {
@@ -105,6 +106,16 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     const usp = new URLSearchParams();
     usp.set("service", service);
     usp.set("method", method);
+
+    // For Tauri: add auth key as query parameter (Electron injects via session.webRequest)
+    // Only in browser context (not Electron main process)
+    if (globalThis.window != null) {
+        const authKey = getApi()?.getAuthKey?.();
+        if (authKey) {
+            usp.set("authkey", authKey);
+        }
+    }
+
     const url = getWebServerEndpoint() + "/wave/service?" + usp.toString();
     const fetchPromise = fetch(url, {
         method: "POST",

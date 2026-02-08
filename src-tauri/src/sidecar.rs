@@ -23,9 +23,20 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .app_data_dir()
         .map_err(|e| format!("Failed to get data dir: {}", e))?;
 
-    // Ensure data directory exists
+    let config_dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("Failed to get config dir: {}", e))?;
+
+    // Ensure directories exist
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir: {}", e))?;
+    std::fs::create_dir_all(&config_dir)
+        .map_err(|e| format!("Failed to create config dir: {}", e))?;
+
+    // Get auth key from app state
+    let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
+    tracing::info!("Spawning wavemuxsrv with auth key: {}", &auth_key[..8]);
 
     let shell = app.shell();
 
@@ -38,6 +49,12 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
             "--wavedata",
             &data_dir.to_string_lossy(),
         ])
+        .env("WAVETERM_AUTH_KEY", &auth_key)
+        .env("WAVETERM_CONFIG_HOME", &config_dir.to_string_lossy().to_string())
+        .env("WAVETERM_DATA_HOME", &data_dir.to_string_lossy().to_string())
+        .env("WAVETERM_DEV", if cfg!(debug_assertions) { "1" } else { "" })
+        .env("WCLOUD_ENDPOINT", "https://api.waveterm.dev/central")
+        .env("WCLOUD_WS_ENDPOINT", "wss://wsapi.waveterm.dev/")
         .spawn()
         .map_err(|e| format!("Failed to spawn wavemuxsrv: {}", e))?;
 
@@ -79,13 +96,13 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                             let event_data = &l[14..];
                             handle_backend_event(&app_handle, event_data);
                         } else {
-                            tracing::debug!("[wavemuxsrv] {}", l);
+                            tracing::info!("[wavemuxsrv] {}", l);
                         }
                     }
                 }
                 CommandEvent::Stdout(line) => {
                     let line = String::from_utf8_lossy(&line);
-                    tracing::debug!("[wavemuxsrv stdout] {}", line.trim());
+                    tracing::info!("[wavemuxsrv stdout] {}", line.trim());
                 }
                 CommandEvent::Error(err) => {
                     tracing::error!("[wavemuxsrv error] {}", err);

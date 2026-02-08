@@ -17,14 +17,12 @@ pub fn toggle_devtools(window: tauri::Window) {
 
     #[cfg(not(debug_assertions))]
     {
-        tracing::warn!(
-            "Devtools toggle requested in release build for window: {}",
-            window.label()
-        );
-        // Optionally allow in release if needed
+        // Devtools in release builds is intentional for debugging support
         if window.is_devtools_open() {
+            tracing::info!("Closing devtools for window: {} (release build)", window.label());
             window.close_devtools();
         } else {
+            tracing::info!("Opening devtools for window: {} (release build)", window.label());
             window.open_devtools();
         }
     }

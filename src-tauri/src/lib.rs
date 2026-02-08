@@ -67,6 +67,9 @@ pub fn run() {
             commands::backend::get_backend_endpoints,
             commands::backend::get_wave_init_opts,
             commands::backend::fe_log,
+            // Devtools commands
+            commands::devtools::toggle_devtools,
+            commands::devtools::is_devtools_open,
             // Stub commands (to be implemented in later phases)
             commands::stubs::show_context_menu,
             commands::stubs::download_file,

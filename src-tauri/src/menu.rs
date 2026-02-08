@@ -213,11 +213,12 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // TODO: Implement cache clearing
         }
         "toggle-devtools" => {
-            #[cfg(debug_assertions)]
             if let Some(w) = window {
                 if w.is_devtools_open() {
+                    tracing::info!("Closing devtools for window: {}", w.label());
                     let _ = w.close_devtools();
                 } else {
+                    tracing::info!("Opening devtools for window: {}", w.label());
                     let _ = w.open_devtools();
                 }
             }

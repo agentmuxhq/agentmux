@@ -5,9 +5,9 @@ import { wpsReconnectHandler } from "@/app/store/wps";
 import { TabClient } from "@/app/store/tabrpcclient";
 import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
-import { getApi } from "@/util/util";
 import { addWSReconnectHandler, globalWS, initGlobalWS, WSControl } from "./ws";
 import { DefaultRouter, setDefaultRouter } from "./wshrpcutil-base";
+import { getApi } from "@/store/global";
 
 let TabRpcClient: TabClient;
 

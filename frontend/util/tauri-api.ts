@@ -36,6 +36,15 @@ let cachedValues: {
  * Must be called before the React app renders.
  */
 export async function initTauriApi(): Promise<void> {
+    // Fetch backend endpoints first - CRITICAL for WebSocket connection
+    console.log("[tauri-api] Fetching backend endpoints...");
+    const backendEndpoints = await invoke<{ ws: string; web: string }>("get_backend_endpoints");
+    console.log("[tauri-api] Backend endpoints:", backendEndpoints);
+
+    // Set endpoints as window globals for getEnv() to find
+    (window as any).__WAVE_SERVER_WS_ENDPOINT__ = backendEndpoints.ws;
+    (window as any).__WAVE_SERVER_WEB_ENDPOINT__ = backendEndpoints.web;
+
     const [
         authKey,
         isDev,

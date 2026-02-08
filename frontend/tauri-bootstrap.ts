@@ -51,8 +51,14 @@ async function bootstrap() {
 
         // Now dynamically import wave.ts
         log("INFO", "Loading main application (wave.ts)...");
-        await import("./wave");
-        log("INFO", "✅ Main application loaded successfully");
+        try {
+            await import("./wave");
+            log("INFO", "✅ Main application loaded successfully");
+        } catch (waveError) {
+            log("ERROR", "Failed to load wave.ts:", waveError);
+            log("ERROR", "Wave error stack:", (waveError as Error).stack);
+            throw waveError;
+        }
 
     } catch (error) {
         log("ERROR", "❌ Bootstrap failed:", error);

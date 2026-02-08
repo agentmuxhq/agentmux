@@ -33,10 +33,19 @@ import { setKeyUtilPlatform } from "@/util/keyutil";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
+console.log("[wave.ts] Module loading...");
+console.log("[wave.ts] window.api available:", !!(window as any).api);
+
 const platform = getApi().getPlatform();
+console.log("[wave.ts] Got platform:", platform);
+
 const appVersion = getApi().getAboutModalDetails().version;
+console.log("[wave.ts] Got app version:", appVersion);
+
 document.title = `Wave Terminal ${appVersion}`;
 let savedInitOpts: WaveInitOpts = null;
+
+console.log("[wave.ts] Module initialization complete");
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;

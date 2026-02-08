@@ -19,6 +19,12 @@ function getApi(): ElectronApi {
  * @returns The value of the environment variable or null if not present.
  */
 export function getEnv(paramName: string): string {
+    // In Tauri, check window globals first (set by initTauriApi)
+    const windowGlobalName = `__${paramName}__`;
+    if ((window as any)[windowGlobalName] !== undefined) {
+        return (window as any)[windowGlobalName];
+    }
+
     const win = getWindow();
     if (win != null) {
         return getApi().getEnv(paramName);

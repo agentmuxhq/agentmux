@@ -36,6 +36,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
 
     // Get auth key from app state
     let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
+    tracing::info!("Spawning wavemuxsrv with auth key: {}", &auth_key[..8]);
 
     let shell = app.shell();
 

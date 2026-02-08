@@ -17,19 +17,27 @@ const AuthKeyHeader = "X-AuthKey"
 func ValidateIncomingRequest(r *http.Request) error {
 	// Check for auth key in header first (Electron, Node.js WebSocket)
 	reqAuthKey := r.Header.Get(AuthKeyHeader)
+	authSource := "header"
 
 	// Fallback to query parameter (Tauri browser WebSocket)
 	// Browser WebSocket API doesn't support custom headers, so we use query param
 	if reqAuthKey == "" {
 		reqAuthKey = r.URL.Query().Get("authkey")
+		authSource = "query"
 	}
 
+	expectedKey := GetAuthKey()
+
 	if reqAuthKey == "" {
+		fmt.Printf("[authkey] REJECT: no auth key in %s (URL: %s)\n", authSource, r.URL.String())
 		return fmt.Errorf("no auth key provided (checked header and query param)")
 	}
-	if reqAuthKey != GetAuthKey() {
+	if reqAuthKey != expectedKey {
+		fmt.Printf("[authkey] REJECT: key mismatch via %s - got %.8s... expected %.8s...\n",
+			authSource, reqAuthKey, expectedKey)
 		return fmt.Errorf("auth key is invalid")
 	}
+	fmt.Printf("[authkey] ACCEPT: valid key via %s\n", authSource)
 	return nil
 }
 

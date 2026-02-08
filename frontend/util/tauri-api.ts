@@ -36,10 +36,24 @@ let cachedValues: {
  * Must be called before the React app renders.
  */
 export async function initTauriApi(): Promise<void> {
-    // Fetch backend endpoints first - CRITICAL for WebSocket connection
-    console.log("[tauri-api] Fetching backend endpoints...");
-    const backendEndpoints = await invoke<{ ws: string; web: string }>("get_backend_endpoints");
-    console.log("[tauri-api] Backend endpoints:", backendEndpoints);
+    // Try fetching backend endpoints first (in case backend is already ready)
+    // If it fails, wait for the backend-ready event
+    console.log("[tauri-api] Checking if backend is ready...");
+    let backendEndpoints: { ws: string; web: string };
+
+    try {
+        backendEndpoints = await invoke<{ ws: string; web: string }>("get_backend_endpoints");
+        console.log("[tauri-api] Backend already ready:", backendEndpoints);
+    } catch (e) {
+        console.log("[tauri-api] Backend not ready yet, waiting for backend-ready event...");
+        backendEndpoints = await new Promise<{ ws: string; web: string }>((resolve) => {
+            listen<{ ws: string; web: string }>("backend-ready", (event) => {
+                console.log("[tauri-api] Backend ready:", event.payload);
+                resolve(event.payload);
+            });
+        });
+    }
+    console.log("[tauri-api] Using backend endpoints:", backendEndpoints);
 
     // Set endpoints as window globals for getEnv() to find
     (window as any).__WAVE_SERVER_WS_ENDPOINT__ = backendEndpoints.ws;

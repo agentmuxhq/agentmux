@@ -30,8 +30,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     // Get auth key from app state
     let auth_key = {
         let state = app.state::<crate::state::AppState>();
-        let auth = state.auth_key.lock().unwrap();
-        auth.clone()
+        state.auth_key.clone()
     };
 
     let shell = app.shell();

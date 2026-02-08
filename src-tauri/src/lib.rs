@@ -4,6 +4,7 @@ mod heartbeat;
 mod menu;
 mod sidecar;
 mod state;
+mod tray;
 
 use tauri::Emitter;
 use tauri::Manager;
@@ -109,6 +110,11 @@ pub fn run() {
                 Err(e) => {
                     tracing::error!("Failed to build application menu: {}", e);
                 }
+            }
+
+            // Build system tray icon
+            if let Err(e) = tray::build_tray(&handle) {
+                tracing::error!("Failed to build system tray: {}", e);
             }
 
             // Set window title with version

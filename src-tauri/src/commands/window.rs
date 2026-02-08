@@ -5,24 +5,33 @@ use crate::state::AppState;
 
 /// Open a new WaveMux window.
 /// Replaces: ipcMain.on("open-new-window") in emain/emain.ts
+///
+/// Creates a new window that will initialize with a new backend Window/Workspace/Tab.
+/// The frontend detects it's a new window by checking if it's NOT the "main" window,
+/// and triggers backend object creation via initTauriWave().
 #[tauri::command]
-pub async fn open_new_window(app: tauri::AppHandle) -> Result<(), String> {
-    let label = format!("window-{}", uuid::Uuid::new_v4().simple());
+pub async fn open_new_window(app: tauri::AppHandle) -> Result<String, String> {
+    let window_id = uuid::Uuid::new_v4();
+    let label = format!("window-{}", window_id.simple());
+    let version = env!("CARGO_PKG_VERSION");
+    let title = format!("WaveMux {}", version);
 
     tauri::WebviewWindowBuilder::new(
         &app,
         &label,
         tauri::WebviewUrl::App("index.html".into()),
     )
-    .title("WaveMux")
+    .title(&title)
     .inner_size(1200.0, 800.0)
     .min_inner_size(400.0, 300.0)
     .decorations(false)
     .transparent(true)
+    .visible(false) // Start hidden, show after initialization
     .build()
     .map_err(|e| format!("Failed to create window: {}", e))?;
 
-    Ok(())
+    tracing::info!("Created new window with label: {}", label);
+    Ok(label)
 }
 
 /// Get the current zoom factor.
@@ -68,4 +77,61 @@ pub fn get_cursor_point(window: tauri::Window) -> Result<serde_json::Value, Stri
         "x": position.x,
         "y": position.y,
     }))
+}
+
+/// Close a specific window by label.
+/// If no label provided, closes the calling window.
+#[tauri::command]
+pub fn close_window(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    label: Option<String>,
+) -> Result<(), String> {
+    let target_label = label.unwrap_or_else(|| window.label().to_string());
+
+    if let Some(target_window) = app.get_webview_window(&target_label) {
+        tracing::info!("Closing window: {}", target_label);
+        target_window
+            .close()
+            .map_err(|e| format!("Failed to close window: {}", e))?;
+    } else {
+        return Err(format!("Window not found: {}", target_label));
+    }
+
+    Ok(())
+}
+
+/// Get the current window label.
+#[tauri::command]
+pub fn get_window_label(window: tauri::Window) -> String {
+    window.label().to_string()
+}
+
+/// Check if this is the main window.
+#[tauri::command]
+pub fn is_main_window(window: tauri::Window) -> bool {
+    window.label() == "main"
+}
+
+/// List all open window labels.
+#[tauri::command]
+pub fn list_windows(app: tauri::AppHandle) -> Vec<String> {
+    app.webview_windows()
+        .keys()
+        .map(|k| k.to_string())
+        .collect()
+}
+
+/// Focus a specific window by label.
+#[tauri::command]
+pub fn focus_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window(&label) {
+        window
+            .set_focus()
+            .map_err(|e| format!("Failed to focus window: {}", e))?;
+        tracing::info!("Focused window: {}", label);
+    } else {
+        return Err(format!("Window not found: {}", label));
+    }
+    Ok(())
 }

@@ -54,6 +54,11 @@ pub fn run() {
             commands::auth::get_auth_key,
             // Window commands
             commands::window::open_new_window,
+            commands::window::close_window,
+            commands::window::get_window_label,
+            commands::window::is_main_window,
+            commands::window::list_windows,
+            commands::window::focus_window,
             commands::window::get_zoom_factor,
             commands::window::set_zoom_factor,
             commands::window::get_cursor_point,

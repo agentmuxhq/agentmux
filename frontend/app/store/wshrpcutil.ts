@@ -5,6 +5,7 @@ import { wpsReconnectHandler } from "@/app/store/wps";
 import { TabClient } from "@/app/store/tabrpcclient";
 import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
+import { getApi } from "@/util/util";
 import { addWSReconnectHandler, globalWS, initGlobalWS, WSControl } from "./ws";
 import { DefaultRouter, setDefaultRouter } from "./wshrpcutil-base";
 
@@ -16,7 +17,14 @@ function initWshrpc(tabId: string): WSControl {
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    initGlobalWS(getWSServerEndpoint(), tabId, handleFn);
+
+    // For Tauri: Get auth key from API and pass it to WebSocket
+    // Browser WebSocket doesn't support custom headers, so wsutil.ts will
+    // append it as a query parameter: ws://endpoint?authkey=xxx
+    const authKey = getApi().getAuthKey();
+    const eoOpts = authKey ? { authKey } : undefined;
+
+    initGlobalWS(getWSServerEndpoint(), tabId, handleFn, eoOpts);
     globalWS.connectNow("connectWshrpc");
     TabRpcClient = new TabClient(makeTabRouteId(tabId));
     DefaultRouter.registerRoute(TabRpcClient.routeId, TabRpcClient);

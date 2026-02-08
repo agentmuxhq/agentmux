@@ -18,9 +18,18 @@ type ComboWebSocket = NodeWebSocketType | WebSocket;
 
 function newWebSocket(url: string, headers: { [key: string]: string }): ComboWebSocket {
     if (NodeWebSocket) {
+        // Node.js WebSocket (backend): supports headers
         return new NodeWebSocket(url, { headers });
     } else {
-        return new WebSocket(url);
+        // Browser WebSocket (Electron/Tauri): does not support headers
+        // For Tauri compatibility, append auth key as query parameter
+        // (Electron injects headers via session.webRequest, so this is a no-op for Electron)
+        let finalUrl = url;
+        if (headers && headers["X-AuthKey"]) {
+            const separator = url.includes("?") ? "&" : "?";
+            finalUrl = `${url}${separator}authkey=${encodeURIComponent(headers["X-AuthKey"])}`;
+        }
+        return new WebSocket(finalUrl);
     }
 }
 

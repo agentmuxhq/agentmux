@@ -9,7 +9,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { open as openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 // Tauri injects this global at build time via TAURI_ENV_APP_VERSION
 declare const __TAURI_APP_VERSION__: string | undefined;
@@ -111,8 +111,11 @@ export function buildTauriApi(): ElectronApi {
         getAboutModalDetails: () => {
             // Fetch dynamically from Rust backend on first call
             // For the sync return, use cached version from invoke
+            const version = typeof __TAURI_APP_VERSION__ !== "undefined"
+                ? __TAURI_APP_VERSION__
+                : cachedValues?.aboutDetails?.version ?? "0.17.17-dev";
             return {
-                version: __TAURI_APP_VERSION__ ?? "unknown",
+                version,
                 buildTime: 0,
             } as AboutModalDetails;
         },

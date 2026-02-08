@@ -30,14 +30,21 @@ async function bootstrap() {
         log("INFO", "Location:", window.location.href);
 
         // Check if we're in Tauri
-        const isTauri = !!(window as any).__TAURI__;
-        log("INFO", "Is Tauri:", isTauri);
+        const isTauriRuntime = typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
+        log("INFO", "Is Tauri:", isTauriRuntime);
 
-        if (isTauri) {
+        if (isTauriRuntime) {
             log("INFO", "Initializing Tauri API...");
             await setupTauriApi();
             log("INFO", "✅ Tauri API initialized successfully");
             log("INFO", "window.api available:", !!(window as any).api);
+
+            // Verify critical methods exist
+            const api = (window as any).api;
+            log("INFO", "API methods check:");
+            log("INFO", "  - getAuthKey:", typeof api?.getAuthKey);
+            log("INFO", "  - onContextMenuClick:", typeof api?.onContextMenuClick);
+            log("INFO", "  - showContextMenu:", typeof api?.showContextMenu);
         } else {
             log("INFO", "Running in Electron mode, skipping Tauri init");
         }

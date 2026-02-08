@@ -67,24 +67,58 @@ function updateZoomFactor(zoomFactor: number) {
 }
 
 async function initBare() {
+    console.log("[initBare] Starting...");
     getApi().sendLog("Init Bare");
+    console.log("[initBare] Hiding body...");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
+    console.log("[initBare] Registering onWaveInit...");
     getApi().onWaveInit(initWaveWrap);
+    console.log("[initBare] Setting platform...");
     setKeyUtilPlatform(platform);
+    console.log("[initBare] Loading fonts...");
     loadFonts();
+    console.log("[initBare] Setting zoom...");
     updateZoomFactor(getApi().getZoomFactor());
     getApi().onZoomFactorChange((zoomFactor) => {
         updateZoomFactor(zoomFactor);
     });
+    console.log("[initBare] Waiting for fonts...");
     document.fonts.ready.then(() => {
-        console.log("Init Bare Done");
+        console.log("[initBare] Fonts ready!");
+        getApi().sendLog("Init Bare Done");
+        console.log("[initBare] Setting window status to ready...");
         getApi().setWindowInitStatus("ready");
+
+        // TEMPORARY: Manually trigger wave-init for Tauri testing
+        // TODO: Implement proper Tauri window state management (Phase 8)
+        if (typeof (window as any).__TAURI_INTERNALS__ !== "undefined") {
+            console.log("[initBare] TAURI: Manually triggering wave-init with dummy IDs");
+            setTimeout(() => {
+                const dummyInitOpts: WaveInitOpts = {
+                    tabId: "dummy-tab-001",
+                    clientId: "dummy-client-001",
+                    windowId: "dummy-window-001",
+                    activate: true,
+                    primaryTabStartup: true
+                };
+                initWaveWrap(dummyInitOpts);
+            }, 100);
+        }
+
+        console.log("[initBare] Complete!");
     });
+    console.log("[initBare] Setup complete, fonts loading async...");
 }
 
-document.addEventListener("DOMContentLoaded", initBare);
+// Handle both cases: DOM not yet loaded, or already loaded (Tauri dynamic import)
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initBare);
+} else {
+    // DOM already loaded (e.g., when dynamically imported from tauri-bootstrap)
+    initBare();
+}
 
 async function initWaveWrap(initOpts: WaveInitOpts) {
     try {

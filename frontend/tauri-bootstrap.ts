@@ -13,8 +13,8 @@ const log = (level: string, ...args: any[]) => {
 
     // Also log to backend if available
     try {
-        if ((window as any).api?.feLog) {
-            (window as any).api.feLog(`[${level}] ${args.join(' ')}`);
+        if ((window as any).api?.sendLog) {
+            (window as any).api.sendLog(`[${level}] ${args.join(' ')}`);
         }
     } catch (e) {
         // Ignore if backend not ready

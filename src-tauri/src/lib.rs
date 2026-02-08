@@ -1,4 +1,6 @@
 mod commands;
+mod crash;
+mod heartbeat;
 mod menu;
 mod sidecar;
 mod state;
@@ -80,7 +82,16 @@ pub fn run() {
             let handle = app.handle().clone();
 
             // Initialize logging
-            init_logging(&handle);
+            let log_dir = init_logging(&handle);
+
+            // Initialize crash handler
+            crash::init_crash_handler(log_dir.clone());
+
+            // Start heartbeat monitoring
+            let data_dir = handle.path().app_data_dir().unwrap_or_else(|_| {
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+            });
+            tauri::async_runtime::spawn(heartbeat::start_heartbeat(data_dir.clone()));
 
             // Build and set application menu
             match menu::build_app_menu(&handle) {
@@ -162,7 +173,7 @@ pub fn run() {
         .expect("error while running WaveMux");
 }
 
-fn init_logging(handle: &tauri::AppHandle) {
+fn init_logging(handle: &tauri::AppHandle) -> std::path::PathBuf {
     use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 
     let log_dir = handle
@@ -189,4 +200,6 @@ fn init_logging(handle: &tauri::AppHandle) {
 
     tracing::subscriber::set_global_default(subscriber).ok();
     tracing::info!("WaveMux starting");
+
+    log_dir
 }

@@ -7,7 +7,7 @@
     "productName": "WaveMux",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.17.13",
+    "version": "0.17.14",
     "homepage": "https://github.com/a5af/wavemux",
     "build": {
         "appId": "com.a5af.wavemux"
@@ -33,6 +33,7 @@
         "@eslint/js": "^8.57.0",
         "@rollup/plugin-node-resolve": "^16.0.3",
         "@tailwindcss/vite": "^4.1.18",
+        "@tauri-apps/cli": "^2.5.0",
         "@types/color": "^4.2.0",
         "@types/css-tree": "^2",
         "@types/debug": "^4",
@@ -74,8 +75,7 @@
         "vite-plugin-static-copy": "^3.1.4",
         "vite-plugin-svgr": "^4.5.0",
         "vite-tsconfig-paths": "^5.1.4",
-        "vitest": "^3.0.9",
-        "@tauri-apps/cli": "^2.5.0"
+        "vitest": "^3.0.9"
     },
     "dependencies": {
         "@ai-sdk/react": "^2.0.114",
@@ -89,6 +89,10 @@
         "@table-nav/core": "^0.0.8",
         "@table-nav/react": "^0.0.7",
         "@tanstack/react-table": "^8.21.3",
+        "@tauri-apps/api": "^2.5.0",
+        "@tauri-apps/plugin-opener": "^2.3.1",
+        "@tauri-apps/plugin-shell": "^2.2.0",
+        "@xterm/addon-canvas": "^0.7.0",
         "@xterm/addon-fit": "^0.11.0",
         "@xterm/addon-search": "^0.16.0",
         "@xterm/addon-serialize": "^0.14.0",
@@ -151,10 +155,7 @@
         "use-device-pixel-ratio": "^1.1.2",
         "winston": "^3.19.0",
         "ws": "^8.19.0",
-        "yaml": "^2.8.2",
-        "@tauri-apps/api": "^2.5.0",
-        "@tauri-apps/plugin-opener": "^2.3.1",
-        "@tauri-apps/plugin-shell": "^2.2.0"
+        "yaml": "^2.8.2"
     },
     "packageManager": "npm@10.9.2",
     "workspaces": [

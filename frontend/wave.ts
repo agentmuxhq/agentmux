@@ -92,18 +92,19 @@ async function initBare() {
         getApi().setWindowInitStatus("ready");
 
         // TEMPORARY: Manually trigger wave-init for Tauri testing
+        // Using real IDs from backend database until proper window state management is implemented
         // TODO: Implement proper Tauri window state management (Phase 8)
         if (typeof (window as any).__TAURI_INTERNALS__ !== "undefined") {
-            console.log("[initBare] TAURI: Manually triggering wave-init with dummy IDs");
+            console.log("[initBare] TAURI: Manually triggering wave-init with backend IDs");
             setTimeout(() => {
-                const dummyInitOpts: WaveInitOpts = {
-                    tabId: "dummy-tab-001",
-                    clientId: "dummy-client-001",
-                    windowId: "dummy-window-001",
+                const tauriInitOpts: WaveInitOpts = {
+                    tabId: "e1590f0d-5622-47c4-b620-805cbe4a1443",
+                    clientId: "ee283990-4633-42e0-bd8c-76ebe49957fd",
+                    windowId: "a1e6a75a-c476-445f-a3cb-3f5b0e5d7249",
                     activate: true,
                     primaryTabStartup: true
                 };
-                initWaveWrap(dummyInitOpts);
+                initWaveWrap(tauriInitOpts);
             }, 100);
         }
 

@@ -23,9 +23,16 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .app_data_dir()
         .map_err(|e| format!("Failed to get data dir: {}", e))?;
 
-    // Ensure data directory exists
+    let config_dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("Failed to get config dir: {}", e))?;
+
+    // Ensure directories exist
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir: {}", e))?;
+    std::fs::create_dir_all(&config_dir)
+        .map_err(|e| format!("Failed to create config dir: {}", e))?;
 
     // Get auth key from app state
     let auth_key = {
@@ -45,6 +52,9 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
             &data_dir.to_string_lossy(),
         ])
         .env("WAVETERM_AUTH_KEY", &auth_key)
+        .env("WAVETERM_CONFIG_HOME", &config_dir.to_string_lossy().to_string())
+        .env("WAVETERM_DATA_HOME", &data_dir.to_string_lossy().to_string())
+        .env("WAVETERM_DEV", if cfg!(debug_assertions) { "1" } else { "" })
         .spawn()
         .map_err(|e| format!("Failed to spawn wavemuxsrv: {}", e))?;
 

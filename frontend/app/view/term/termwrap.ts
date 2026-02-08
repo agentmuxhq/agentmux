@@ -507,7 +507,9 @@ export class TermWrap {
                         webglAddon.dispose();
                         // Fallback to Canvas renderer on WebGL context loss
                         console.warn("WebGL context lost, falling back to Canvas renderer");
-                        this.terminal.loadAddon(new CanvasAddon());
+                        const canvasAddon = new CanvasAddon();
+                        this.toDispose.push(canvasAddon);
+                        this.terminal.loadAddon(canvasAddon);
                     })
                 );
                 this.terminal.loadAddon(webglAddon);
@@ -518,7 +520,9 @@ export class TermWrap {
             } catch (e) {
                 // WebGL addon failed to load (common on macOS WKWebView in Tauri)
                 console.warn("WebGL renderer unavailable, using Canvas renderer:", e);
-                this.terminal.loadAddon(new CanvasAddon());
+                const canvasAddon = new CanvasAddon();
+                this.toDispose.push(canvasAddon);
+                this.terminal.loadAddon(canvasAddon);
                 if (!loggedWebGL) {
                     console.log("loaded canvas renderer (webgl fallback)!");
                     loggedWebGL = true;

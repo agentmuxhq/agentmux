@@ -5,7 +5,7 @@
 // Wraps tauri-plugin-notification for OS-level notifications
 
 import { isNativePresent, sendNotification as tauriSendNotification } from "@tauri-apps/plugin-notification";
-import { getApi } from "./util";
+import { getApi } from "@/app/store/global";
 
 export interface NativeNotificationOptions {
     /**

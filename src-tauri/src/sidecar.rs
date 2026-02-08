@@ -96,13 +96,13 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                             let event_data = &l[14..];
                             handle_backend_event(&app_handle, event_data);
                         } else {
-                            tracing::debug!("[wavemuxsrv] {}", l);
+                            tracing::info!("[wavemuxsrv] {}", l);
                         }
                     }
                 }
                 CommandEvent::Stdout(line) => {
                     let line = String::from_utf8_lossy(&line);
-                    tracing::debug!("[wavemuxsrv stdout] {}", line.trim());
+                    tracing::info!("[wavemuxsrv stdout] {}", line.trim());
                 }
                 CommandEvent::Error(err) => {
                     tracing::error!("[wavemuxsrv error] {}", err);

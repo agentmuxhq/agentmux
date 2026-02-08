@@ -5,6 +5,7 @@ package authkey
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 )
@@ -29,15 +30,15 @@ func ValidateIncomingRequest(r *http.Request) error {
 	expectedKey := GetAuthKey()
 
 	if reqAuthKey == "" {
-		fmt.Printf("[authkey] REJECT: no auth key in %s (URL: %s)\n", authSource, r.URL.String())
+		log.Printf("[authkey] REJECT: no auth key in %s (URL: %s)\n", authSource, r.URL.String())
 		return fmt.Errorf("no auth key provided (checked header and query param)")
 	}
 	if reqAuthKey != expectedKey {
-		fmt.Printf("[authkey] REJECT: key mismatch via %s - got %.8s... expected %.8s...\n",
+		log.Printf("[authkey] REJECT: key mismatch via %s - got %.8s... expected %.8s...\n",
 			authSource, reqAuthKey, expectedKey)
 		return fmt.Errorf("auth key is invalid")
 	}
-	fmt.Printf("[authkey] ACCEPT: valid key via %s\n", authSource)
+	log.Printf("[authkey] ACCEPT: valid key via %s\n", authSource)
 	return nil
 }
 

@@ -178,7 +178,13 @@ fn build_window_submenu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Submenu
 
 /// Handle menu item clicks
 pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
-    let window = app.get_webview_window("main");
+    // Get the focused window instead of hard-coding "main"
+    // This ensures menu actions work correctly in multi-window scenarios
+    let window = app.webview_windows()
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .cloned()
+        .or_else(|| app.get_webview_window("main"));
 
     match event.id.as_ref() {
         "about" => {

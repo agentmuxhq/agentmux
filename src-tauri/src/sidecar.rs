@@ -55,6 +55,8 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .env("WAVETERM_CONFIG_HOME", &config_dir.to_string_lossy().to_string())
         .env("WAVETERM_DATA_HOME", &data_dir.to_string_lossy().to_string())
         .env("WAVETERM_DEV", if cfg!(debug_assertions) { "1" } else { "" })
+        .env("WCLOUD_ENDPOINT", "https://api.waveterm.dev/central")
+        .env("WCLOUD_WS_ENDPOINT", "wss://wsapi.waveterm.dev/")
         .spawn()
         .map_err(|e| format!("Failed to spawn wavemuxsrv: {}", e))?;
 

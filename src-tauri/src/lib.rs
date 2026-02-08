@@ -1,4 +1,5 @@
 mod commands;
+mod menu;
 mod sidecar;
 mod state;
 
@@ -81,6 +82,18 @@ pub fn run() {
             // Initialize logging
             init_logging(&handle);
 
+            // Build and set application menu
+            match menu::build_app_menu(&handle) {
+                Ok(app_menu) => {
+                    if let Err(e) = handle.set_menu(app_menu) {
+                        tracing::error!("Failed to set application menu: {}", e);
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to build application menu: {}", e);
+                }
+            }
+
             // Spawn the Go backend as a sidecar
             tauri::async_runtime::spawn(async move {
                 match sidecar::spawn_backend(&handle).await {
@@ -110,6 +123,10 @@ pub fn run() {
             });
 
             Ok(())
+        })
+        // Menu event handling
+        .on_menu_event(|app, event| {
+            menu::handle_menu_event(app, event);
         })
         // Window event handling
         .on_window_event(|window, event| {

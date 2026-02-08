@@ -4,7 +4,7 @@
 import { TermViewModel } from "@/app/view/term/term";
 import { computeTheme } from "@/app/view/term/termutil";
 import { TermWrap } from "@/app/view/term/termwrap";
-import { atoms } from "@/store/global";
+import { atoms } from "@/app/store/global";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 

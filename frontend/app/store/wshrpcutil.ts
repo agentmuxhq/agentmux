@@ -7,7 +7,7 @@ import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
 import { addWSReconnectHandler, globalWS, initGlobalWS, WSControl } from "./ws";
 import { DefaultRouter, setDefaultRouter } from "./wshrpcutil-base";
-import { getApi } from "@/store/global";
+import { getApi } from "./global";
 
 let TabRpcClient: TabClient;
 

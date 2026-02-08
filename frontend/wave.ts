@@ -9,6 +9,7 @@ import {
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
+import { ClientService, WindowService, WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
@@ -26,8 +27,8 @@ import {
     pushNotification,
     removeNotificationById,
     subscribeToConnEvents,
-} from "@/store/global";
-import * as WOS from "@/store/wos";
+} from "@/app/store/global";
+import * as WOS from "@/app/store/wos";
 import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
 import { createElement } from "react";
@@ -66,6 +67,93 @@ function updateZoomFactor(zoomFactor: number) {
     document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
 }
 
+/**
+ * Initialize WaveMux in Tauri mode by fetching client/window/workspace/tab data
+ * from backend, verifying objects exist, and creating missing ones if needed.
+ * This mirrors Electron's relaunchBrowserWindows() pattern.
+ */
+async function initTauriWave(): Promise<void> {
+    console.log("[initTauriWave] Starting Tauri initialization...");
+
+    try {
+        // Get client data (like Electron's relaunchBrowserWindows)
+        console.log("[initTauriWave] Fetching client data...");
+        const clientData = await ClientService.GetClientData();
+        console.log("[initTauriWave] Client data:", clientData);
+
+        let windowId = clientData.windowids?.[0];
+
+        // If no windows exist, create one
+        if (!windowId) {
+            console.log("[initTauriWave] No windows found, creating new window...");
+            const newWindow = await WindowService.CreateWindow(null, "");
+            windowId = newWindow.oid;
+            console.log("[initTauriWave] Created window:", windowId);
+        }
+
+        // Verify window exists
+        console.log("[initTauriWave] Verifying window:", windowId);
+        let windowData = await WindowService.GetWindow(windowId);
+
+        if (!windowData) {
+            console.log("[initTauriWave] Window missing, creating new window...");
+            windowData = await WindowService.CreateWindow(null, "");
+            windowId = windowData.oid;
+        }
+
+        console.log("[initTauriWave] Window data:", windowData);
+
+        // Get workspace
+        console.log("[initTauriWave] Fetching workspace:", windowData.workspaceid);
+        let workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
+
+        if (!workspace) {
+            console.log("[initTauriWave] Workspace missing, recreating window...");
+            // Workspace missing → recreate entire window (like Electron does)
+            await WindowService.CloseWindow(windowData.oid, false);
+            windowData = await WindowService.CreateWindow(null, "");
+            workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
+        }
+
+        console.log("[initTauriWave] Workspace data:", workspace);
+
+        // Get active tab ID
+        const tabId = workspace.activetabid ||
+                     workspace.tabids?.[0] ||
+                     workspace.pinnedtabids?.[0] ||
+                     "";
+
+        if (!tabId) {
+            throw new Error("No tab found in workspace");
+        }
+
+        console.log("[initTauriWave] Using tab:", tabId);
+
+        // Create complete init options with ALL valid IDs
+        const initOpts: WaveInitOpts = {
+            clientId: clientData.oid,
+            windowId: windowData.oid,
+            tabId: tabId,
+            activate: true,
+            primaryTabStartup: true,
+        };
+
+        console.log("[initTauriWave] Initializing wave with:", initOpts);
+
+        // Initialize wave (this will render the UI)
+        await initWaveWrap(initOpts);
+
+        console.log("[initTauriWave] Initialization complete!");
+
+    } catch (error) {
+        console.error("[initTauriWave] Initialization failed:", error);
+        pushFlashError("Failed to initialize WaveMux: " + String(error));
+        // Show error UI instead of grey screen
+        document.body.style.visibility = "visible";
+        document.body.style.opacity = "1";
+    }
+}
+
 async function initBare() {
     console.log("[initBare] Starting...");
     getApi().sendLog("Init Bare");
@@ -75,25 +163,14 @@ async function initBare() {
     document.body.classList.add("is-transparent");
     console.log("[initBare] Registering onWaveInit...");
 
-    // In Tauri, manually trigger wave-init after a short delay to let backend initialize
-    // TODO: Replace with proper RPC call to get client/window/tab from backend
-    if (typeof (window as any).__TAURI_INTERNALS__ !== "undefined") {
-        console.log("[initBare] Tauri mode: will auto-trigger wave-init");
-        setTimeout(() => {
-            // Generate temporary IDs - backend will create actual client on first RPC call
-            const tempInitOpts: WaveInitOpts = {
-                clientId: "temp-client-" + Math.random().toString(36).substring(2, 15),
-                windowId: "temp-window-" + Math.random().toString(36).substring(2, 15),
-                tabId: "temp-tab-" + Math.random().toString(36).substring(2, 15),
-                activate: true,
-                primaryTabStartup: true,
-            };
-            console.log("[initBare] Triggering wave-init with temp IDs:", tempInitOpts);
-            initWaveWrap(tempInitOpts);
-        }, 1000);
-    }
+    // Check if we're in Tauri mode
+    const isTauri = typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
 
-    getApi().onWaveInit(initWaveWrap);
+    // Electron uses onWaveInit callback (backend emits wave-init event)
+    // Tauri handles initialization in frontend after backend is ready
+    if (!isTauri) {
+        getApi().onWaveInit(initWaveWrap);
+    }
     console.log("[initBare] Setting platform...");
     setKeyUtilPlatform(platform);
     console.log("[initBare] Loading fonts...");
@@ -104,11 +181,18 @@ async function initBare() {
         updateZoomFactor(zoomFactor);
     });
     console.log("[initBare] Waiting for fonts...");
-    document.fonts.ready.then(() => {
+    document.fonts.ready.then(async () => {
         console.log("[initBare] Fonts ready!");
         getApi().sendLog("Init Bare Done");
         console.log("[initBare] Setting window status to ready...");
         getApi().setWindowInitStatus("ready");
+
+        // In Tauri mode, handle initialization in frontend
+        if (isTauri) {
+            console.log("[initBare] Tauri mode: starting frontend initialization...");
+            await initTauriWave();
+        }
+
         console.log("[initBare] Complete!");
     });
     console.log("[initBare] Setup complete, fonts loading async...");

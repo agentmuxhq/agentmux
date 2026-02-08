@@ -11,7 +11,7 @@ import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { globalStore } from "./jotaiStore";
 import { ObjectService } from "./services";
-import { getApi } from "@/store/global";
+import { getApi } from "./global";
 
 type WaveObjectDataItemType<T extends WaveObj> = {
     value: T;
@@ -108,9 +108,12 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     usp.set("method", method);
 
     // For Tauri: add auth key as query parameter (Electron injects via session.webRequest)
-    const authKey = getApi()?.getAuthKey?.();
-    if (authKey) {
-        usp.set("authkey", authKey);
+    // Only in browser context (not Electron main process)
+    if (globalThis.window != null) {
+        const authKey = getApi()?.getAuthKey?.();
+        if (authKey) {
+            usp.set("authkey", authKey);
+        }
     }
 
     const url = getWebServerEndpoint() + "/wave/service?" + usp.toString();

@@ -7,7 +7,7 @@ import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
-import { atoms, getApi, getTabMetaKeyAtom, recordTEvent, refocusNode } from "@/store/global";
+import { atoms, getApi, getTabMetaKeyAtom, recordTEvent, refocusNode } from "@/app/store/global";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";

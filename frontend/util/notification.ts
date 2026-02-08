@@ -59,19 +59,16 @@ export function isNativeNotificationAvailable(): Promise<boolean> {
  * @returns Promise that resolves when notification is sent
  */
 export async function sendNativeNotification(options: NativeNotificationOptions): Promise<void> {
-    const api = getApi();
-
-    // Check if we're in Tauri
-    if (api && (await isNativeNotificationAvailable())) {
+    // Check if native notifications are available
+    if (await isNativeNotificationAvailable()) {
         try {
             await tauriSendNotification(options);
             console.log("Native notification sent:", options.title);
         } catch (error) {
             console.warn("Failed to send native notification:", error);
-            // Fall through to in-app notification
         }
     } else {
-        console.log("Native notifications not available, using in-app notification");
+        console.log("Native notifications not available");
     }
 
     // Always log to console for debugging
@@ -87,14 +84,9 @@ export async function requestNotificationPermission(): Promise<"granted" | "deni
         return "default";
     }
 
-    try {
-        // Tauri handles permissions automatically in most cases
-        // This is here for future extensibility if manual permission is needed
-        return "granted";
-    } catch (error) {
-        console.error("Failed to request notification permission:", error);
-        return "denied";
-    }
+    // Tauri handles permissions automatically in most cases
+    // This is here for future extensibility if manual permission is needed
+    return "granted";
 }
 
 /**

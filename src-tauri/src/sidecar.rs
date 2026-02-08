@@ -27,6 +27,13 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir: {}", e))?;
 
+    // Get auth key from app state
+    let auth_key = {
+        let state = app.state::<crate::state::AppState>();
+        let auth = state.auth_key.lock().unwrap();
+        auth.clone()
+    };
+
     let shell = app.shell();
 
     let sidecar_cmd = shell
@@ -38,6 +45,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
             "--wavedata",
             &data_dir.to_string_lossy(),
         ])
+        .env("WAVETERM_AUTH_KEY", &auth_key)
         .spawn()
         .map_err(|e| format!("Failed to spawn wavemuxsrv: {}", e))?;
 

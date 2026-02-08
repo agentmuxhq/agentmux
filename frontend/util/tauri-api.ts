@@ -235,6 +235,26 @@ export function buildTauriApi(): ElectronApi {
             invoke("register_global_webview_keys", { keys }).catch(console.error);
         },
 
+        // --- Window Management (Multi-Window Support) ---
+        openNewWindow: async () => {
+            return await invoke<string>("open_new_window");
+        },
+        closeWindow: async (label?: string) => {
+            await invoke("close_window", { label: label ?? null });
+        },
+        getWindowLabel: async () => {
+            return await invoke<string>("get_window_label");
+        },
+        isMainWindow: async () => {
+            return await invoke<boolean>("is_main_window");
+        },
+        listWindows: async () => {
+            return await invoke<string[]>("list_windows");
+        },
+        focusWindow: async (label: string) => {
+            await invoke("focus_window", { label });
+        },
+
         // --- Workspace & Tabs ---
         // In Tauri, tabs are managed in the frontend (React state).
         // These still invoke backend operations via the Go backend's WebSocket API.

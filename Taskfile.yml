@@ -598,14 +598,11 @@ tasks:
     tauri:copy-sidecars:
         desc: Copy Go binaries to src-tauri/binaries with target-specific names
         cmds:
+            - powershell -Command "New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null"
             - |
                 {{if eq OS "windows"}}
-                powershell -Command "New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null"
-            - powershell -Command "rustc -vV | Select-String 'host:' | ForEach-Object { Copy-Item dist/bin/wavemuxsrv.x64.exe src-tauri/binaries/wavemuxsrv-$($_.ToString().Split()[1]).exe -Force }"
-            - powershell -Command "rustc -vV | Select-String 'host:' | ForEach-Object { Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-$($_.ToString().Split()[1]).exe -Force }"
-            - powershell -Command "rustc -vV | Select-String 'host:' | ForEach-Object { Write-Host 'Copied binaries for' $_.ToString().Split()[1] }"
+                powershell -Command "rustc -vV | Select-String 'host:' | ForEach-Object { Copy-Item dist/bin/wavemuxsrv.x64.exe src-tauri/binaries/wavemuxsrv-`$(`$_.ToString().Split()[1]).exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-`$(`$_.ToString().Split()[1]).exe -Force; Write-Host 'Copied binaries for' `$_.ToString().Split()[1] }"
                 {{else}}
-                mkdir -p src-tauri/binaries;
                 TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
                 {{if eq OS "darwin"}}
                 cp dist/bin/wavemuxsrv.arm64 src-tauri/binaries/wavemuxsrv-$TRIPLE 2>/dev/null || cp dist/bin/wavemuxsrv.x64 src-tauri/binaries/wavemuxsrv-$TRIPLE;

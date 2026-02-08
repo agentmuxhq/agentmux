@@ -119,34 +119,11 @@ pub fn run() {
                         tracing::info!("Backend ready: ws={}, web={}",
                             endpoints.ws_endpoint, endpoints.web_endpoint);
 
-                        // Query database for existing client/window/tab IDs and auth key
-                        if let Ok(data_dir) = handle.path().app_data_dir() {
-                            match db::get_existing_ids(&data_dir) {
-                                Ok((client_id, window_id, tab_id, auth_key)) => {
-                                    tracing::info!("Found existing IDs: client={}, window={}, tab={}, auth_key={}",
-                                        client_id, window_id, tab_id, &auth_key[..8]);
-
-                                    // Store IDs in AppState
-                                    *state.client_id.lock().unwrap() = Some(client_id);
-                                    *state.window_id.lock().unwrap() = Some(window_id);
-                                    *state.active_tab_id.lock().unwrap() = Some(tab_id);
-
-                                    // CRITICAL: Update auth key to match what backend expects
-                                    // The auth key in AppState was randomly generated on startup,
-                                    // but we need to use the one from the database that matches this client
-                                    if auth_key.len() >= 8 {
-                                        tracing::info!("Updating auth key to match database client: {}...{}", &auth_key[..4], &auth_key[auth_key.len()-4..]);
-                                    } else {
-                                        tracing::info!("Updating auth key to match database client (length={})", auth_key.len());
-                                    }
-                                    *state.auth_key.lock().unwrap() = auth_key;
-                                }
-                                Err(e) => {
-                                    tracing::warn!("Could not load existing IDs from database: {}", e);
-                                    tracing::warn!("Backend will create new client/window/tab on first connection");
-                                }
-                            }
-                        }
+                        // TODO: Query backend RPC for client data instead of database
+                        // For now, let backend create client/window/tab on first connection
+                        // The frontend will need to query the backend for these IDs
+                        tracing::info!("Backend will create client/window/tab on first connection");
+                        tracing::info!("Frontend should call backend RPC to get initialized client data");
 
                         // Emit event to frontend that backend is ready
                         if let Some(window) = handle.get_webview_window("main") {

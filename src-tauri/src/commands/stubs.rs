@@ -83,26 +83,21 @@ pub fn set_window_init_status(
     *state.window_init_status.lock().unwrap() = status.clone();
 
     // When status is "ready", emit wave-init event
+    // In Tauri, the backend will create client/window/tab on first connection,
+    // so we emit wave-init WITHOUT IDs and let the frontend get them from backend
     if status == "ready" {
-        let client_id = state.client_id.lock().unwrap().clone();
-        let window_id = state.window_id.lock().unwrap().clone();
-        let tab_id = state.active_tab_id.lock().unwrap().clone();
+        tracing::info!("Emitting wave-init event (Tauri mode: backend will provide IDs)");
 
-        if let (Some(client_id), Some(window_id), Some(tab_id)) = (client_id, window_id, tab_id) {
-            tracing::info!("Emitting wave-init event: client={}, window={}, tab={}",
-                client_id, window_id, tab_id);
-
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.emit("wave-init", serde_json::json!({
-                    "clientId": client_id,
-                    "windowId": window_id,
-                    "tabId": tab_id,
-                    "activate": true,
-                    "primaryTabStartup": true,
-                }));
-            }
-        } else {
-            tracing::warn!("Cannot emit wave-init: window state not initialized");
+        if let Some(window) = app.get_webview_window("main") {
+            // Emit wave-init with placeholder IDs
+            // The frontend will call backend RPC to get actual IDs
+            let _ = window.emit("wave-init", serde_json::json!({
+                "clientId": "",
+                "windowId": "",
+                "tabId": "",
+                "activate": true,
+                "primaryTabStartup": true,
+            }));
         }
     }
 }

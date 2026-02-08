@@ -74,6 +74,25 @@ async function initBare() {
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
     console.log("[initBare] Registering onWaveInit...");
+
+    // In Tauri, manually trigger wave-init after a short delay to let backend initialize
+    // TODO: Replace with proper RPC call to get client/window/tab from backend
+    if (typeof (window as any).__TAURI_INTERNALS__ !== "undefined") {
+        console.log("[initBare] Tauri mode: will auto-trigger wave-init");
+        setTimeout(() => {
+            // Generate temporary IDs - backend will create actual client on first RPC call
+            const tempInitOpts: WaveInitOpts = {
+                clientId: "temp-client-" + Math.random().toString(36).substring(2, 15),
+                windowId: "temp-window-" + Math.random().toString(36).substring(2, 15),
+                tabId: "temp-tab-" + Math.random().toString(36).substring(2, 15),
+                activate: true,
+                primaryTabStartup: true,
+            };
+            console.log("[initBare] Triggering wave-init with temp IDs:", tempInitOpts);
+            initWaveWrap(tempInitOpts);
+        }, 1000);
+    }
+
     getApi().onWaveInit(initWaveWrap);
     console.log("[initBare] Setting platform...");
     setKeyUtilPlatform(platform);

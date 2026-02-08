@@ -571,3 +571,57 @@ tasks:
         desc: Start the Go documentation server for the tsunami module
         cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
         dir: tsunami
+
+    # ========================================
+    # Tauri Build Tasks
+    # ========================================
+
+    tauri:dev:
+        desc: Run Tauri in development mode
+        cmds:
+            - task: build:backend
+            - task: tauri:copy-sidecars
+            - npm run tauri:dev
+        deps:
+            - npm:install
+
+    tauri:build:
+        desc: Build Tauri application for current platform
+        cmds:
+            - task: build:frontend:prod
+            - task: build:backend
+            - task: tauri:copy-sidecars
+            - npx tauri build
+        deps:
+            - npm:install
+
+    tauri:copy-sidecars:
+        desc: Copy Go binaries to src-tauri/binaries with target-specific names
+        cmds:
+            - |
+                {{if eq OS "windows"}}
+                powershell -Command "
+                  New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null;
+                  $triple = (rustc -vV | Select-String 'host:' | ForEach-Object { $_.ToString().Split()[1] }).Trim();
+                  Copy-Item dist/bin/wavemuxsrv.x64.exe src-tauri/binaries/wavemuxsrv-$triple.exe -Force;
+                  Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-$triple.exe -Force;
+                  Write-Host 'Copied binaries for' $triple
+                "
+                {{else}}
+                mkdir -p src-tauri/binaries;
+                TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
+                {{if eq OS "darwin"}}
+                cp dist/bin/wavemuxsrv.arm64 src-tauri/binaries/wavemuxsrv-$TRIPLE 2>/dev/null || cp dist/bin/wavemuxsrv.x64 src-tauri/binaries/wavemuxsrv-$TRIPLE;
+                cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/binaries/wsh-$TRIPLE 2>/dev/null || cp dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/binaries/wsh-$TRIPLE;
+                {{else}}
+                cp dist/bin/wavemuxsrv.x64 src-tauri/binaries/wavemuxsrv-$TRIPLE;
+                cp dist/bin/wsh-{{.VERSION}}-linux.x64 src-tauri/binaries/wsh-$TRIPLE;
+                {{end}}
+                echo "Copied binaries for $TRIPLE"
+                {{end}}
+
+    build:frontend:prod:
+        desc: Build the frontend for production (used by Tauri)
+        cmd: npm run build:prod
+        deps:
+            - npm:install

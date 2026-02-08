@@ -13,6 +13,7 @@ import { base64ToArray, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { CanvasAddon } from "@xterm/addon-canvas";
 import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
@@ -499,16 +500,33 @@ export class TermWrap {
             })
         );
         if (WebGLSupported && waveOptions.useWebGl) {
-            const webglAddon = new WebglAddon();
-            this.toDispose.push(
-                webglAddon.onContextLoss(() => {
-                    webglAddon.dispose();
-                })
-            );
-            this.terminal.loadAddon(webglAddon);
-            if (!loggedWebGL) {
-                console.log("loaded webgl!");
-                loggedWebGL = true;
+            try {
+                const webglAddon = new WebglAddon();
+                this.toDispose.push(
+                    webglAddon.onContextLoss(() => {
+                        webglAddon.dispose();
+                        // Fallback to Canvas renderer on WebGL context loss
+                        console.warn("WebGL context lost, falling back to Canvas renderer");
+                        const canvasAddon = new CanvasAddon();
+                        this.toDispose.push(canvasAddon);
+                        this.terminal.loadAddon(canvasAddon);
+                    })
+                );
+                this.terminal.loadAddon(webglAddon);
+                if (!loggedWebGL) {
+                    console.log("loaded webgl renderer!");
+                    loggedWebGL = true;
+                }
+            } catch (e) {
+                // WebGL addon failed to load (common on macOS WKWebView in Tauri)
+                console.warn("WebGL renderer unavailable, using Canvas renderer:", e);
+                const canvasAddon = new CanvasAddon();
+                this.toDispose.push(canvasAddon);
+                this.terminal.loadAddon(canvasAddon);
+                if (!loggedWebGL) {
+                    console.log("loaded canvas renderer (webgl fallback)!");
+                    loggedWebGL = true;
+                }
             }
         }
         // Register OSC 9283 handler

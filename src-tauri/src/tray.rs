@@ -15,7 +15,7 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     // Build tray icon
     let icon = app
         .default_window_icon()
-        .ok_or_else(|| anyhow::anyhow!("No default window icon configured"))?;
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "No default window icon configured"))?;
 
     let _tray = TrayIconBuilder::new()
         .icon(icon.clone())

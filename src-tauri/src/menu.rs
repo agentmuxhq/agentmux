@@ -178,7 +178,13 @@ fn build_window_submenu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Submenu
 
 /// Handle menu item clicks
 pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
-    let window = app.get_webview_window("main");
+    // Get the focused window instead of hard-coding "main"
+    // This ensures menu actions work correctly in multi-window scenarios
+    let window = app.webview_windows()
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .cloned()
+        .or_else(|| app.get_webview_window("main"));
 
     match event.id.as_ref() {
         "about" => {
@@ -191,8 +197,14 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // TODO: Implement update checker
         }
         "new-window" => {
-            tracing::info!("New window requested");
-            // TODO: Implement new window creation
+            tracing::info!("New window requested via menu");
+            let app_handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                match crate::commands::window::open_new_window(app_handle).await {
+                    Ok(label) => tracing::info!("Successfully created new window: {}", label),
+                    Err(e) => tracing::error!("Failed to create new window: {}", e),
+                }
+            });
         }
         "close-window" => {
             if let Some(w) = window {
@@ -225,17 +237,34 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         }
         "zoom-reset" => {
             if let Some(w) = window {
-                let _ = w.eval("window.__TAURI_INTERNALS__.invoke('set_zoom_factor', { factor: 1.0 })");
-                let _ = w.emit("zoom-factor-change", 1.0);
+                if let Err(e) = crate::commands::window::set_zoom_factor(app.state(), w.clone(), 1.0) {
+                    tracing::error!("Failed to reset zoom: {}", e);
+                } else {
+                    tracing::debug!("Reset zoom to 1.0");
+                }
             }
         }
         "zoom-in" => {
-            tracing::debug!("Zoom in requested");
-            // TODO: Get current zoom, increase by 0.2, max 5.0
+            if let Some(w) = window {
+                let current = crate::commands::window::get_zoom_factor(app.state());
+                let new_factor = (current + 0.2).min(3.0);
+                if let Err(e) = crate::commands::window::set_zoom_factor(app.state(), w.clone(), new_factor) {
+                    tracing::error!("Failed to zoom in: {}", e);
+                } else {
+                    tracing::debug!("Zoomed in to {:.1}", new_factor);
+                }
+            }
         }
         "zoom-out" => {
-            tracing::debug!("Zoom out requested");
-            // TODO: Get current zoom, decrease by 0.2, min 0.2
+            if let Some(w) = window {
+                let current = crate::commands::window::get_zoom_factor(app.state());
+                let new_factor = (current - 0.2).max(0.5);
+                if let Err(e) = crate::commands::window::set_zoom_factor(app.state(), w.clone(), new_factor) {
+                    tracing::error!("Failed to zoom out: {}", e);
+                } else {
+                    tracing::debug!("Zoomed out to {:.1}", new_factor);
+                }
+            }
         }
         "create-workspace" => {
             tracing::info!("Create workspace requested");

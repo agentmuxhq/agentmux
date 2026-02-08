@@ -14,6 +14,21 @@ pub struct AppState {
 
     /// Current zoom factor (replaces Electron's webContents zoom)
     pub zoom_factor: Mutex<f64>,
+
+    /// Client ID (replaces Electron's clientData tracking)
+    /// Set after querying backend on startup
+    pub client_id: Mutex<Option<String>>,
+
+    /// Window ID (replaces Electron's window tracking)
+    /// Set after querying/creating window via backend
+    pub window_id: Mutex<Option<String>>,
+
+    /// Active tab ID (replaces Electron's tab tracking)
+    /// Set after querying/creating default tab via backend
+    pub active_tab_id: Mutex<Option<String>>,
+
+    /// Window initialization status ("ready" or "wave-ready")
+    pub window_init_status: Mutex<String>,
 }
 
 #[derive(Default, Clone, serde::Serialize)]
@@ -29,6 +44,10 @@ impl Default for AppState {
             backend_endpoints: Mutex::new(BackendEndpoints::default()),
             sidecar_child: Mutex::new(None),
             zoom_factor: Mutex::new(1.0),
+            client_id: Mutex::new(None),
+            window_id: Mutex::new(None),
+            active_tab_id: Mutex::new(None),
+            window_init_status: Mutex::new(String::new()),
         }
     }
 }

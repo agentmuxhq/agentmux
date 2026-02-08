@@ -1,5 +1,6 @@
 mod commands;
 mod crash;
+mod db;
 mod heartbeat;
 mod menu;
 mod sidecar;
@@ -59,6 +60,7 @@ pub fn run() {
             commands::window::get_cursor_point,
             // Backend commands
             commands::backend::get_backend_endpoints,
+            commands::backend::get_wave_init_opts,
             commands::backend::fe_log,
             // Stub commands (to be implemented in later phases)
             commands::stubs::show_context_menu,
@@ -116,6 +118,25 @@ pub fn run() {
                         endpoints.web_endpoint = backend_state.web_endpoint;
                         tracing::info!("Backend ready: ws={}, web={}",
                             endpoints.ws_endpoint, endpoints.web_endpoint);
+
+                        // Query database for existing client/window/tab IDs
+                        if let Ok(data_dir) = handle.path().app_data_dir() {
+                            match db::get_existing_ids(&data_dir) {
+                                Ok((client_id, window_id, tab_id)) => {
+                                    tracing::info!("Found existing IDs: client={}, window={}, tab={}",
+                                        client_id, window_id, tab_id);
+
+                                    // Store IDs in AppState
+                                    *state.client_id.lock().unwrap() = Some(client_id);
+                                    *state.window_id.lock().unwrap() = Some(window_id);
+                                    *state.active_tab_id.lock().unwrap() = Some(tab_id);
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Could not load existing IDs from database: {}", e);
+                                    tracing::warn!("Backend will create new client/window/tab on first connection");
+                                }
+                            }
+                        }
 
                         // Emit event to frontend that backend is ready
                         if let Some(window) = handle.get_webview_window("main") {

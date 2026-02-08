@@ -71,8 +71,39 @@ pub fn close_tab(workspace_id: String, tab_id: String) {
 }
 
 #[tauri::command]
-pub fn set_window_init_status(status: String) {
-    tracing::debug!("stub: set_window_init_status status={}", status);
+pub fn set_window_init_status(
+    status: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+) {
+    tracing::debug!("set_window_init_status status={}", status);
+
+    // Store the status
+    *state.window_init_status.lock().unwrap() = status.clone();
+
+    // When status is "ready", emit wave-init event
+    if status == "ready" {
+        let client_id = state.client_id.lock().unwrap().clone();
+        let window_id = state.window_id.lock().unwrap().clone();
+        let tab_id = state.active_tab_id.lock().unwrap().clone();
+
+        if let (Some(client_id), Some(window_id), Some(tab_id)) = (client_id, window_id, tab_id) {
+            tracing::info!("Emitting wave-init event: client={}, window={}, tab={}",
+                client_id, window_id, tab_id);
+
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.emit("wave-init", serde_json::json!({
+                    "clientId": client_id,
+                    "windowId": window_id,
+                    "tabId": tab_id,
+                    "activate": true,
+                    "primaryTabStartup": true,
+                }));
+            }
+        } else {
+            tracing::warn!("Cannot emit wave-init: window state not initialized");
+        }
+    }
 }
 
 #[tauri::command(rename_all = "camelCase")]

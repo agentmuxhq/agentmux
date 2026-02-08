@@ -72,34 +72,137 @@ pub fn close_tab(workspace_id: String, tab_id: String) {
 }
 
 #[tauri::command]
-pub fn set_window_init_status(
+pub async fn set_window_init_status(
     status: String,
     app: tauri::AppHandle,
     state: tauri::State<'_, crate::state::AppState>,
-) {
+) -> Result<(), String> {
     tracing::debug!("set_window_init_status status={}", status);
 
     // Store the status
     *state.window_init_status.lock().unwrap() = status.clone();
 
-    // When status is "ready", emit wave-init event
-    // In Tauri, the backend will create client/window/tab on first connection,
-    // so we emit wave-init WITHOUT IDs and let the frontend get them from backend
+    // When status is "ready", fetch client data from backend and emit wave-init
     if status == "ready" {
-        tracing::info!("Emitting wave-init event (Tauri mode: backend will provide IDs)");
+        tracing::info!("Fetching client data from backend");
 
+        // Get backend endpoint and auth key
+        let (web_endpoint, auth_key) = {
+            let endpoints = state.backend_endpoints.lock().unwrap();
+            let auth = state.auth_key.lock().unwrap();
+            (endpoints.web_endpoint.clone(), auth.clone())
+        };
+
+        if web_endpoint.is_empty() {
+            return Err("Backend not ready".to_string());
+        }
+
+        // Call GetClientData with proper RPC format
+        let url = format!("http://{}/wave/service?service=client&method=GetClientData&authkey={}",
+            web_endpoint, auth_key);
+
+        let rpc_body = serde_json::json!({
+            "service": "client",
+            "method": "GetClientData",
+            "args": [],
+            "uicontext": null
+        });
+
+        let client = reqwest::Client::new();
+        let response = client.post(&url)
+            .json(&rpc_body)
+            .send()
+            .await
+            .map_err(|e| format!("GetClientData request failed: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(format!("GetClientData failed: {}", response.status()));
+        }
+
+        let client_data: serde_json::Value = response.json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+        tracing::info!("GetClientData response: {}", serde_json::to_string_pretty(&client_data).unwrap_or_default());
+
+        // Extract from nested "data" field
+        let data = client_data.get("data").unwrap_or(&client_data);
+
+        let client_id = data.get("oid")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let window_id = data.get("windowids")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        tracing::info!("Got client data: clientId={}, windowId={}", client_id, window_id);
+
+        // Get window object to extract workspace and tab
+        let mut tab_id = String::new();
+        if !window_id.is_empty() {
+            let window_url = format!("http://{}/wave/service?service=object&method=GetObject&authkey={}",
+                web_endpoint, auth_key);
+            let window_rpc = serde_json::json!({
+                "service": "object",
+                "method": "GetObject",
+                "args": [window_id],
+                "uicontext": null
+            });
+
+            if let Ok(resp) = client.post(&window_url).json(&window_rpc).send().await {
+                if let Ok(window_data) = resp.json::<serde_json::Value>().await {
+                    tracing::info!("Window data: {}", serde_json::to_string_pretty(&window_data).unwrap_or_default());
+
+                    if let Some(data) = window_data.get("data") {
+                        // Get workspace ID from window
+                        if let Some(workspace_id) = data.get("workspaceid").and_then(|v| v.as_str()) {
+                            // Get workspace to find active tab
+                            let workspace_rpc = serde_json::json!({
+                                "service": "object",
+                                "method": "GetObject",
+                                "args": [workspace_id],
+                                "uicontext": null
+                            });
+
+                            if let Ok(ws_resp) = client.post(&window_url).json(&workspace_rpc).send().await {
+                                if let Ok(ws_data) = ws_resp.json::<serde_json::Value>().await {
+                                    if let Some(ws) = ws_data.get("data") {
+                                        tab_id = ws.get("tabids")
+                                            .and_then(|v| v.as_array())
+                                            .and_then(|arr| arr.first())
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                            .to_string();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        tracing::info!("Emitting wave-init: clientId={}, windowId={}, tabId={}",
+            client_id, window_id, tab_id);
+
+        // Emit wave-init with actual IDs
         if let Some(window) = app.get_webview_window("main") {
-            // Emit wave-init with placeholder IDs
-            // The frontend will call backend RPC to get actual IDs
             let _ = window.emit("wave-init", serde_json::json!({
-                "clientId": "",
-                "windowId": "",
-                "tabId": "",
+                "clientId": client_id,
+                "windowId": window_id,
+                "tabId": tab_id,
                 "activate": true,
                 "primaryTabStartup": true,
             }));
         }
     }
+
+    Ok(())
 }
 
 #[tauri::command(rename_all = "camelCase")]

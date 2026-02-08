@@ -1,5 +1,6 @@
 use tauri::Emitter;
 use tauri::Manager;
+use tauri::Runtime;
 
 use crate::state::AppState;
 
@@ -10,7 +11,7 @@ use crate::state::AppState;
 /// The frontend detects it's a new window by checking if it's NOT the "main" window,
 /// and triggers backend object creation via initTauriWave().
 #[tauri::command]
-pub async fn open_new_window(app: tauri::AppHandle) -> Result<String, String> {
+pub async fn open_new_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<String, String> {
     let window_id = uuid::Uuid::new_v4();
     let label = format!("window-{}", window_id.simple());
     let version = env!("CARGO_PKG_VERSION");
@@ -44,20 +45,18 @@ pub fn get_zoom_factor(state: tauri::State<'_, AppState>) -> f64 {
 /// Set the zoom factor.
 /// Replaces: webContents.setZoomFactor() calls in emain/menu.ts
 #[tauri::command]
-pub fn set_zoom_factor(
+pub fn set_zoom_factor<R: Runtime>(
     state: tauri::State<'_, AppState>,
-    window: tauri::Window,
+    window: tauri::WebviewWindow<R>,
     factor: f64,
 ) -> Result<(), String> {
     let factor = factor.clamp(0.5, 3.0);
     *state.zoom_factor.lock().unwrap() = factor;
 
-    // Tauri uses webview.zoom() for zoom factor
-    if let Some(webview) = window.app_handle().get_webview_window(&window.label()) {
-        webview
-            .set_zoom(factor)
-            .map_err(|e| format!("Failed to set zoom: {}", e))?;
-    }
+    // Tauri uses webview.set_zoom() for zoom factor
+    window
+        .set_zoom(factor)
+        .map_err(|e| format!("Failed to set zoom: {}", e))?;
 
     // Notify frontend of zoom change
     let _ = window.emit("zoom-factor-change", factor);

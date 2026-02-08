@@ -1,7 +1,7 @@
 /// Toggle devtools for the current window.
 /// Maps to Ctrl+Shift+I / Cmd+Option+I keyboard shortcut.
 #[tauri::command]
-pub fn toggle_devtools(window: tauri::Window) {
+pub fn toggle_devtools(window: tauri::WebviewWindow) {
     #[cfg(debug_assertions)]
     {
         if window.is_devtools_open() {
@@ -28,6 +28,6 @@ pub fn toggle_devtools(window: tauri::Window) {
 
 /// Check if devtools are currently open.
 #[tauri::command]
-pub fn is_devtools_open(window: tauri::Window) -> bool {
+pub fn is_devtools_open(window: tauri::WebviewWindow) -> bool {
     window.is_devtools_open()
 }

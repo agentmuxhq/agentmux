@@ -15,12 +15,12 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     // Build tray icon
     let icon = app
         .default_window_icon()
-        .ok_or_else(|| "No default window icon configured".to_string())?;
+        .ok_or_else(|| anyhow::anyhow!("No default window icon configured"))?;
 
     let _tray = TrayIconBuilder::new()
         .icon(icon.clone())
         .menu(&menu)
-        .menu_on_left_click(false)
+        .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id.as_ref() {
             "show_hide" => {
                 toggle_window_visibility(app);

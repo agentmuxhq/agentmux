@@ -150,6 +150,12 @@ pub fn run() {
                         tracing::info!("Shutting down backend sidecar");
                         let _ = child.kill();
                     }
+
+                    // Clean up heartbeat file
+                    if let Ok(data_dir) = window.app_handle().path().app_data_dir() {
+                        heartbeat::cleanup_heartbeat(&data_dir);
+                    }
+
                     // Allow the close to proceed
                     let _ = api;
                 }

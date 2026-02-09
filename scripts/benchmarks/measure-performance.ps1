@@ -31,11 +31,11 @@ function Measure-StartupTime {
 
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-        # Start process hidden and measure until main window appears
-        $proc = Start-Process -FilePath $ExePath -WindowStyle Hidden -PassThru
+        # Start process and measure until main window appears
+        $proc = Start-Process -FilePath $ExePath -PassThru
 
-        # Wait for window to be ready (look for WaveMux window)
-        $timeout = 30
+        # Wait for window to be ready (look for any window with a title)
+        $timeout = 10
         $elapsed = 0
         $windowReady = $false
 
@@ -43,11 +43,15 @@ function Measure-StartupTime {
             Start-Sleep -Milliseconds 100
             $elapsed += 0.1
 
-            # Check if main window exists
-            $windows = Get-Process -Id $proc.Id -ErrorAction SilentlyContinue |
-                       Select-Object -ExpandProperty MainWindowTitle -ErrorAction SilentlyContinue
+            # Check if process still exists
+            if (-not (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue)) {
+                Write-Host " Process exited!" -ForegroundColor Red
+                break
+            }
 
-            if ($windows -match "WaveMux") {
+            # Check if main window exists (any non-empty title)
+            $process = Get-Process -Id $proc.Id -ErrorAction SilentlyContinue
+            if ($process -and $process.MainWindowHandle -ne 0) {
                 $windowReady = $true
             }
         }
@@ -55,8 +59,15 @@ function Measure-StartupTime {
         $sw.Stop()
         $startupTime = $sw.Elapsed.TotalMilliseconds
 
-        # Kill the process
-        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        # Kill the process and any child processes
+        if (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue) {
+            # Kill child processes (backend)
+            Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $proc.Id } | ForEach-Object {
+                Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+            }
+            # Kill main process
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        }
         Start-Sleep -Milliseconds 500
 
         $times += $startupTime

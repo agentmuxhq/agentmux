@@ -9,7 +9,7 @@
 //! integrated with the Tauri event loop.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
@@ -763,6 +763,382 @@ pub fn expand_env_vars(s: &str) -> String {
     }
 
     result
+}
+
+// ---- Embedded default configs (compiled into binary) ----
+
+const DEFAULT_SETTINGS: &str = include_str!("defaultconfig/settings.json");
+const DEFAULT_TERMTHEMES: &str = include_str!("defaultconfig/termthemes.json");
+const DEFAULT_PRESETS: &str = include_str!("defaultconfig/presets.json");
+const DEFAULT_PRESETS_AI: &str = include_str!("defaultconfig/presets_ai.json");
+const DEFAULT_WIDGETS: &str = include_str!("defaultconfig/widgets.json");
+const DEFAULT_MIMETYPES: &str = include_str!("defaultconfig/mimetypes.json");
+
+// ---- Full config loading ----
+
+/// Load the complete application config: embedded defaults + user overrides.
+///
+/// Loading order per config section:
+/// 1. Parse embedded default JSON
+/// 2. Read user config file from `{config_dir}/{part}.json`
+/// 3. Read user config files from `{config_dir}/{part}/*.json` (directory-based)
+/// 4. Merge: user values override defaults
+pub fn load_full_config(config_dir: &Path) -> FullConfigType {
+    let mut errors = Vec::new();
+
+    let settings = load_settings(config_dir, &mut errors);
+    let term_themes = load_map_config::<TermThemeType>(
+        DEFAULT_TERMTHEMES,
+        config_dir,
+        "termthemes",
+        &mut errors,
+    );
+    let presets = load_presets_config(config_dir, &mut errors);
+    let widgets = load_map_config::<WidgetConfigType>(
+        DEFAULT_WIDGETS,
+        config_dir,
+        "widgets",
+        &mut errors,
+    );
+    let mime_types = load_map_config::<MimeTypeConfigType>(
+        DEFAULT_MIMETYPES,
+        config_dir,
+        "mimetypes",
+        &mut errors,
+    );
+    let connections = load_map_config::<ConnKeywords>(
+        "{}",
+        config_dir,
+        "connections",
+        &mut errors,
+    );
+    let bookmarks = load_map_config::<WebBookmark>(
+        "{}",
+        config_dir,
+        "bookmarks",
+        &mut errors,
+    );
+
+    // Split widgets into default (defwidget@*) and user widgets
+    let mut default_widgets = HashMap::new();
+    let mut user_widgets = HashMap::new();
+    for (k, v) in widgets {
+        if k.starts_with("defwidget@") {
+            default_widgets.insert(k, v);
+        } else {
+            user_widgets.insert(k, v);
+        }
+    }
+
+    FullConfigType {
+        settings,
+        mime_types,
+        default_widgets,
+        widgets: user_widgets,
+        presets,
+        term_themes,
+        connections,
+        bookmarks,
+        config_errors: errors,
+    }
+}
+
+/// Load settings: merge embedded defaults with user overrides at the JSON map level.
+fn load_settings(config_dir: &Path, errors: &mut Vec<ConfigError>) -> SettingsType {
+    // Parse embedded defaults as a JSON map
+    let defaults: serde_json::Map<String, Value> =
+        serde_json::from_str(DEFAULT_SETTINGS).unwrap_or_default();
+
+    // Read user settings file
+    let user_path = config_dir.join(SETTINGS_FILE);
+    let user_map: serde_json::Map<String, Value> = match std::fs::read_to_string(&user_path) {
+        Ok(content) => match serde_json::from_str(&content) {
+            Ok(m) => m,
+            Err(e) => {
+                errors.push(ConfigError {
+                    file: user_path.to_string_lossy().to_string(),
+                    err: format!("JSON parse error: {}", e),
+                });
+                serde_json::Map::new()
+            }
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => serde_json::Map::new(),
+        Err(e) => {
+            errors.push(ConfigError {
+                file: user_path.to_string_lossy().to_string(),
+                err: format!("cannot read file: {}", e),
+            });
+            serde_json::Map::new()
+        }
+    };
+
+    // Merge: user overrides defaults, with namespace:* clear key support
+    let merged = merge_settings_maps(defaults, user_map);
+
+    // Apply environment variable expansion on all string values
+    let expanded = resolve_env_in_map(merged);
+
+    // Deserialize the merged map into SettingsType
+    match serde_json::from_value(Value::Object(expanded)) {
+        Ok(s) => s,
+        Err(e) => {
+            errors.push(ConfigError {
+                file: "settings (merged)".to_string(),
+                err: format!("deserialization error: {}", e),
+            });
+            SettingsType::default()
+        }
+    }
+}
+
+/// Generic loader for map-based configs (termthemes, widgets, mimetypes, etc.).
+/// Parses embedded defaults, then merges user config file + directory overrides.
+fn load_map_config<V: serde::de::DeserializeOwned>(
+    default_json: &str,
+    config_dir: &Path,
+    part_name: &str,
+    errors: &mut Vec<ConfigError>,
+) -> HashMap<String, V> {
+    // Parse embedded defaults
+    let mut result: HashMap<String, V> =
+        serde_json::from_str(default_json).unwrap_or_default();
+
+    // Read user file: {config_dir}/{part_name}.json
+    let user_file = config_dir.join(format!("{}.json", part_name));
+    if let Ok(content) = std::fs::read_to_string(&user_file) {
+        match serde_json::from_str::<HashMap<String, V>>(&content) {
+            Ok(user_map) => {
+                for (k, v) in user_map {
+                    result.insert(k, v);
+                }
+            }
+            Err(e) => {
+                errors.push(ConfigError {
+                    file: user_file.to_string_lossy().to_string(),
+                    err: format!("JSON parse error: {}", e),
+                });
+            }
+        }
+    }
+
+    // Read directory overrides: {config_dir}/{part_name}/*.json
+    let dir_path = config_dir.join(part_name);
+    if dir_path.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(&dir_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        match serde_json::from_str::<HashMap<String, V>>(&content) {
+                            Ok(file_map) => {
+                                for (k, v) in file_map {
+                                    result.insert(k, v);
+                                }
+                            }
+                            Err(e) => {
+                                errors.push(ConfigError {
+                                    file: path.to_string_lossy().to_string(),
+                                    err: format!("JSON parse error: {}", e),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Load presets config — special case with two default sources (presets.json + presets_ai.json).
+fn load_presets_config(
+    config_dir: &Path,
+    errors: &mut Vec<ConfigError>,
+) -> HashMap<String, MetaMapType> {
+    // Parse both embedded preset defaults
+    let mut result: HashMap<String, MetaMapType> =
+        serde_json::from_str(DEFAULT_PRESETS).unwrap_or_default();
+    let ai_presets: HashMap<String, MetaMapType> =
+        serde_json::from_str(DEFAULT_PRESETS_AI).unwrap_or_default();
+    for (k, v) in ai_presets {
+        result.insert(k, v);
+    }
+
+    // Read user presets file
+    let user_file = config_dir.join("presets.json");
+    if let Ok(content) = std::fs::read_to_string(&user_file) {
+        match serde_json::from_str::<HashMap<String, MetaMapType>>(&content) {
+            Ok(user_map) => {
+                for (k, v) in user_map {
+                    result.insert(k, v);
+                }
+            }
+            Err(e) => {
+                errors.push(ConfigError {
+                    file: user_file.to_string_lossy().to_string(),
+                    err: format!("JSON parse error: {}", e),
+                });
+            }
+        }
+    }
+
+    // Read directory overrides: {config_dir}/presets/*.json
+    let dir_path = config_dir.join("presets");
+    if dir_path.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(&dir_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        match serde_json::from_str::<HashMap<String, MetaMapType>>(&content) {
+                            Ok(file_map) => {
+                                for (k, v) in file_map {
+                                    result.insert(k, v);
+                                }
+                            }
+                            Err(e) => {
+                                errors.push(ConfigError {
+                                    file: path.to_string_lossy().to_string(),
+                                    err: format!("JSON parse error: {}", e),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Merge two settings maps. Handles `namespace:*` clear keys:
+/// If user sets `"ai:*": true`, all default `ai:*` keys are removed first.
+/// Null values in user map remove the key from result.
+fn merge_settings_maps(
+    defaults: serde_json::Map<String, Value>,
+    user: serde_json::Map<String, Value>,
+) -> serde_json::Map<String, Value> {
+    let mut result = defaults;
+
+    // Process clear keys first: if user has "namespace:*" = true,
+    // remove all default keys with that namespace prefix
+    for (k, v) in &user {
+        if k.ends_with(":*") {
+            if v.as_bool() == Some(true) {
+                let prefix = &k[..k.len() - 1]; // e.g., "ai:" from "ai:*"
+                result.retain(|rk, _| !rk.starts_with(prefix) || rk.ends_with(":*"));
+            }
+        }
+    }
+
+    // Apply user overrides (null removes the key)
+    for (k, v) in user {
+        if v.is_null() {
+            result.remove(&k);
+        } else {
+            result.insert(k, v);
+        }
+    }
+
+    result
+}
+
+/// Recursively expand `$ENV:VAR` in all string values of a JSON map.
+fn resolve_env_in_map(
+    map: serde_json::Map<String, Value>,
+) -> serde_json::Map<String, Value> {
+    map.into_iter()
+        .map(|(k, v)| (k, resolve_env_in_value(v)))
+        .collect()
+}
+
+/// Recursively expand `$ENV:VAR` in a JSON value.
+fn resolve_env_in_value(value: Value) -> Value {
+    match value {
+        Value::String(s) => Value::String(expand_env_vars(&s)),
+        Value::Array(arr) => Value::Array(arr.into_iter().map(resolve_env_in_value).collect()),
+        Value::Object(map) => Value::Object(resolve_env_in_map(map)),
+        other => other,
+    }
+}
+
+// ---- Config write helpers ----
+
+/// Write a JSON value to a config file, creating parent dirs as needed.
+pub fn write_wave_home_config_file(
+    config_dir: &Path,
+    file_name: &str,
+    data: &serde_json::Map<String, Value>,
+) -> Result<(), String> {
+    let path = config_dir.join(file_name);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("create dir: {}", e))?;
+    }
+    let json_str = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("serialize: {}", e))?;
+    std::fs::write(&path, json_str)
+        .map_err(|e| format!("write {}: {}", path.display(), e))
+}
+
+/// Read-merge-write the base settings.json file.
+/// `to_merge` contains keys to add/update. Null values delete keys.
+pub fn set_base_config_value(
+    config_dir: &Path,
+    to_merge: &serde_json::Map<String, Value>,
+) -> Result<(), String> {
+    let path = config_dir.join(SETTINGS_FILE);
+
+    // Read existing
+    let mut current: serde_json::Map<String, Value> = match std::fs::read_to_string(&path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => serde_json::Map::new(),
+    };
+
+    // Apply merge
+    for (k, v) in to_merge {
+        if v.is_null() {
+            current.remove(k);
+        } else {
+            current.insert(k.clone(), v.clone());
+        }
+    }
+
+    write_wave_home_config_file(config_dir, SETTINGS_FILE, &current)
+}
+
+/// Read-merge-write a connection's config in connections.json.
+pub fn set_connections_config_value(
+    config_dir: &Path,
+    conn_name: &str,
+    to_merge: &serde_json::Map<String, Value>,
+) -> Result<(), String> {
+    let path = config_dir.join(CONNECTIONS_FILE);
+
+    // Read existing connections
+    let mut all_conns: serde_json::Map<String, Value> = match std::fs::read_to_string(&path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => serde_json::Map::new(),
+    };
+
+    // Get or create the connection entry
+    let conn_entry = all_conns
+        .entry(conn_name.to_string())
+        .or_insert_with(|| Value::Object(serde_json::Map::new()));
+
+    if let Some(conn_map) = conn_entry.as_object_mut() {
+        for (k, v) in to_merge {
+            if v.is_null() {
+                conn_map.remove(k);
+            } else {
+                conn_map.insert(k.clone(), v.clone());
+            }
+        }
+    }
+
+    write_wave_home_config_file(config_dir, CONNECTIONS_FILE, &all_conns)
 }
 
 // ---- Serde helpers ----

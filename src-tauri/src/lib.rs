@@ -102,6 +102,7 @@ pub fn run() {
             commands::rpc::reactive_unregister,
             commands::rpc::reactive_inject,
             commands::rpc::reactive_poller_config,
+            commands::rpc::get_schema,
         ])
         // Application setup
         .setup(|app| {

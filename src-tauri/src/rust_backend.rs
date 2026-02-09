@@ -108,6 +108,21 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
     let (rpc_engine, _rpc_output) = WshRpcEngine::new();
     let router = WshRouter::new();
 
+    // Load config from disk (embedded defaults + user overrides)
+    let config_dir = crate::backend::wavebase::get_wave_config_dir();
+    if let Err(e) = crate::backend::wavebase::ensure_wave_config_dir() {
+        tracing::warn!("Could not ensure config dir: {}", e);
+    }
+    let full_config = crate::backend::wconfig::load_full_config(&config_dir);
+    let n_themes = full_config.term_themes.len();
+    let n_widgets = full_config.default_widgets.len() + full_config.widgets.len();
+    let n_presets = full_config.presets.len();
+    let config_watcher = Arc::new(crate::backend::wconfig::ConfigWatcher::with_config(full_config));
+    tracing::info!(
+        "Config loaded: {} themes, {} widgets, {} presets",
+        n_themes, n_widgets, n_presets,
+    );
+
     // Generate auth key for wsh connections and set it globally
     let auth_key = uuid::Uuid::new_v4().to_string();
     if let Err(e) = crate::backend::authkey::set_auth_key(auth_key.clone()) {
@@ -143,6 +158,8 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
         router,
         file_store,
         wsh_socket_path: std::sync::Mutex::new(wsh_socket_path),
+        config_watcher,
+        config_dir,
     };
     app.manage(app_state);
 

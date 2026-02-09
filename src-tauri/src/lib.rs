@@ -1,3 +1,4 @@
+mod backend;
 mod commands;
 mod crash;
 mod heartbeat;

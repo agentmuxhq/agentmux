@@ -5192,6 +5192,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-websocket",
  "tauri-plugin-window-state",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "tracing-appender",

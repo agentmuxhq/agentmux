@@ -567,6 +567,380 @@ impl FileStore {
         Ok((files_flushed, parts_flushed))
     }
 
+    /// Write data at a specific offset.
+    /// The offset must be <= current file size.
+    pub fn write_at(
+        &self,
+        zone_id: &str,
+        name: &str,
+        offset: i64,
+        data: &[u8],
+    ) -> Result<(), StoreError> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        let key = (zone_id.to_string(), name.to_string());
+        let now = Self::now_ms();
+
+        let file = self.stat(zone_id, name)?.ok_or(StoreError::NotFound)?;
+        if offset > file.size {
+            return Err(StoreError::Other(format!(
+                "offset {} exceeds file size {}",
+                offset, file.size
+            )));
+        }
+
+        let new_size = std::cmp::max(file.size, offset + data.len() as i64);
+        let pds = PART_DATA_SIZE as i64;
+
+        // Handle circular file data truncation
+        let (actual_offset, actual_data) = if file.opts.circular && file.opts.maxsize > 0 {
+            let start_cir_offset = new_size - file.opts.maxsize;
+            if start_cir_offset > 0 {
+                let end = offset + data.len() as i64;
+                if end <= start_cir_offset {
+                    // Entire write is before the circular window — no-op
+                    return Ok(());
+                }
+                if offset < start_cir_offset {
+                    let skip = (start_cir_offset - offset) as usize;
+                    (start_cir_offset, &data[skip..])
+                } else {
+                    (offset, data)
+                }
+            } else {
+                (offset, data)
+            }
+        } else {
+            (offset, data)
+        };
+
+        // Compute affected parts
+        let start_part = (actual_offset / pds) as i32;
+        let end_part = ((actual_offset + actual_data.len() as i64 - 1) / pds) as i32;
+
+        let conn = self.conn.lock().unwrap();
+        let mut data_pos = 0usize;
+
+        for part_idx in start_part..=end_part {
+            let part_start = part_idx as i64 * pds;
+            let offset_in_part = if part_idx == start_part {
+                (actual_offset - part_start) as usize
+            } else {
+                0
+            };
+
+            // Load existing part if needed
+            let existing: Option<Vec<u8>> = conn
+                .query_row(
+                    "SELECT data FROM db_file_data WHERE zoneid = ?1 AND name = ?2 AND partidx = ?3",
+                    params![zone_id, name, part_idx],
+                    |row| row.get(0),
+                )
+                .ok();
+
+            let mut part_data = existing.unwrap_or_default();
+            // Ensure part is large enough
+            if part_data.len() < offset_in_part {
+                part_data.resize(offset_in_part, 0);
+            }
+
+            // Copy data into part
+            let remaining = actual_data.len() - data_pos;
+            let space = PART_DATA_SIZE - offset_in_part;
+            let to_copy = remaining.min(space);
+
+            if offset_in_part < part_data.len() {
+                // Overwrite existing bytes
+                let overwrite_end = (offset_in_part + to_copy).min(part_data.len());
+                let overwrite_len = overwrite_end - offset_in_part;
+                part_data[offset_in_part..offset_in_part + overwrite_len]
+                    .copy_from_slice(&actual_data[data_pos..data_pos + overwrite_len]);
+                if to_copy > overwrite_len {
+                    part_data.extend_from_slice(
+                        &actual_data[data_pos + overwrite_len..data_pos + to_copy],
+                    );
+                }
+            } else {
+                part_data.extend_from_slice(&actual_data[data_pos..data_pos + to_copy]);
+            }
+
+            conn.execute(
+                "REPLACE INTO db_file_data (zoneid, name, partidx, data) VALUES (?1, ?2, ?3, ?4)",
+                params![zone_id, name, part_idx, part_data],
+            )?;
+            data_pos += to_copy;
+        }
+
+        // Update file size
+        conn.execute(
+            "UPDATE db_wave_file SET size = ?1, modts = ?2 WHERE zoneid = ?3 AND name = ?4",
+            params![new_size, now, zone_id, name],
+        )?;
+        drop(conn);
+
+        // Update cache
+        let mut cache = self.cache.lock().unwrap();
+        if let Some(entry) = cache.get_mut(&key) {
+            if let Some(ref mut f) = entry.file {
+                f.size = new_size;
+                f.modts = now;
+            }
+            // Invalidate cached data entries for affected parts
+            for part_idx in start_part..=end_part {
+                entry.data_entries.remove(&part_idx);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Write metadata. If `merge` is true, only specified keys are updated;
+    /// otherwise the entire metadata map is replaced.
+    pub fn write_meta(
+        &self,
+        zone_id: &str,
+        name: &str,
+        meta: FileMeta,
+        merge: bool,
+    ) -> Result<(), StoreError> {
+        let key = (zone_id.to_string(), name.to_string());
+        let now = Self::now_ms();
+
+        let file = self.stat(zone_id, name)?.ok_or(StoreError::NotFound)?;
+
+        let new_meta = if merge {
+            let mut merged = file.meta.clone();
+            for (k, v) in meta {
+                if v.is_null() {
+                    merged.remove(&k);
+                } else {
+                    merged.insert(k, v);
+                }
+            }
+            merged
+        } else {
+            meta
+        };
+
+        let meta_json = serde_json::to_string(&new_meta)?;
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE db_wave_file SET meta = ?1, modts = ?2 WHERE zoneid = ?3 AND name = ?4",
+            params![meta_json, now, zone_id, name],
+        )?;
+        drop(conn);
+
+        // Update cache
+        let mut cache = self.cache.lock().unwrap();
+        if let Some(entry) = cache.get_mut(&key) {
+            if let Some(ref mut f) = entry.file {
+                f.meta = new_meta;
+                f.modts = now;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Read data at a specific offset and size.
+    /// For circular files, adjusts offset if it falls before valid data range.
+    /// Returns (adjusted_offset, data).
+    pub fn read_at(
+        &self,
+        zone_id: &str,
+        name: &str,
+        offset: i64,
+        size: i64,
+    ) -> Result<(i64, Vec<u8>), StoreError> {
+        let file = self
+            .stat(zone_id, name)?
+            .ok_or(StoreError::NotFound)?;
+
+        if file.size == 0 {
+            return Ok((0, Vec::new()));
+        }
+
+        let data_len = file.data_length();
+        let data_start = file.data_start_idx();
+
+        // Adjust offset for circular files
+        let mut actual_offset = offset;
+        let mut actual_size = if size == 0 { data_len } else { size };
+
+        if file.opts.circular && file.opts.maxsize > 0 {
+            if actual_offset < data_start {
+                let skip = data_start - actual_offset;
+                actual_offset = data_start;
+                actual_size -= skip;
+            }
+            if actual_size <= 0 {
+                return Ok((data_start, Vec::new()));
+            }
+        }
+
+        // Clamp to available data
+        if actual_offset >= file.size {
+            return Ok((actual_offset, Vec::new()));
+        }
+        let available = file.size - actual_offset;
+        actual_size = actual_size.min(available);
+
+        if actual_size <= 0 {
+            return Ok((actual_offset, Vec::new()));
+        }
+
+        let pds = PART_DATA_SIZE as i64;
+        let start_part = (actual_offset / pds) as i32;
+        let end_part = ((actual_offset + actual_size - 1) / pds) as i32;
+
+        // Load parts from DB
+        let conn = self.conn.lock().unwrap();
+        let mut parts_map: HashMap<i32, Vec<u8>> = HashMap::new();
+        for part_idx in start_part..=end_part {
+            if let Ok(data) = conn.query_row(
+                "SELECT data FROM db_file_data WHERE zoneid = ?1 AND name = ?2 AND partidx = ?3",
+                params![zone_id, name, part_idx],
+                |row| row.get::<_, Vec<u8>>(0),
+            ) {
+                parts_map.insert(part_idx, data);
+            }
+        }
+        drop(conn);
+
+        // Assemble result
+        let mut result = Vec::with_capacity(actual_size as usize);
+        for part_idx in start_part..=end_part {
+            if let Some(part_data) = parts_map.get(&part_idx) {
+                let part_start = part_idx as i64 * pds;
+                let skip = if part_start < actual_offset {
+                    (actual_offset - part_start) as usize
+                } else {
+                    0
+                };
+                let remaining = actual_size as usize - result.len();
+                let take = remaining.min(part_data.len().saturating_sub(skip));
+                if take > 0 {
+                    result.extend_from_slice(&part_data[skip..skip + take]);
+                }
+            }
+        }
+
+        Ok((actual_offset, result))
+    }
+
+    // ---- IJson operations ----
+
+    /// IJson metadata key: number of commands since last compaction.
+    const IJSON_NUM_COMMANDS: &'static str = "ijson:numcmds";
+    /// IJson metadata key: incremental bytes since last compaction.
+    const IJSON_INC_BYTES: &'static str = "ijson:incbytes";
+
+    /// Compaction threshold: high command count.
+    const IJSON_HIGH_COMMANDS: i64 = 100;
+    /// Compaction threshold: high ratio (incremental/file >= 3x).
+    const IJSON_HIGH_RATIO: f64 = 3.0;
+    /// Compaction threshold: low command count.
+    const IJSON_LOW_COMMANDS: i64 = 10;
+    /// Compaction threshold: low ratio (incremental/file >= 1x).
+    const IJSON_LOW_RATIO: f64 = 1.0;
+
+    /// Append an IJson command to a file. Triggers compaction if thresholds are exceeded.
+    pub fn append_ijson(
+        &self,
+        zone_id: &str,
+        name: &str,
+        command: &serde_json::Value,
+    ) -> Result<(), StoreError> {
+        let file = self.stat(zone_id, name)?.ok_or(StoreError::NotFound)?;
+        if !file.opts.ijson {
+            return Err(StoreError::Other("file is not ijson".to_string()));
+        }
+
+        let cmd_bytes = serde_json::to_string(command)?;
+        let data = format!("{}\n", cmd_bytes);
+        self.append_data(zone_id, name, data.as_bytes())?;
+
+        // Update IJson metadata counters
+        let file = self.stat(zone_id, name)?.ok_or(StoreError::NotFound)?;
+        let mut meta = file.meta.clone();
+
+        let num_cmds = meta
+            .get(Self::IJSON_NUM_COMMANDS)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0)
+            + 1;
+        let inc_bytes = meta
+            .get(Self::IJSON_INC_BYTES)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0)
+            + data.len() as i64;
+
+        meta.insert(
+            Self::IJSON_NUM_COMMANDS.to_string(),
+            serde_json::json!(num_cmds),
+        );
+        meta.insert(
+            Self::IJSON_INC_BYTES.to_string(),
+            serde_json::json!(inc_bytes),
+        );
+        self.write_meta(zone_id, name, meta, false)?;
+
+        // Check compaction thresholds
+        let file_size = file.size.max(1); // avoid division by zero
+        let ratio = inc_bytes as f64 / file_size as f64;
+
+        let should_compact = num_cmds > Self::IJSON_HIGH_COMMANDS
+            || ratio >= Self::IJSON_HIGH_RATIO
+            || (num_cmds > Self::IJSON_LOW_COMMANDS && ratio >= Self::IJSON_LOW_RATIO);
+
+        if should_compact {
+            let _ = self.compact_ijson(zone_id, name);
+        }
+
+        Ok(())
+    }
+
+    /// Compact an IJson file: apply all incremental commands to build compacted state,
+    /// then replace file contents with the compacted result.
+    pub fn compact_ijson(
+        &self,
+        zone_id: &str,
+        name: &str,
+    ) -> Result<(), StoreError> {
+        // Read full file
+        let data = self
+            .read_file(zone_id, name)?
+            .ok_or(StoreError::NotFound)?;
+
+        let content = String::from_utf8(data)
+            .map_err(|e| StoreError::Other(format!("invalid utf-8 in ijson file: {}", e)))?;
+
+        // Use the ijson module's compact function
+        let compacted = super::super::ijson::compact_ijson(&content)
+            .map_err(|e| StoreError::Other(format!("ijson compact error: {}", e)))?;
+
+        // The compacted result is a single JSON command (set at root).
+        // Write it as the new file content.
+        let compacted_with_newline = format!("{}\n", compacted);
+        self.write_file(zone_id, name, compacted_with_newline.as_bytes())?;
+
+        // Reset IJson counters
+        let mut meta = FileMeta::new();
+        meta.insert(
+            Self::IJSON_NUM_COMMANDS.to_string(),
+            serde_json::json!(0),
+        );
+        meta.insert(
+            Self::IJSON_INC_BYTES.to_string(),
+            serde_json::json!(0),
+        );
+        self.write_meta(zone_id, name, meta, true)?;
+
+        Ok(())
+    }
+
     // ---- Internal helpers ----
 
     /// Split data into PART_DATA_SIZE chunks.
@@ -860,5 +1234,298 @@ mod tests {
         let (files, parts) = store.flush_cache().unwrap();
         assert_eq!(files, 0);
         assert_eq!(parts, 0);
+    }
+
+    // ---- write_at tests ----
+
+    #[test]
+    fn test_write_at_beginning() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello world").unwrap();
+
+        // Overwrite beginning
+        store.write_at("z1", "f1", 0, b"HELLO").unwrap();
+        let data = store.read_file("z1", "f1").unwrap().unwrap();
+        assert_eq!(data, b"HELLO world");
+    }
+
+    #[test]
+    fn test_write_at_middle() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello world").unwrap();
+
+        store.write_at("z1", "f1", 6, b"WORLD").unwrap();
+        let data = store.read_file("z1", "f1").unwrap().unwrap();
+        assert_eq!(data, b"hello WORLD");
+    }
+
+    #[test]
+    fn test_write_at_extends() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello").unwrap();
+
+        // Write past current end (at exactly size boundary)
+        store.write_at("z1", "f1", 5, b" world").unwrap();
+        let data = store.read_file("z1", "f1").unwrap().unwrap();
+        assert_eq!(data, b"hello world");
+        let file = store.stat("z1", "f1").unwrap().unwrap();
+        assert_eq!(file.size, 11);
+    }
+
+    #[test]
+    fn test_write_at_offset_past_size_fails() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello").unwrap();
+
+        let result = store.write_at("z1", "f1", 10, b"data");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_write_at_empty_data_noop() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello").unwrap();
+        store.write_at("z1", "f1", 0, b"").unwrap();
+        let data = store.read_file("z1", "f1").unwrap().unwrap();
+        assert_eq!(data, b"hello");
+    }
+
+    #[test]
+    fn test_write_at_cross_part_boundary() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+
+        // Write a full part plus some extra
+        let initial: Vec<u8> = vec![0xAA; PART_DATA_SIZE + 100];
+        store.write_file("z1", "f1", &initial).unwrap();
+
+        // Overwrite across part boundary
+        let overwrite_offset = (PART_DATA_SIZE - 10) as i64;
+        let overwrite_data = vec![0xBB; 20]; // 10 bytes in part 0, 10 bytes in part 1
+        store
+            .write_at("z1", "f1", overwrite_offset, &overwrite_data)
+            .unwrap();
+
+        let data = store.read_file("z1", "f1").unwrap().unwrap();
+        assert_eq!(data.len(), PART_DATA_SIZE + 100);
+        // Check the overwritten region
+        for i in 0..20 {
+            assert_eq!(
+                data[PART_DATA_SIZE - 10 + i],
+                0xBB,
+                "byte at offset {} should be 0xBB",
+                PART_DATA_SIZE - 10 + i
+            );
+        }
+    }
+
+    // ---- write_meta tests ----
+
+    #[test]
+    fn test_write_meta_replace() {
+        let store = make_store();
+        let mut initial_meta = FileMeta::new();
+        initial_meta.insert("key1".into(), serde_json::json!("val1"));
+        initial_meta.insert("key2".into(), serde_json::json!("val2"));
+        store
+            .make_file("z1", "f1", initial_meta, FileOpts::default())
+            .unwrap();
+
+        let mut new_meta = FileMeta::new();
+        new_meta.insert("key3".into(), serde_json::json!("val3"));
+        store.write_meta("z1", "f1", new_meta, false).unwrap();
+
+        let file = store.stat("z1", "f1").unwrap().unwrap();
+        assert!(file.meta.get("key1").is_none()); // replaced
+        assert!(file.meta.get("key2").is_none()); // replaced
+        assert_eq!(file.meta.get("key3").unwrap(), "val3");
+    }
+
+    #[test]
+    fn test_write_meta_merge() {
+        let store = make_store();
+        let mut initial_meta = FileMeta::new();
+        initial_meta.insert("key1".into(), serde_json::json!("val1"));
+        initial_meta.insert("key2".into(), serde_json::json!("val2"));
+        store
+            .make_file("z1", "f1", initial_meta, FileOpts::default())
+            .unwrap();
+
+        let mut merge_meta = FileMeta::new();
+        merge_meta.insert("key2".into(), serde_json::json!("updated"));
+        merge_meta.insert("key3".into(), serde_json::json!("new"));
+        store.write_meta("z1", "f1", merge_meta, true).unwrap();
+
+        let file = store.stat("z1", "f1").unwrap().unwrap();
+        assert_eq!(file.meta.get("key1").unwrap(), "val1"); // unchanged
+        assert_eq!(file.meta.get("key2").unwrap(), "updated"); // merged
+        assert_eq!(file.meta.get("key3").unwrap(), "new"); // added
+    }
+
+    #[test]
+    fn test_write_meta_merge_delete() {
+        let store = make_store();
+        let mut initial_meta = FileMeta::new();
+        initial_meta.insert("key1".into(), serde_json::json!("val1"));
+        initial_meta.insert("key2".into(), serde_json::json!("val2"));
+        store
+            .make_file("z1", "f1", initial_meta, FileOpts::default())
+            .unwrap();
+
+        let mut merge_meta = FileMeta::new();
+        merge_meta.insert("key1".into(), serde_json::Value::Null); // delete
+        store.write_meta("z1", "f1", merge_meta, true).unwrap();
+
+        let file = store.stat("z1", "f1").unwrap().unwrap();
+        assert!(file.meta.get("key1").is_none()); // deleted
+        assert_eq!(file.meta.get("key2").unwrap(), "val2"); // unchanged
+    }
+
+    // ---- read_at tests ----
+
+    #[test]
+    fn test_read_at_full() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello world").unwrap();
+
+        let (offset, data) = store.read_at("z1", "f1", 0, 0).unwrap();
+        assert_eq!(offset, 0);
+        assert_eq!(data, b"hello world");
+    }
+
+    #[test]
+    fn test_read_at_partial() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello world").unwrap();
+
+        let (offset, data) = store.read_at("z1", "f1", 6, 5).unwrap();
+        assert_eq!(offset, 6);
+        assert_eq!(data, b"world");
+    }
+
+    #[test]
+    fn test_read_at_past_end() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello").unwrap();
+
+        let (_, data) = store.read_at("z1", "f1", 100, 10).unwrap();
+        assert!(data.is_empty());
+    }
+
+    #[test]
+    fn test_read_at_clamps_size() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        store.write_file("z1", "f1", b"hello").unwrap();
+
+        let (offset, data) = store.read_at("z1", "f1", 3, 100).unwrap();
+        assert_eq!(offset, 3);
+        assert_eq!(data, b"lo"); // only 2 bytes available from offset 3
+    }
+
+    // ---- IJson tests ----
+
+    #[test]
+    fn test_append_ijson_basic() {
+        let store = make_store();
+        let opts = FileOpts {
+            ijson: true,
+            ..Default::default()
+        };
+        store.make_file("z1", "f1", FileMeta::new(), opts).unwrap();
+
+        // Write base JSON
+        store
+            .write_file("z1", "f1", b"{\"type\":\"set\",\"path\":[],\"data\":{}}\n")
+            .unwrap();
+
+        // Append a command
+        let cmd = serde_json::json!({"type": "set", "path": ["name"], "data": "Alice"});
+        store.append_ijson("z1", "f1", &cmd).unwrap();
+
+        let file = store.stat("z1", "f1").unwrap().unwrap();
+        assert!(file.size > 0);
+
+        // Check metadata counters were updated
+        let num_cmds = file
+            .meta
+            .get("ijson:numcmds")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        assert_eq!(num_cmds, 1);
+    }
+
+    #[test]
+    fn test_append_ijson_not_ijson_file_fails() {
+        let store = make_store();
+        store
+            .make_file("z1", "f1", FileMeta::new(), FileOpts::default())
+            .unwrap();
+        let cmd = serde_json::json!({"type": "set", "path": ["x"], "data": 1});
+        let result = store.append_ijson("z1", "f1", &cmd);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_compact_ijson() {
+        let store = make_store();
+        let opts = FileOpts {
+            ijson: true,
+            ..Default::default()
+        };
+        store.make_file("z1", "f1", FileMeta::new(), opts).unwrap();
+
+        // Write base + commands
+        let content = concat!(
+            "{\"type\":\"set\",\"path\":[],\"data\":{}}\n",
+            "{\"type\":\"set\",\"path\":[\"x\"],\"data\":1}\n",
+            "{\"type\":\"set\",\"path\":[\"y\"],\"data\":2}\n",
+        );
+        store.write_file("z1", "f1", content.as_bytes()).unwrap();
+
+        // Set up metadata to indicate commands exist
+        let mut meta = FileMeta::new();
+        meta.insert("ijson:numcmds".into(), serde_json::json!(2));
+        meta.insert("ijson:incbytes".into(), serde_json::json!(100));
+        store.write_meta("z1", "f1", meta, true).unwrap();
+
+        store.compact_ijson("z1", "f1").unwrap();
+
+        // After compaction, counters should be reset
+        let file = store.stat("z1", "f1").unwrap().unwrap();
+        let num_cmds = file
+            .meta
+            .get("ijson:numcmds")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(-1);
+        assert_eq!(num_cmds, 0);
     }
 }

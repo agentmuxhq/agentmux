@@ -44,7 +44,18 @@ pub fn run() {
                     let _ = window.set_focus();
                 }
             }),
-        )
+        );
+
+    // Register wavefile:// custom protocol for file streaming (rust-backend mode)
+    #[cfg(feature = "rust-backend")]
+    let builder = builder.register_asynchronous_uri_scheme_protocol(
+        "wavefile",
+        |_ctx, request, responder| {
+            crate::backend::filestream::handle_wavefile_protocol(request, responder);
+        },
+    );
+
+    let builder = builder
         // Commands (IPC handlers replacing Electron's ipcMain)
         .invoke_handler(tauri::generate_handler![
             // Platform commands

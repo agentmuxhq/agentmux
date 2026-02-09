@@ -123,6 +123,16 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
         n_themes, n_widgets, n_presets,
     );
 
+    // Start filesystem watcher for config auto-reload (non-fatal if it fails)
+    if let Err(e) = crate::backend::wconfig::start_config_watcher(
+        config_dir.clone(),
+        Arc::clone(&config_watcher),
+        Arc::clone(&broker),
+    ) {
+        tracing::warn!("Could not start config file watcher: {}", e);
+    }
+
+
     // Generate auth key for wsh connections and set it globally
     let auth_key = uuid::Uuid::new_v4().to_string();
     if let Err(e) = crate::backend::authkey::set_auth_key(auth_key.clone()) {

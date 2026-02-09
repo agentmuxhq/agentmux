@@ -1141,6 +1141,124 @@ pub fn set_connections_config_value(
     write_wave_home_config_file(config_dir, CONNECTIONS_FILE, &all_conns)
 }
 
+// ---- Config filesystem watching ----
+
+/// Subdirectories under the config dir that contain per-item JSON files.
+#[cfg(feature = "rust-backend")]
+const CONFIG_SUBDIRS: &[&str] = &[
+    "termthemes",
+    "widgets",
+    "presets",
+    "connections",
+    "bookmarks",
+    "mimetypes",
+];
+
+/// Check if a filename is a valid config file name.
+/// Must end with `.json` and contain only alphanumeric, `_`, `@`, `.`, `-`.
+#[cfg(feature = "rust-backend")]
+fn is_valid_config_filename(name: &str) -> bool {
+    if !name.ends_with(".json") {
+        return false;
+    }
+    name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '@' || c == '.' || c == '-')
+}
+
+/// Start watching the config directory for changes.
+/// On valid changes, reloads config, updates the watcher, and publishes to the broker.
+/// Returns an error if the watcher cannot be created, but this is non-fatal.
+#[cfg(feature = "rust-backend")]
+pub fn start_config_watcher(
+    config_dir: std::path::PathBuf,
+    config_watcher: std::sync::Arc<ConfigWatcher>,
+    broker: std::sync::Arc<super::wps::Broker>,
+) -> Result<(), String> {
+    use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+    use std::sync::mpsc;
+    use std::time::{Duration, Instant};
+
+    let (tx, rx) = mpsc::channel();
+
+    let mut watcher = RecommendedWatcher::new(tx, Config::default())
+        .map_err(|e| format!("failed to create file watcher: {}", e))?;
+
+    // Watch config dir (non-recursive for top-level .json files)
+    watcher
+        .watch(&config_dir, RecursiveMode::NonRecursive)
+        .map_err(|e| format!("failed to watch config dir: {}", e))?;
+
+    // Watch each existing subdir
+    for subdir in CONFIG_SUBDIRS {
+        let sub_path = config_dir.join(subdir);
+        if sub_path.is_dir() {
+            if let Err(e) = watcher.watch(&sub_path, RecursiveMode::NonRecursive) {
+                tracing::warn!("Could not watch config subdir {}: {}", subdir, e);
+            }
+        }
+    }
+
+    let config_dir_clone = config_dir.clone();
+    std::thread::Builder::new()
+        .name("config-watcher".to_string())
+        .spawn(move || {
+            let _watcher = watcher; // keep watcher alive
+            let debounce = Duration::from_millis(300);
+            let mut last_reload = Instant::now() - debounce; // allow immediate first reload
+
+            while let Ok(event_result) = rx.recv() {
+                let event = match event_result {
+                    Ok(e) => e,
+                    Err(e) => {
+                        tracing::warn!("Config watcher error: {}", e);
+                        continue;
+                    }
+                };
+
+                // Skip access/chmod events
+                if matches!(event.kind, EventKind::Access(_)) {
+                    continue;
+                }
+
+                // Check if any changed path has a valid config filename
+                let has_valid_file = event.paths.iter().any(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(is_valid_config_filename)
+                        .unwrap_or(false)
+                });
+
+                if !has_valid_file {
+                    continue;
+                }
+
+                // Debounce: skip if we reloaded too recently
+                let now = Instant::now();
+                if now.duration_since(last_reload) < debounce {
+                    continue;
+                }
+                last_reload = now;
+
+                tracing::info!("Config file changed, reloading");
+                let config = load_full_config(&config_dir_clone);
+                config_watcher.set_config(config.clone());
+                broker.publish(super::wps::WaveEvent {
+                    event: super::wps::EVENT_CONFIG.to_string(),
+                    scopes: Vec::new(),
+                    sender: String::new(),
+                    persist: 0,
+                    data: Some(serde_json::json!({ "fullconfig": config })),
+                });
+            }
+
+            tracing::info!("Config watcher thread exiting");
+        })
+        .map_err(|e| format!("failed to spawn config watcher thread: {}", e))?;
+
+    tracing::info!("Config file watcher started for {:?}", config_dir);
+    Ok(())
+}
+
+
 // ---- Serde helpers ----
 
 fn is_false(v: &bool) -> bool {

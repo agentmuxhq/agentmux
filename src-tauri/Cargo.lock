@@ -5428,7 +5428,7 @@ dependencies = [
 
 [[package]]
 name = "wavemux"
-version = "0.20.8"
+version = "0.20.11"
 dependencies = [
  "base64 0.22.1",
  "chrono",

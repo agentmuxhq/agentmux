@@ -10,10 +10,13 @@
 //! - Tool execution with approval flow
 //! - In-memory chat store for message history
 
+pub mod adapters;
+pub mod agent;
 pub mod anthropic;
 pub mod chatstore;
 pub mod openai;
 pub mod tools;
+pub mod unified;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -129,9 +129,9 @@ tasks:
             - docs:npm:install
 
     package:
-        desc: Package the application for the current platform.
+        desc: Package the application for the current platform (Tauri).
         cmds:
-            - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
+            - npm run tauri build {{.CLI_ARGS}}
         deps:
             - clean
             - npm:install

@@ -7,7 +7,7 @@
     "productName": "WaveMux",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.19.0",
+    "version": "0.18.6",
     "homepage": "https://github.com/a5af/wavemux",
     "build": {
         "appId": "com.a5af.wavemux"
@@ -19,15 +19,10 @@
         "Chrome >= 128"
     ],
     "scripts": {
-        "dev": "electron-vite dev",
-        "start": "electron-vite preview",
-        "build:dev": "electron-vite build --mode development",
-        "build:prod": "electron-vite build --mode production",
+        "dev": "tauri dev",
+        "build": "tauri build",
         "coverage": "vitest run --coverage",
-        "test": "vitest",
-        "postinstall": "electron-builder install-app-deps",
-        "tauri:dev": "tauri dev",
-        "tauri:build": "tauri build"
+        "test": "vitest"
     },
     "devDependencies": {
         "@eslint/js": "^8.57.0",
@@ -52,9 +47,6 @@
         "@types/ws": "^8",
         "@vitejs/plugin-react-swc": "4.2.2",
         "@vitest/coverage-istanbul": "^3.0.9",
-        "electron": "^38.1.2",
-        "electron-builder": "^26.1.0",
-        "electron-vite": "^4.0.1",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^10.1.8",
         "node-abi": "^4.24.0",
@@ -109,7 +101,6 @@
         "css-tree": "^3.1.0",
         "dayjs": "^1.11.19",
         "debug": "^4.4.3",
-        "electron-updater": "^6.6",
         "env-paths": "^3.0.0",
         "fast-average-color": "^9.5.0",
         "htl": "^0.3.1",

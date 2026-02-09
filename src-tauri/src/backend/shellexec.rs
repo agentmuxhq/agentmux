@@ -57,8 +57,9 @@ pub trait ConnInterface: Send + Sync {
     /// Start the process. Called once after creation.
     fn start(&mut self) -> io::Result<()>;
 
-    /// Wait for process to exit. Returns exit status as error.
-    fn wait(&mut self) -> io::Result<i32>;
+    /// Wait for process to exit. Returns exit code.
+    /// Uses interior mutability so it can be called from Arc<ShellProc>.
+    fn wait(&self) -> io::Result<i32>;
 
     /// Kill the process immediately.
     fn kill(&self) -> io::Result<()>;
@@ -121,10 +122,11 @@ pub struct ShellProc {
     close_once: AtomicBool,
 
     /// Signaled when the process exits. The i32 is the exit code.
-    done_tx: Option<oneshot::Sender<i32>>,
+    /// Uses Mutex so wait_and_signal can work with &self.
+    done_tx: std::sync::Mutex<Option<oneshot::Sender<i32>>>,
 
     /// Receiver for wait completion.
-    done_rx: Option<oneshot::Receiver<i32>>,
+    done_rx: std::sync::Mutex<Option<oneshot::Receiver<i32>>>,
 
     /// Exit code after wait completes.
     exit_code: std::sync::Mutex<Option<i32>>,
@@ -138,8 +140,8 @@ impl ShellProc {
             conn_name,
             cmd,
             close_once: AtomicBool::new(false),
-            done_tx: Some(done_tx),
-            done_rx: Some(done_rx),
+            done_tx: std::sync::Mutex::new(Some(done_tx)),
+            done_rx: std::sync::Mutex::new(Some(done_rx)),
             exit_code: std::sync::Mutex::new(None),
         }
     }
@@ -184,10 +186,10 @@ impl ShellProc {
 
     /// Wait for process exit and signal done channel.
     /// This should be called from a dedicated task.
-    pub fn wait_and_signal(&mut self) -> i32 {
+    pub fn wait_and_signal(&self) -> i32 {
         let exit_code = self.cmd.wait().unwrap_or(-1);
         *self.exit_code.lock().unwrap() = Some(exit_code);
-        if let Some(tx) = self.done_tx.take() {
+        if let Some(tx) = self.done_tx.lock().unwrap().take() {
             let _ = tx.send(exit_code);
         }
         exit_code
@@ -195,8 +197,8 @@ impl ShellProc {
 
     /// Take the done receiver (can only be called once).
     /// Used by the block controller to await process completion.
-    pub fn take_done_rx(&mut self) -> Option<oneshot::Receiver<i32>> {
-        self.done_rx.take()
+    pub fn take_done_rx(&self) -> Option<oneshot::Receiver<i32>> {
+        self.done_rx.lock().unwrap().take()
     }
 
     /// Get the exit code (only valid after wait completes).
@@ -268,7 +270,7 @@ impl ConnInterface for MockConn {
         Ok(())
     }
 
-    fn wait(&mut self) -> io::Result<i32> {
+    fn wait(&self) -> io::Result<i32> {
         // In tests, this blocks until signal_exit is called.
         // Since we can't do async in a sync trait method, we just return immediately.
         Ok(self.mock_exit_code)
@@ -311,6 +313,206 @@ impl ConnInterface for MockConn {
     fn close(&self) -> io::Result<()> {
         self.closed.store(true, Ordering::SeqCst);
         Ok(())
+    }
+}
+
+// ---- Real PTY implementation (rust-backend only) ----
+
+#[cfg(feature = "rust-backend")]
+pub mod local_pty {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::sync::Mutex;
+
+    /// Real PTY connection using portable-pty.
+    /// Implements ConnInterface for local shell processes.
+    pub struct LocalPtyConn {
+        /// Shell path (e.g., "cmd.exe", "/bin/bash"). Empty = platform default.
+        shell_path: String,
+        /// Working directory for the shell.
+        cwd: String,
+        /// Additional environment variables.
+        env: HashMap<String, String>,
+        /// Initial terminal size.
+        initial_rows: u16,
+        initial_cols: u16,
+        /// PTY master (for resize). Set after start().
+        master: Mutex<Option<Box<dyn portable_pty::MasterPty + Send>>>,
+        /// Cloned reader from master (for stdout). Set after start().
+        reader: Mutex<Option<Box<dyn Read + Send>>>,
+        /// Cloned writer from master (for stdin). Set after start().
+        writer: Mutex<Option<Box<dyn Write + Send>>>,
+        /// Child process. Set after start().
+        child: Mutex<Option<Box<dyn portable_pty::Child + Send + Sync>>>,
+        /// Cached exit code after wait().
+        exit_code_val: Mutex<i32>,
+    }
+
+    impl LocalPtyConn {
+        pub fn new(
+            shell_path: String,
+            cwd: String,
+            env: HashMap<String, String>,
+            rows: u16,
+            cols: u16,
+        ) -> Self {
+            Self {
+                shell_path,
+                cwd,
+                env,
+                initial_rows: rows,
+                initial_cols: cols,
+                master: Mutex::new(None),
+                reader: Mutex::new(None),
+                writer: Mutex::new(None),
+                child: Mutex::new(None),
+                exit_code_val: Mutex::new(0),
+            }
+        }
+
+        /// Create with default shell and terminal size.
+        pub fn new_default(cwd: String, env: HashMap<String, String>) -> Self {
+            Self::new(String::new(), cwd, env, DEFAULT_TERM_ROWS as u16, DEFAULT_TERM_COLS as u16)
+        }
+
+        /// Detect the shell command to use.
+        fn build_command(&self) -> portable_pty::CommandBuilder {
+            if self.shell_path.is_empty() {
+                // Platform default shell
+                let mut cmd = portable_pty::CommandBuilder::new_default_prog();
+                if !self.cwd.is_empty() {
+                    cmd.cwd(&self.cwd);
+                }
+                for (k, v) in &self.env {
+                    cmd.env(k, v);
+                }
+                cmd
+            } else {
+                let mut cmd = portable_pty::CommandBuilder::new(&self.shell_path);
+                if !self.cwd.is_empty() {
+                    cmd.cwd(&self.cwd);
+                }
+                for (k, v) in &self.env {
+                    cmd.env(k, v);
+                }
+                cmd
+            }
+        }
+    }
+
+    impl ConnInterface for LocalPtyConn {
+        fn start(&mut self) -> io::Result<()> {
+            let pty_system = portable_pty::native_pty_system();
+
+            let pair = pty_system
+                .openpty(portable_pty::PtySize {
+                    rows: self.initial_rows,
+                    cols: self.initial_cols,
+                    pixel_width: 0,
+                    pixel_height: 0,
+                })
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("openpty: {}", e)))?;
+
+            let cmd = self.build_command();
+            let child_proc = pair
+                .slave
+                .spawn_command(cmd)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("spawn: {}", e)))?;
+
+            // Drop the slave — we communicate through the master
+            drop(pair.slave);
+
+            let reader = pair
+                .master
+                .try_clone_reader()
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("clone reader: {}", e)))?;
+            let writer = pair
+                .master
+                .take_writer()
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("take writer: {}", e)))?;
+
+            *self.master.lock().unwrap() = Some(pair.master);
+            *self.reader.lock().unwrap() = Some(reader);
+            *self.writer.lock().unwrap() = Some(writer);
+            *self.child.lock().unwrap() = Some(child_proc);
+
+            Ok(())
+        }
+
+        fn wait(&self) -> io::Result<i32> {
+            let mut child_guard = self.child.lock().unwrap();
+            if let Some(ref mut child) = *child_guard {
+                let status = child
+                    .wait()
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("wait: {}", e)))?;
+                let code = if status.success() { 0 } else { 1 };
+                *self.exit_code_val.lock().unwrap() = code;
+                Ok(code)
+            } else {
+                Ok(*self.exit_code_val.lock().unwrap())
+            }
+        }
+
+        fn kill(&self) -> io::Result<()> {
+            let mut child_guard = self.child.lock().unwrap();
+            if let Some(ref mut child) = *child_guard {
+                child
+                    .kill()
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("kill: {}", e)))?;
+            }
+            Ok(())
+        }
+
+        fn kill_graceful(&self, _timeout_ms: u64) -> io::Result<()> {
+            // On Windows ConPTY, there's no SIGTERM equivalent; just kill.
+            self.kill()
+        }
+
+        fn exit_code(&self) -> i32 {
+            *self.exit_code_val.lock().unwrap()
+        }
+
+        fn write_data(&self, data: &[u8]) -> io::Result<usize> {
+            let mut writer_guard = self.writer.lock().unwrap();
+            if let Some(ref mut writer) = *writer_guard {
+                writer.write(data)
+            } else {
+                Err(io::Error::new(io::ErrorKind::NotConnected, "PTY not started"))
+            }
+        }
+
+        fn read_data(&self, buf: &mut [u8]) -> io::Result<usize> {
+            let mut reader_guard = self.reader.lock().unwrap();
+            if let Some(ref mut reader) = *reader_guard {
+                reader.read(buf)
+            } else {
+                Err(io::Error::new(io::ErrorKind::NotConnected, "PTY not started"))
+            }
+        }
+
+        fn set_size(&self, rows: i64, cols: i64) -> io::Result<()> {
+            let master_guard = self.master.lock().unwrap();
+            if let Some(ref master) = *master_guard {
+                master
+                    .resize(portable_pty::PtySize {
+                        rows: rows as u16,
+                        cols: cols as u16,
+                        pixel_width: 0,
+                        pixel_height: 0,
+                    })
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("resize: {}", e)))
+            } else {
+                Err(io::Error::new(io::ErrorKind::NotConnected, "PTY not started"))
+            }
+        }
+
+        fn close(&self) -> io::Result<()> {
+            // Drop reader/writer/master to close the PTY
+            *self.reader.lock().unwrap() = None;
+            *self.writer.lock().unwrap() = None;
+            *self.master.lock().unwrap() = None;
+            Ok(())
+        }
     }
 }
 

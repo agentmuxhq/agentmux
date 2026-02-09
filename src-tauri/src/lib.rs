@@ -95,6 +95,7 @@ pub fn run() {
             // RPC bridge commands (rust-backend mode)
             commands::rpc::rpc_request,
             commands::rpc::service_request,
+            commands::rpc::set_block_term_size,
         ])
         // Application setup
         .setup(|app| {

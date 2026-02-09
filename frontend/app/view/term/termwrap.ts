@@ -3,6 +3,7 @@
 
 import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
+import { isRustBackend, setBlockTermSize } from "@/util/tauri-rpc";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/app/store/global";
@@ -733,13 +734,17 @@ export class TermWrap {
         const oldCols = this.terminal.cols;
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
-            const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            const wsCommand: SetBlockTermSizeWSCommand = {
-                wscommand: "setblocktermsize",
-                blockid: this.blockId,
-                termsize: termSize,
-            };
-            sendWSCommand(wsCommand);
+            if (isRustBackend()) {
+                setBlockTermSize(this.blockId, this.terminal.rows, this.terminal.cols);
+            } else {
+                const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+                const wsCommand: SetBlockTermSizeWSCommand = {
+                    wscommand: "setblocktermsize",
+                    blockid: this.blockId,
+                    termsize: termSize,
+                };
+                sendWSCommand(wsCommand);
+            }
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {

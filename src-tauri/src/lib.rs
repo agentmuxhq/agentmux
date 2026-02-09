@@ -96,6 +96,12 @@ pub fn run() {
             commands::rpc::rpc_request,
             commands::rpc::service_request,
             commands::rpc::set_block_term_size,
+            // File and reactive commands (rust-backend mode)
+            commands::rpc::fetch_wave_file,
+            commands::rpc::reactive_register,
+            commands::rpc::reactive_unregister,
+            commands::rpc::reactive_inject,
+            commands::rpc::reactive_poller_config,
         ])
         // Application setup
         .setup(|app| {

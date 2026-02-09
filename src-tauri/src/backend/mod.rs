@@ -26,6 +26,8 @@ pub mod telemetry;
 pub mod trimquotes;
 pub mod userinput;
 pub mod utilds;
+pub mod vdom;
+pub mod waveapp;
 pub mod wavebase;
 pub mod waveobj;
 pub mod wcloud;

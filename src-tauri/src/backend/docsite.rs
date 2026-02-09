@@ -35,7 +35,7 @@ pub fn get_docsite_dir() -> Option<&'static PathBuf> {
 /// # Examples
 ///
 /// ```
-/// use wavemux_lib::backend::docsite::resolve_docsite_path;
+/// use backend_test::backend::docsite::resolve_docsite_path;
 ///
 /// // Without docsite configured, always returns None
 /// assert!(resolve_docsite_path("/docs/foo").is_none());

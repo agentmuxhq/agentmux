@@ -43,6 +43,11 @@ dirs = "6"
 libc = "0.2"
 subtle = "2"
 
+[features]
+default = ["go-sidecar"]
+go-sidecar = []
+rust-backend = []
+
 [profile.release]
 strip = true
 lto = true

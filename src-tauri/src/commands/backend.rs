@@ -2,26 +2,40 @@ use crate::state::AppState;
 
 /// Get the backend WebSocket and HTTP endpoints.
 ///
-/// The frontend uses these to establish its WebSocket RPC connection
-/// and make HTTP requests to the Go backend.
-///
-/// This is a new command (no Electron equivalent) -- in Electron,
-/// the frontend received these via the wave-init event pushed
-/// from the main process.
+/// In go-sidecar mode: returns the Go backend's WS/HTTP endpoints.
+/// In rust-backend mode: returns empty endpoints (frontend uses Tauri IPC).
 #[tauri::command]
 pub fn get_backend_endpoints(
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let endpoints = state.backend_endpoints.lock().unwrap();
-
-    if endpoints.ws_endpoint.is_empty() {
-        return Err("Backend not ready yet".to_string());
+    #[cfg(feature = "go-sidecar")]
+    {
+        let endpoints = state.backend_endpoints.lock().unwrap();
+        if endpoints.ws_endpoint.is_empty() {
+            return Err("Backend not ready yet".to_string());
+        }
+        return Ok(serde_json::json!({
+            "ws": endpoints.ws_endpoint,
+            "web": endpoints.web_endpoint,
+        }));
     }
 
-    Ok(serde_json::json!({
-        "ws": endpoints.ws_endpoint,
-        "web": endpoints.web_endpoint,
-    }))
+    #[cfg(feature = "rust-backend")]
+    {
+        // In rust-backend mode, no WebSocket/HTTP — frontend uses Tauri IPC
+        let _ = state; // suppress unused warning
+        Ok(serde_json::json!({
+            "ws": "",
+            "web": "",
+            "rustBackend": true,
+        }))
+    }
+
+    #[cfg(not(any(feature = "go-sidecar", feature = "rust-backend")))]
+    {
+        let _ = state;
+        Err("No backend feature enabled".to_string())
+    }
 }
 
 /// Get the window initialization options (client/window/tab IDs).

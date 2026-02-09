@@ -3,7 +3,10 @@ mod commands;
 mod crash;
 mod heartbeat;
 mod menu;
+#[cfg(feature = "go-sidecar")]
 mod sidecar;
+#[cfg(feature = "rust-backend")]
+mod rust_backend;
 mod state;
 mod tray;
 
@@ -12,11 +15,15 @@ use tauri::Manager;
 
 /// Initialize and run the WaveMux Tauri application.
 ///
-/// This replaces the Electron main process (emain/emain.ts).
-/// The Go backend (wavemuxsrv) is spawned as a sidecar process,
-/// and the React frontend connects to it via WebSocket/HTTP.
+/// Supports two backend modes (controlled by Cargo features):
+/// - `go-sidecar` (default): Spawns wavemuxsrv Go binary as sidecar
+/// - `rust-backend`: Uses in-process Rust backend (no external process)
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Create app state based on active feature
+    #[cfg(feature = "go-sidecar")]
+    let app_state = state::AppState::default();
+
     let builder = tauri::Builder::default()
         // Plugins
         .plugin(tauri_plugin_shell::init())
@@ -38,8 +45,6 @@ pub fn run() {
                 }
             }),
         )
-        // Managed state
-        .manage(state::AppState::default())
         // Commands (IPC handlers replacing Electron's ipcMain)
         .invoke_handler(tauri::generate_handler![
             // Platform commands
@@ -130,39 +135,51 @@ pub fn run() {
                 }
             }
 
-            // Spawn the Go backend as a sidecar
-            tauri::async_runtime::spawn(async move {
-                match sidecar::spawn_backend(&handle).await {
-                    Ok(backend_state) => {
-                        // Store backend endpoints in app state
-                        let state = handle.state::<state::AppState>();
-                        let mut endpoints = state.backend_endpoints.lock().unwrap();
-                        endpoints.ws_endpoint = backend_state.ws_endpoint;
-                        endpoints.web_endpoint = backend_state.web_endpoint;
-                        tracing::info!("Backend ready: ws={}, web={}",
-                            endpoints.ws_endpoint, endpoints.web_endpoint);
+            // ---- Backend initialization (feature-gated) ----
 
-                        // TODO: Query backend RPC for client data instead of database
-                        // For now, let backend create client/window/tab on first connection
-                        // The frontend will need to query the backend for these IDs
-                        tracing::info!("Backend will create client/window/tab on first connection");
-                        tracing::info!("Frontend should call backend RPC to get initialized client data");
+            #[cfg(feature = "go-sidecar")]
+            {
+                // Spawn the Go backend as a sidecar
+                tauri::async_runtime::spawn(async move {
+                    match sidecar::spawn_backend(&handle).await {
+                        Ok(backend_state) => {
+                            let state = handle.state::<state::AppState>();
+                            let mut endpoints = state.backend_endpoints.lock().unwrap();
+                            endpoints.ws_endpoint = backend_state.ws_endpoint;
+                            endpoints.web_endpoint = backend_state.web_endpoint;
+                            tracing::info!("Backend ready: ws={}, web={}",
+                                endpoints.ws_endpoint, endpoints.web_endpoint);
 
-                        // Emit event to frontend that backend is ready
-                        if let Some(window) = handle.get_webview_window("main") {
-                            let _ = window.emit("backend-ready", serde_json::json!({
-                                "ws": endpoints.ws_endpoint.clone(),
-                                "web": endpoints.web_endpoint.clone(),
-                            }));
+                            tracing::info!("Frontend should call backend RPC to get initialized client data");
+
+                            if let Some(window) = handle.get_webview_window("main") {
+                                let _ = window.emit("backend-ready", serde_json::json!({
+                                    "ws": endpoints.ws_endpoint.clone(),
+                                    "web": endpoints.web_endpoint.clone(),
+                                }));
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to start backend: {}", e);
+                            let _ = handle.emit("backend-error", e.clone());
                         }
                     }
+                });
+            }
+
+            #[cfg(feature = "rust-backend")]
+            {
+                // Initialize Rust-native backend (no external process)
+                match rust_backend::initialize(&handle) {
+                    Ok(()) => {
+                        tracing::info!("Rust-native backend initialized successfully");
+                    }
                     Err(e) => {
-                        tracing::error!("Failed to start backend: {}", e);
-                        // Show error dialog and quit
+                        tracing::error!("Failed to initialize Rust backend: {}", e);
                         let _ = handle.emit("backend-error", e.clone());
                     }
                 }
-            });
+            }
 
             Ok(())
         })
@@ -174,12 +191,15 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // Graceful shutdown: kill the backend sidecar
-                    let state = window.app_handle().state::<state::AppState>();
-                    let mut sidecar = state.sidecar_child.lock().unwrap();
-                    if let Some(child) = sidecar.take() {
-                        tracing::info!("Shutting down backend sidecar");
-                        let _ = child.kill();
+                    // Graceful shutdown
+                    #[cfg(feature = "go-sidecar")]
+                    {
+                        let state = window.app_handle().state::<state::AppState>();
+                        let mut sidecar = state.sidecar_child.lock().unwrap();
+                        if let Some(child) = sidecar.take() {
+                            tracing::info!("Shutting down backend sidecar");
+                            let _ = child.kill();
+                        }
                     }
 
                     // Clean up heartbeat file
@@ -204,6 +224,10 @@ pub fn run() {
                 _ => {}
             }
         });
+
+    // Manage state based on feature
+    #[cfg(feature = "go-sidecar")]
+    let builder = builder.manage(app_state);
 
     builder
         .run(tauri::generate_context!())

@@ -1,5 +1,8 @@
 use std::sync::Mutex;
 
+#[cfg(feature = "rust-backend")]
+use std::sync::Arc;
+
 /// Shared application state managed by Tauri.
 /// Replaces the scattered state across emain/*.ts files.
 pub struct AppState {
@@ -7,29 +10,41 @@ pub struct AppState {
     /// Can be updated after querying database for existing client
     pub auth_key: Mutex<String>,
 
-    /// Backend (wavemuxsrv) connection endpoints
+    /// Backend (wavemuxsrv) connection endpoints (Go sidecar mode only)
+    #[cfg(feature = "go-sidecar")]
     pub backend_endpoints: Mutex<BackendEndpoints>,
 
-    /// Handle to the sidecar child process for graceful shutdown
+    /// Handle to the sidecar child process for graceful shutdown (Go sidecar mode only)
+    #[cfg(feature = "go-sidecar")]
     pub sidecar_child: Mutex<Option<tauri_plugin_shell::process::CommandChild>>,
 
     /// Current zoom factor (replaces Electron's webContents zoom)
     pub zoom_factor: Mutex<f64>,
 
     /// Client ID (replaces Electron's clientData tracking)
-    /// Set after querying backend on startup
     pub client_id: Mutex<Option<String>>,
 
     /// Window ID (replaces Electron's window tracking)
-    /// Set after querying/creating window via backend
     pub window_id: Mutex<Option<String>>,
 
     /// Active tab ID (replaces Electron's tab tracking)
-    /// Set after querying/creating default tab via backend
     pub active_tab_id: Mutex<Option<String>>,
 
     /// Window initialization status ("ready" or "wave-ready")
     pub window_init_status: Mutex<String>,
+
+    /// Rust-native backend state (rust-backend mode only)
+    #[cfg(feature = "rust-backend")]
+    pub wave_store: Arc<crate::backend::storage::wstore::WaveStore>,
+
+    #[cfg(feature = "rust-backend")]
+    pub broker: Arc<crate::backend::wps::Broker>,
+
+    #[cfg(feature = "rust-backend")]
+    pub rpc_engine: Arc<crate::backend::rpc::engine::WshRpcEngine>,
+
+    #[cfg(feature = "rust-backend")]
+    pub router: Arc<crate::backend::rpc::router::WshRouter>,
 }
 
 #[derive(Default, Clone, serde::Serialize)]
@@ -38,6 +53,7 @@ pub struct BackendEndpoints {
     pub web_endpoint: String,
 }
 
+#[cfg(feature = "go-sidecar")]
 impl Default for AppState {
     fn default() -> Self {
         Self {

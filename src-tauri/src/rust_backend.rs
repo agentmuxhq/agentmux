@@ -16,8 +16,32 @@ use crate::backend::rpc::engine::WshRpcEngine;
 use crate::backend::rpc::router::WshRouter;
 use crate::backend::storage::wstore::WaveStore;
 use crate::backend::wcore;
-use crate::backend::wps::Broker;
+use crate::backend::wps::{Broker, WaveEvent, WpsClient};
 use crate::state::AppState;
+
+// ---- TauriWpsClient: delivers WPS events to frontend via Tauri emit ----
+
+/// WPS client that bridges the Broker to the Tauri frontend event system.
+/// When the Broker publishes events (blockfile, controller status, etc.),
+/// this client emits them as Tauri events so the frontend can receive them.
+struct TauriWpsClient {
+    handle: tauri::AppHandle,
+}
+
+impl TauriWpsClient {
+    fn new(handle: tauri::AppHandle) -> Self {
+        Self { handle }
+    }
+}
+
+impl WpsClient for TauriWpsClient {
+    fn send_event(&self, _route_id: &str, event: WaveEvent) {
+        // Emit as a Tauri event that the frontend listens for
+        if let Err(e) = self.handle.emit("wps-event", &event) {
+            tracing::warn!("Failed to emit wps-event to frontend: {}", e);
+        }
+    }
+}
 
 /// Initialize the Rust-native backend.
 ///
@@ -66,8 +90,9 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
         .map_err(|e| format!("failed to get workspace: {}", e))?;
     let active_tab_id = workspace.activetabid.clone();
 
-    // Initialize pub/sub broker
+    // Initialize pub/sub broker with Tauri event delivery
     let broker = Arc::new(Broker::new());
+    broker.set_client(Box::new(TauriWpsClient::new(handle.clone())));
 
     // Initialize RPC engine and router
     let (rpc_engine, _rpc_output) = WshRpcEngine::new();

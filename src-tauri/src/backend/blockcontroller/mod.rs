@@ -228,10 +228,14 @@ pub fn send_input(block_id: &str, input: BlockInputUnion) -> Result<(), String> 
 /// 3. If existing controller needs replacing (type changed, conn changed, force), stop it
 /// 4. Create new controller if needed
 /// 5. Start if status is init or done
+///
+/// `broker` is optional — when provided, the controller can publish WPS events
+/// (blockfile output, controller status changes) to the frontend.
 pub fn resync_controller(
     block: &Block,
     tab_id: &str,
     rt_opts: Option<serde_json::Value>,
+    broker: Option<Arc<super::wps::Broker>>,
     force: bool,
 ) -> Result<(), String> {
     let block_id = &block.oid;
@@ -274,11 +278,20 @@ pub fn resync_controller(
     // Create new controller
     match controller_type.as_str() {
         BLOCK_CONTROLLER_SHELL | BLOCK_CONTROLLER_CMD => {
-            let ctrl = shell::ShellController::new(
-                controller_type.clone(),
-                tab_id.to_string(),
-                block_id.to_string(),
-            );
+            let ctrl = if let Some(ref broker) = broker {
+                shell::ShellController::new_with_broker(
+                    controller_type.clone(),
+                    tab_id.to_string(),
+                    block_id.to_string(),
+                    Arc::clone(broker),
+                )
+            } else {
+                shell::ShellController::new(
+                    controller_type.clone(),
+                    tab_id.to_string(),
+                    block_id.to_string(),
+                )
+            };
             let ctrl = Arc::new(ctrl);
             register_controller(block_id, ctrl.clone());
             ctrl.start(block_meta.clone(), rt_opts, force)
@@ -420,7 +433,7 @@ mod tests {
             ..Default::default()
         };
         // No "controller" key in meta = no-op
-        let result = resync_controller(&block, "tab-1", None, false);
+        let result = resync_controller(&block, "tab-1", None, None, false);
         assert!(result.is_ok());
     }
 
@@ -437,7 +450,7 @@ mod tests {
             meta,
             ..Default::default()
         };
-        let result = resync_controller(&block, "tab-1", None, false);
+        let result = resync_controller(&block, "tab-1", None, None, false);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("unknown controller type"));
     }

@@ -3,6 +3,7 @@
 
 pub mod eventbus;
 pub mod oref;
+pub mod rpc;
 pub mod rpc_types;
 pub mod storage;
 pub mod waveobj;

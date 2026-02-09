@@ -128,12 +128,15 @@ mod imp {
         let (read_half, mut write_half) = tokio::io::split(stream);
         let mut reader = BufReader::new(read_half);
 
-        // Step 1: Read authentication message
+        // Step 1: Read authentication message (with 10s timeout)
         let mut auth_line = String::new();
-        reader
-            .read_line(&mut auth_line)
-            .await
-            .map_err(|e| format!("read auth: {}", e))?;
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            reader.read_line(&mut auth_line),
+        )
+        .await
+        .map_err(|_| "auth timeout: client did not send auth within 10s".to_string())?
+        .map_err(|e| format!("read auth: {}", e))?;
 
         let auth_msg: serde_json::Value = serde_json::from_str(auth_line.trim())
             .map_err(|e| format!("parse auth: {}", e))?;

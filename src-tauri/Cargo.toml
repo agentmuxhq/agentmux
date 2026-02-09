@@ -43,11 +43,12 @@ dirs = "6"
 libc = "0.2"
 subtle = "2"
 portable-pty = { version = "0.8", optional = true }
+interprocess = { version = "2.2", features = ["tokio"], optional = true }
 
 [features]
 default = ["go-sidecar"]
 go-sidecar = []
-rust-backend = ["portable-pty"]
+rust-backend = ["portable-pty", "interprocess"]
 
 [profile.release]
 strip = true

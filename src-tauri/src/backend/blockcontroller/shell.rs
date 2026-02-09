@@ -373,7 +373,7 @@ impl Controller for ShellController {
                 use crate::backend::shellexec::local_pty::LocalPtyConn;
 
                 let cwd = waveobj::meta_get_string(&block_meta, "cmd:cwd", "");
-                let env = crate::backend::shellexec::build_wave_env(
+                let mut env = crate::backend::shellexec::build_wave_env(
                     &self.block_id,
                     &self.tab_id,
                     "",
@@ -381,6 +381,19 @@ impl Controller for ShellController {
                     &conn_name,
                     env!("CARGO_PKG_VERSION"),
                 );
+                // Inject wsh IPC socket path so wsh can discover and connect
+                let socket_path = crate::backend::wsh_server::get_socket_path(
+                    &std::path::PathBuf::from(""),
+                );
+                if !socket_path.is_empty() {
+                    env.insert(
+                        crate::backend::wavebase::WAVE_JWT_TOKEN_ENV.to_string(),
+                        // JWT token is the auth_key — wsh uses this to authenticate
+                        // The actual auth_key is stored in AppState; we pass it
+                        // via a global accessor that was set during init
+                        crate::backend::authkey::get_auth_key().to_string(),
+                    );
+                }
                 let shell_path =
                     waveobj::meta_get_string(&block_meta, "term:localshellpath", "");
                 let conn = LocalPtyConn::new(

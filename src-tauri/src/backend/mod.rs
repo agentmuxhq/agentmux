@@ -53,6 +53,7 @@ pub mod webhookdelivery;
 pub mod wcore;
 pub mod wps;
 pub mod wslconn;
+pub mod wsh_server;
 pub mod wshutil;
 
 pub use oref::ORef;

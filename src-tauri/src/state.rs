@@ -45,6 +45,13 @@ pub struct AppState {
 
     #[cfg(feature = "rust-backend")]
     pub router: Arc<crate::backend::rpc::router::WshRouter>,
+
+    #[cfg(feature = "rust-backend")]
+    pub file_store: Arc<crate::backend::storage::filestore::FileStore>,
+
+    /// Path to the wsh IPC socket (named pipe on Windows, Unix socket on macOS/Linux)
+    #[cfg(feature = "rust-backend")]
+    pub wsh_socket_path: Mutex<String>,
 }
 
 #[derive(Default, Clone, serde::Serialize)]

@@ -105,3 +105,84 @@ export async function setBlockTermSize(blockId: string, rows: number, cols: numb
         console.error("[tauri-rpc] set_block_term_size failed:", e);
     }
 }
+
+/**
+ * Fetch a wave file's data and metadata via Tauri IPC.
+ * Replaces HTTP GET /wave/file in rust-backend mode.
+ */
+export async function fetchWaveFileTauri(
+    zoneId: string,
+    fileName: string,
+    offset?: number
+): Promise<{ data: Uint8Array; fileInfo: WaveFile }> {
+    try {
+        const response = await invoke<any>("fetch_wave_file", {
+            zoneId,
+            name: fileName,
+            offset: offset ?? null,
+        });
+        if (response.data == null || response.fileInfo == null) {
+            return { data: null, fileInfo: null };
+        }
+        // Backend returns base64-encoded data
+        const binaryStr = atob(response.data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+        return { data: bytes, fileInfo: response.fileInfo };
+    } catch (e) {
+        console.error("[tauri-rpc] fetch_wave_file failed:", e);
+        return { data: null, fileInfo: null };
+    }
+}
+
+/**
+ * Register an agent with the reactive messaging backend via Tauri IPC.
+ * Replaces HTTP POST /wave/reactive/register.
+ */
+export async function reactiveRegister(blockId: string, agentId: string, tabId?: string): Promise<void> {
+    try {
+        await invoke("reactive_register", {
+            blockId,
+            agentId,
+            tabId: tabId || null,
+        });
+        console.log("[tauri-rpc] registered agent", agentId, "->", blockId);
+    } catch (e) {
+        console.error("[tauri-rpc] reactive_register failed:", e);
+    }
+}
+
+/**
+ * Unregister an agent from the reactive messaging backend via Tauri IPC.
+ * Replaces HTTP POST /wave/reactive/unregister.
+ */
+export async function reactiveUnregister(agentId: string): Promise<void> {
+    try {
+        await invoke("reactive_unregister", { agentId });
+        console.log("[tauri-rpc] unregistered agent", agentId);
+    } catch (e) {
+        console.error("[tauri-rpc] reactive_unregister failed:", e);
+    }
+}
+
+/**
+ * Configure the AgentMux poller via Tauri IPC.
+ * Replaces HTTP POST /wave/reactive/poller/config.
+ */
+export async function reactivePollerConfig(
+    agentmuxUrl: string,
+    agentmuxToken: string
+): Promise<any> {
+    try {
+        const response = await invoke<any>("reactive_poller_config", {
+            agentmuxUrl: agentmuxUrl || null,
+            agentmuxToken: agentmuxToken || null,
+        });
+        return response;
+    } catch (e) {
+        console.error("[tauri-rpc] reactive_poller_config failed:", e);
+        throw e;
+    }
+}

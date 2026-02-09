@@ -141,6 +141,22 @@ fn serve_local_file(raw_path: &str, no404: bool) -> Result<(Vec<u8>, &'static st
     // Expand ~ to home directory
     let file_path: PathBuf = wavebase::expand_home_dir_safe(path_str);
 
+    // Canonicalize to resolve symlinks and reject path traversal (e.g., `..` segments)
+    let file_path = match file_path.canonicalize() {
+        Ok(p) => p,
+        Err(e) => {
+            if no404 && e.kind() == std::io::ErrorKind::NotFound {
+                return Ok((TRANSPARENT_GIF.to_vec(), "image/gif"));
+            }
+            tracing::debug!("filestream: cannot resolve {:?}: {}", file_path, e);
+            return if e.kind() == std::io::ErrorKind::NotFound {
+                Err(404)
+            } else {
+                Err(403)
+            };
+        }
+    };
+
     // Read the file
     match std::fs::read(&file_path) {
         Ok(data) => {

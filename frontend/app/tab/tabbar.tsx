@@ -670,10 +670,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
-            {appMenuButton}
-            {waveaiButton}
-            <WorkspaceSwitcher ref={workspaceSwitcherRef} />
-            <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
+            {/* Temporarily hidden - tabs/workspace will return with multi-window support */}
+            {/* {appMenuButton} */}
+            {/* {waveaiButton} */}
+            {/* <WorkspaceSwitcher ref={workspaceSwitcherRef} /> */}
+            {/* <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
                         const isPinned = pinnedTabIds.has(tabId);
@@ -698,8 +699,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                         );
                     })}
                 </div>
-            </div>
-            <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
+            </div> */}
+            {/* <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} /> */}
             <div className="tab-bar-right">
                 <WidgetBar />
                 <UpdateStatusBanner ref={updateStatusBannerRef} />

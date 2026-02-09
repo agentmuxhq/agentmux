@@ -5172,7 +5172,7 @@ dependencies = [
 
 [[package]]
 name = "wavemux"
-version = "0.19.6"
+version = "0.20.1"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -5181,6 +5181,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "subtle",
  "tauri",
  "tauri-build",
  "tauri-plugin-clipboard-manager",

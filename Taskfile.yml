@@ -17,11 +17,9 @@ vars:
     WINGET_PACKAGE: CommandLine.Wave
 
 tasks:
-    electron:dev:
-        desc: Run the Electron application via the Vite dev server (enables hot reloading).
+    dev:
+        desc: Run the Tauri application in development mode (hot reload enabled).
         cmd: npm run dev
-        aliases:
-            - dev
         deps:
             - npm:install
             - docsite:build:embedded
@@ -31,11 +29,9 @@ tasks:
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
-    electron:start:
-        desc: Run the Electron application directly.
-        cmd: npm run start
-        aliases:
-            - start
+    start:
+        desc: Build and run the Tauri application in production mode (no installer).
+        cmd: cd src-tauri && cargo run --release
         deps:
             - npm:install
             - docsite:build:embedded
@@ -45,8 +41,8 @@ tasks:
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
-    electron:quickdev:
-        desc: Run the Electron application via the Vite dev server (quick dev - no docsite, arm64 only, no generate, no wsh).
+    quickdev:
+        desc: Run the Tauri application in quick dev mode (no docsite, arm64 only, no generate, no wsh).
         cmd: npm run dev
         deps:
             - npm:install

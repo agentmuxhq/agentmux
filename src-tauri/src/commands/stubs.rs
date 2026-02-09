@@ -253,7 +253,11 @@ pub async fn download_file(window: tauri::Window, path: String) -> Result<(), St
     let data =
         std::fs::read(&path).map_err(|e| format!("failed to read {}: {}", path, e))?;
 
-    std::fs::write(dest.as_path().unwrap(), &data)
+    let dest_path = dest
+        .as_path()
+        .ok_or_else(|| "save dialog returned a non-filesystem path".to_string())?;
+
+    std::fs::write(dest_path, &data)
         .map_err(|e| format!("failed to write: {}", e))?;
 
     Ok(())

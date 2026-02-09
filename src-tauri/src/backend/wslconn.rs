@@ -139,6 +139,138 @@ pub fn derive_conn_status(fields: &ConnStateFields<'_>) -> ConnStatus {
     }
 }
 
+// ---- WSL Distro Detection (Windows only) ----
+
+#[cfg(windows)]
+use std::process::Command;
+
+/// Get list of registered WSL distributions on Windows.
+/// Returns vector of distro names.
+#[cfg(windows)]
+pub fn registered_distros() -> Result<Vec<String>, String> {
+    let output = Command::new("wsl.exe")
+        .args(&["--list", "--quiet"])
+        .output()
+        .map_err(|e| format!("failed to execute wsl.exe: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "wsl.exe exited with code {}",
+            output.status.code().unwrap_or(-1)
+        ));
+    }
+
+    // WSL outputs UTF-16 on Windows, decode it
+    let raw_output = if output.stdout.len() >= 2 && output.stdout[0] == 0xFF && output.stdout[1] == 0xFE {
+        // UTF-16 LE with BOM
+        let utf16_data: Vec<u16> = output.stdout[2..]
+            .chunks_exact(2)
+            .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+            .collect();
+        String::from_utf16(&utf16_data).map_err(|e| format!("invalid UTF-16: {}", e))?
+    } else {
+        // Fallback to UTF-8
+        String::from_utf8(output.stdout).map_err(|e| format!("invalid UTF-8: {}", e))?
+    };
+
+    let distros: Vec<String> = raw_output
+        .lines()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect();
+
+    Ok(distros)
+}
+
+/// Get list of registered WSL distributions (non-Windows stub).
+#[cfg(not(windows))]
+pub fn registered_distros() -> Result<Vec<String>, String> {
+    Err("WSL is only available on Windows".to_string())
+}
+
+/// Get the default WSL distribution on Windows.
+/// Returns the distro name marked as default, or first distro if none marked.
+#[cfg(windows)]
+pub fn default_distro() -> Result<String, String> {
+    let output = Command::new("wsl.exe")
+        .args(&["--list", "--verbose"])
+        .output()
+        .map_err(|e| format!("failed to execute wsl.exe: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "wsl.exe exited with code {}",
+            output.status.code().unwrap_or(-1)
+        ));
+    }
+
+    // Decode UTF-16
+    let raw_output = if output.stdout.len() >= 2 && output.stdout[0] == 0xFF && output.stdout[1] == 0xFE {
+        let utf16_data: Vec<u16> = output.stdout[2..]
+            .chunks_exact(2)
+            .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+            .collect();
+        String::from_utf16(&utf16_data).map_err(|e| format!("invalid UTF-16: {}", e))?
+    } else {
+        String::from_utf8(output.stdout).map_err(|e| format!("invalid UTF-8: {}", e))?
+    };
+
+    // Parse output looking for "* <distro>" (default marker) or first distro
+    let mut first_distro: Option<String> = None;
+    for line in raw_output.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with("NAME") {
+            continue;
+        }
+
+        // Check if this is the default (marked with *)
+        if line.starts_with('*') {
+            // Extract distro name (format: "* Name  State  Version")
+            let parts: Vec<&str> = line[1..].split_whitespace().collect();
+            if !parts.is_empty() {
+                return Ok(parts[0].to_string());
+            }
+        }
+
+        // Track first distro as fallback
+        if first_distro.is_none() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if !parts.is_empty() {
+                first_distro = Some(parts[0].to_string());
+            }
+        }
+    }
+
+    first_distro.ok_or_else(|| "no WSL distributions found".to_string())
+}
+
+/// Get the default WSL distribution (non-Windows stub).
+#[cfg(not(windows))]
+pub fn default_distro() -> Result<String, String> {
+    Err("WSL is only available on Windows".to_string())
+}
+
+/// Validate that a WSL distribution exists and return its name.
+/// Returns the distro name if found, error otherwise.
+#[cfg(windows)]
+pub fn get_distro(distro_name: &str) -> Result<String, String> {
+    let distros = registered_distros()?;
+
+    for distro in distros {
+        if distro.eq_ignore_ascii_case(distro_name) {
+            return Ok(distro);
+        }
+    }
+
+    Err(format!("WSL distro '{}' not found", distro_name))
+}
+
+/// Validate that a WSL distribution exists (non-Windows stub).
+#[cfg(not(windows))]
+pub fn get_distro(_distro_name: &str) -> Result<String, String> {
+    Err("WSL is only available on Windows".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -302,4 +434,32 @@ mod tests {
         let parsed: WslName = serde_json::from_str(&json).unwrap();
         assert_eq!(name, parsed);
     }
+
+    // WSL function tests (manual testing required on Windows)
+    #[test]
+    #[cfg(not(windows))]
+    fn test_registered_distros_non_windows() {
+        let result = registered_distros();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("only available on Windows"));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_default_distro_non_windows() {
+        let result = default_distro();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("only available on Windows"));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_get_distro_non_windows() {
+        let result = get_distro("Ubuntu");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("only available on Windows"));
+    }
+
+    // Note: Windows tests require manual verification as they depend on system WSL installation
+    // Run manually: cargo test --features test-wsl-integration
 }

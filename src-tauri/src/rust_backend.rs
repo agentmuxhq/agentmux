@@ -132,6 +132,7 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
         tracing::warn!("Could not start config file watcher: {}", e);
     }
 
+
     // Generate auth key for wsh connections and set it globally
     let auth_key = uuid::Uuid::new_v4().to_string();
     if let Err(e) = crate::backend::authkey::set_auth_key(auth_key.clone()) {

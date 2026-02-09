@@ -87,8 +87,9 @@ pub fn run() {
             // Devtools commands
             commands::devtools::toggle_devtools,
             commands::devtools::is_devtools_open,
+            // Context menu (native popup)
+            commands::contextmenu::show_context_menu,
             // Stub commands (to be implemented in later phases)
-            commands::stubs::show_context_menu,
             commands::stubs::download_file,
             commands::stubs::quicklook,
             commands::stubs::update_wco,

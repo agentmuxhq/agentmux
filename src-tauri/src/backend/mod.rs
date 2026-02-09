@@ -14,6 +14,8 @@ pub mod ds;
 pub mod envutil;
 pub mod eventbus;
 pub mod faviconcache;
+#[cfg(feature = "rust-backend")]
+pub mod filestream;
 pub mod fileutil;
 pub mod ijson;
 pub mod iochan;
@@ -53,6 +55,7 @@ pub mod webhookdelivery;
 pub mod wcore;
 pub mod wps;
 pub mod wslconn;
+pub mod wsh_server;
 pub mod wshutil;
 
 pub use oref::ORef;

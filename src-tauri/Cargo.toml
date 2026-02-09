@@ -1,6 +1,6 @@
 [package]
 name = "wavemux"
-version = "0.20.8"
+version = "0.20.11"
 description = "WaveMux - AI-Native Terminal"
 authors = ["a5af"]
 edition = "2021"
@@ -42,11 +42,14 @@ base64 = "0.22"
 dirs = "6"
 libc = "0.2"
 subtle = "2"
+portable-pty = { version = "0.8", optional = true }
+interprocess = { version = "2.2", features = ["tokio"], optional = true }
+notify = { version = "7", optional = true }
 
 [features]
 default = ["go-sidecar"]
 go-sidecar = []
-rust-backend = []
+rust-backend = ["portable-pty", "interprocess", "notify"]
 
 [profile.release]
 strip = true

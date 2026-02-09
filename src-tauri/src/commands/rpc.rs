@@ -59,6 +59,36 @@ pub async fn service_request(
     }
 }
 
+/// Direct Tauri command for terminal resize.
+/// Used by the frontend in rust-backend mode instead of the WebSocket
+/// `setblocktermsize` command.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn set_block_term_size(
+    block_id: String,
+    rows: i64,
+    cols: i64,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        let _ = &state;
+        if rows <= 0 || cols <= 0 {
+            return Err("invalid terminal dimensions".to_string());
+        }
+        let input = crate::backend::blockcontroller::BlockInputUnion::resize(
+            crate::backend::waveobj::TermSize { rows, cols },
+        );
+        crate::backend::blockcontroller::send_input(&block_id, input)
+            .map_err(|e| format!("set_block_term_size: {}", e))
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = (block_id, rows, cols, state);
+        Err("set_block_term_size only available in rust-backend mode".to_string())
+    }
+}
+
 // ---- rust-backend implementations ----
 
 #[cfg(feature = "rust-backend")]
@@ -81,13 +111,17 @@ async fn handle_rpc_request(
         }
 
         "getfullconfig" => {
-            // Return a minimal config for now
-            Ok(serde_json::json!({
-                "settings": {},
-                "presets": {},
-                "termthemes": {},
-                "mimetofileext": {},
-            }))
+            let config = state.config_watcher.get_full_config();
+            serde_json::to_value(&*config)
+                .map_err(|e| format!("serialize config: {}", e))
+        }
+
+        "setconfig" => {
+            handle_set_config(&data, state)
+        }
+
+        "setconnectionsconfig" => {
+            handle_set_connections_config(&data, state)
         }
 
         "getmeta" => {
@@ -119,7 +153,19 @@ async fn handle_rpc_request(
             handle_delete_block(&data, state)
         }
 
-        "getallupdates" | "getallobj" => {
+        "controllerinput" => {
+            handle_controller_input(&data, state)
+        }
+
+        "controllerresync" => {
+            handle_controller_resync(&data, state)
+        }
+
+        "setblocktermsize" => {
+            handle_set_block_term_size(&data, state)
+        }
+
+        "controllerstatusupdates" | "getallupdates" | "getallobj" => {
             // Return empty updates for now
             Ok(serde_json::json!({ "updates": [] }))
         }
@@ -289,6 +335,19 @@ fn handle_create_block(data: &Value, state: &AppState) -> Result<Value, String> 
     let block = crate::backend::wcore::create_block(store, &tab_id, meta)
         .map_err(|e| format!("createblock: {}", e))?;
 
+    // If the block has a controller (shell/cmd), start it via resync
+    let controller_type = block.meta.get("controller")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    if !controller_type.is_empty() {
+        let broker = Some(std::sync::Arc::clone(&state.broker));
+        if let Err(e) = crate::backend::blockcontroller::resync_controller(
+            &block, &tab_id, None, broker, false,
+        ) {
+            tracing::warn!("Failed to start controller for block {}: {}", block.oid, e);
+        }
+    }
+
     Ok(serde_json::json!({
         "otype": "block",
         "oid": block.oid,
@@ -303,9 +362,120 @@ fn handle_delete_block(data: &Value, state: &AppState) -> Result<Value, String> 
         .and_then(|v| v.as_str())
         .ok_or_else(|| "deleteblock: missing blockid".to_string())?;
 
+    // Stop and remove any controller for this block
+    crate::backend::blockcontroller::stop_block_controller(block_id).ok();
+    crate::backend::blockcontroller::delete_controller(block_id);
+
     let store = &state.wave_store;
     crate::backend::wcore::delete_block(store, &tab_id, block_id)
         .map_err(|e| format!("deleteblock: {}", e))?;
+
+    Ok(Value::Null)
+}
+
+/// Handle terminal input from the frontend.
+/// Frontend sends: { blockid, inputdata64?, signame?, termsize? }
+#[cfg(feature = "rust-backend")]
+fn handle_controller_input(data: &Value, _state: &AppState) -> Result<Value, String> {
+    use base64::Engine as _;
+    let block_id = data.get("blockid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "controllerinput: missing blockid".to_string())?;
+
+    let mut input = crate::backend::blockcontroller::BlockInputUnion {
+        input_data: None,
+        sig_name: None,
+        term_size: None,
+    };
+
+    // Decode base64 input data
+    if let Some(data64) = data.get("inputdata64").and_then(|v| v.as_str()) {
+        if !data64.is_empty() {
+            let decoded = base64::engine::general_purpose::STANDARD
+                .decode(data64)
+                .map_err(|e| format!("controllerinput: invalid base64: {}", e))?;
+            input.input_data = Some(decoded);
+        }
+    }
+
+    // Signal name
+    if let Some(sig) = data.get("signame").and_then(|v| v.as_str()) {
+        if !sig.is_empty() {
+            input.sig_name = Some(sig.to_string());
+        }
+    }
+
+    // Terminal resize
+    if let Some(ts) = data.get("termsize") {
+        let rows = ts.get("rows").and_then(|v| v.as_i64()).unwrap_or(0);
+        let cols = ts.get("cols").and_then(|v| v.as_i64()).unwrap_or(0);
+        if rows > 0 && cols > 0 {
+            input.term_size = Some(crate::backend::waveobj::TermSize { rows, cols });
+        }
+    }
+
+    crate::backend::blockcontroller::send_input(block_id, input)
+        .map_err(|e| format!("controllerinput: {}", e))?;
+
+    Ok(Value::Null)
+}
+
+/// Handle controller resync (start/restart a block's shell process).
+/// Frontend sends: { blockid, tabid, forcerestart?, rtopts? }
+#[cfg(feature = "rust-backend")]
+fn handle_controller_resync(data: &Value, state: &AppState) -> Result<Value, String> {
+    let block_id = data.get("blockid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "controllerresync: missing blockid".to_string())?;
+
+    let tab_id = data.get("tabid")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            state.active_tab_id.lock().unwrap().clone().unwrap_or_default()
+        });
+
+    let force = data.get("forcerestart")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let rt_opts = data.get("rtopts").cloned();
+
+    // Load the block from store
+    let store = &state.wave_store;
+    let block = store.must_get::<crate::backend::waveobj::Block>(block_id)
+        .map_err(|e| format!("controllerresync: {}", e))?;
+
+    let broker = Some(std::sync::Arc::clone(&state.broker));
+    crate::backend::blockcontroller::resync_controller(&block, &tab_id, rt_opts, broker, force)
+        .map_err(|e| format!("controllerresync: {}", e))?;
+
+    Ok(Value::Null)
+}
+
+/// Handle terminal resize.
+/// Frontend sends: { blockid, termsize: { rows, cols } }
+#[cfg(feature = "rust-backend")]
+fn handle_set_block_term_size(data: &Value, _state: &AppState) -> Result<Value, String> {
+    let block_id = data.get("blockid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "setblocktermsize: missing blockid".to_string())?;
+
+    let ts = data.get("termsize")
+        .ok_or_else(|| "setblocktermsize: missing termsize".to_string())?;
+    let rows = ts.get("rows").and_then(|v| v.as_i64()).unwrap_or(0);
+    let cols = ts.get("cols").and_then(|v| v.as_i64()).unwrap_or(0);
+
+    if rows <= 0 || cols <= 0 {
+        return Err("setblocktermsize: invalid dimensions".to_string());
+    }
+
+    let input = crate::backend::blockcontroller::BlockInputUnion::resize(
+        crate::backend::waveobj::TermSize { rows, cols },
+    );
+
+    crate::backend::blockcontroller::send_input(block_id, input)
+        .map_err(|e| format!("setblocktermsize: {}", e))?;
 
     Ok(Value::Null)
 }
@@ -372,6 +542,296 @@ fn handle_service_request(
                 "updates": [],
             }))
         }
+    }
+}
+
+// ---- File and reactive Tauri commands ----
+
+/// Fetch a wave file's data and metadata.
+/// Replaces HTTP GET /wave/file in rust-backend mode.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn fetch_wave_file(
+    zone_id: String,
+    name: String,
+    offset: Option<i64>,
+    state: tauri::State<'_, AppState>,
+) -> Result<Value, String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        use base64::Engine as _;
+        let file_store = &state.file_store;
+
+        // Get file info
+        let file_info = file_store
+            .stat(&zone_id, &name)
+            .map_err(|e| format!("stat: {}", e))?;
+
+        let file_info = match file_info {
+            Some(f) => f,
+            None => {
+                return Ok(serde_json::json!({
+                    "data": null,
+                    "fileInfo": null,
+                }));
+            }
+        };
+
+        // Read data
+        let data_bytes = if let Some(off) = offset {
+            let (_actual_offset, data) = file_store
+                .read_at(&zone_id, &name, off, 0)
+                .map_err(|e| format!("read_at: {}", e))?;
+            data
+        } else {
+            file_store
+                .read_file(&zone_id, &name)
+                .map_err(|e| format!("read_file: {}", e))?
+                .unwrap_or_default()
+        };
+
+        let data64 = base64::engine::general_purpose::STANDARD.encode(&data_bytes);
+        let file_info_json = serde_json::to_value(&file_info)
+            .map_err(|e| format!("serialize file_info: {}", e))?;
+
+        return Ok(serde_json::json!({
+            "data": data64,
+            "fileInfo": file_info_json,
+        }));
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = (zone_id, name, offset, state);
+        Err("fetch_wave_file only available in rust-backend mode".to_string())
+    }
+}
+
+/// Register an agent with the reactive messaging handler.
+/// Replaces HTTP POST /wave/reactive/register.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn reactive_register(
+    block_id: String,
+    agent_id: String,
+    tab_id: Option<String>,
+    _state: tauri::State<'_, AppState>,
+) -> Result<Value, String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        let handler = crate::backend::reactive::get_global_handler();
+
+        // Set up the input sender if not already configured
+        // The input sender routes messages to the block controller's PTY
+        handler.set_input_sender(std::sync::Arc::new(|block_id: &str, data: &[u8]| {
+            let input = crate::backend::blockcontroller::BlockInputUnion::data(data.to_vec());
+            crate::backend::blockcontroller::send_input(block_id, input)
+        }));
+
+        handler
+            .register_agent(&agent_id, &block_id, tab_id.as_deref())
+            .map_err(|e| format!("register agent: {}", e))?;
+
+        tracing::info!("reactive: registered agent {} -> block {}", agent_id, block_id);
+        return Ok(serde_json::json!({"status": "ok"}));
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = (block_id, agent_id, tab_id, _state);
+        Err("reactive_register only available in rust-backend mode".to_string())
+    }
+}
+
+/// Unregister an agent from the reactive messaging handler.
+/// Replaces HTTP POST /wave/reactive/unregister.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn reactive_unregister(
+    agent_id: String,
+    _state: tauri::State<'_, AppState>,
+) -> Result<Value, String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        let handler = crate::backend::reactive::get_global_handler();
+        handler.unregister_agent(&agent_id);
+        tracing::info!("reactive: unregistered agent {}", agent_id);
+        return Ok(serde_json::json!({"status": "ok"}));
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = (agent_id, _state);
+        Err("reactive_unregister only available in rust-backend mode".to_string())
+    }
+}
+
+/// Inject a message into a target agent's terminal.
+/// Replaces HTTP POST /wave/reactive/inject.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn reactive_inject(
+    target_agent: String,
+    message: String,
+    source_agent: Option<String>,
+    _state: tauri::State<'_, AppState>,
+) -> Result<Value, String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        let handler = crate::backend::reactive::get_global_handler();
+        let req = crate::backend::reactive::InjectionRequest {
+            target_agent,
+            message,
+            source_agent,
+            request_id: None,
+            priority: None,
+            wait_for_idle: false,
+        };
+        let resp = handler.inject_message(req);
+        let resp_json = serde_json::to_value(&resp)
+            .map_err(|e| format!("serialize response: {}", e))?;
+        return Ok(resp_json);
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = (target_agent, message, source_agent, _state);
+        Err("reactive_inject only available in rust-backend mode".to_string())
+    }
+}
+
+/// Configure the AgentMux poller for cross-host reactive messaging.
+/// Replaces HTTP POST /wave/reactive/poller/config.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn reactive_poller_config(
+    agentmux_url: Option<String>,
+    agentmux_token: Option<String>,
+    _state: tauri::State<'_, AppState>,
+) -> Result<Value, String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        // Validate URL if provided
+        if let Some(ref url) = agentmux_url {
+            if !url.is_empty() {
+                crate::backend::reactive::validate_agentmux_url(url)?;
+            }
+        }
+
+        let handler = crate::backend::reactive::get_global_handler();
+        let poller = crate::backend::reactive::Poller::new(
+            crate::backend::reactive::PollerConfig {
+                agentmux_url: agentmux_url.clone(),
+                agentmux_token: agentmux_token.clone(),
+                poll_interval_secs: crate::backend::reactive::DEFAULT_POLL_INTERVAL_SECS,
+            },
+            handler,
+        );
+
+        let is_configured = poller.is_configured();
+        tracing::info!(
+            "reactive: poller config updated, configured={}",
+            is_configured
+        );
+
+        return Ok(serde_json::json!({
+            "configured": is_configured,
+            "running": false,
+        }));
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = (agentmux_url, agentmux_token, _state);
+        Err("reactive_poller_config only available in rust-backend mode".to_string())
+    }
+}
+
+/// Handle setconfig: merge values into settings.json, reload config, broadcast.
+#[cfg(feature = "rust-backend")]
+fn handle_set_config(data: &Value, state: &AppState) -> Result<Value, String> {
+    let to_merge = data
+        .as_object()
+        .ok_or_else(|| "setconfig: expected object".to_string())?;
+
+    crate::backend::wconfig::set_base_config_value(&state.config_dir, to_merge)?;
+
+    // Reload and broadcast
+    let new_config = crate::backend::wconfig::load_full_config(&state.config_dir);
+    state.config_watcher.set_config(new_config);
+    state.broker.publish(crate::backend::wps::WaveEvent {
+        event: crate::backend::wps::EVENT_CONFIG.to_string(),
+        scopes: vec![],
+        sender: String::new(),
+        persist: 0,
+        data: None,
+    });
+
+    Ok(Value::Null)
+}
+
+/// Handle setconnectionsconfig: merge values for a specific connection, reload, broadcast.
+#[cfg(feature = "rust-backend")]
+fn handle_set_connections_config(data: &Value, state: &AppState) -> Result<Value, String> {
+    let conn_name = data
+        .get("conn")
+        .or_else(|| data.get("host"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "setconnectionsconfig: missing conn/host".to_string())?;
+
+    let meta_map = data
+        .get("metamaptype")
+        .or_else(|| data.get("meta"))
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| "setconnectionsconfig: missing metamaptype/meta".to_string())?;
+
+    crate::backend::wconfig::set_connections_config_value(
+        &state.config_dir,
+        conn_name,
+        meta_map,
+    )?;
+
+    // Reload and broadcast
+    let new_config = crate::backend::wconfig::load_full_config(&state.config_dir);
+    state.config_watcher.set_config(new_config);
+    state.broker.publish(crate::backend::wps::WaveEvent {
+        event: crate::backend::wps::EVENT_CONFIG.to_string(),
+        scopes: vec![],
+        sender: String::new(),
+        persist: 0,
+        data: None,
+    });
+
+    Ok(Value::Null)
+}
+
+// ---- Schema delivery via Tauri IPC ----
+
+#[cfg(feature = "rust-backend")]
+const SCHEMA_SETTINGS: &str = include_str!("../../../schema/settings.json");
+#[cfg(feature = "rust-backend")]
+const SCHEMA_CONNECTIONS: &str = include_str!("../../../schema/connections.json");
+#[cfg(feature = "rust-backend")]
+const SCHEMA_AIPRESETS: &str = include_str!("../../../schema/aipresets.json");
+#[cfg(feature = "rust-backend")]
+const SCHEMA_WIDGETS: &str = include_str!("../../../schema/widgets.json");
+
+/// Tauri command to deliver JSON schema for Monaco editor validation.
+/// Replaces HTTP GET /schema/{name}.json in rust-backend mode.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn get_schema(schema_name: String) -> Result<Value, String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        let json_str = match schema_name.as_str() {
+            "settings" => SCHEMA_SETTINGS,
+            "connections" => SCHEMA_CONNECTIONS,
+            "aipresets" => SCHEMA_AIPRESETS,
+            "widgets" => SCHEMA_WIDGETS,
+            _ => return Err(format!("unknown schema: {}", schema_name)),
+        };
+        serde_json::from_str(json_str)
+            .map_err(|e| format!("parse schema {}: {}", schema_name, e))
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = schema_name;
+        Err("get_schema only available in rust-backend mode".to_string())
     }
 }
 

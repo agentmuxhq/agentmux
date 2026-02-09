@@ -3,6 +3,7 @@
 
 import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
+import { isRustBackend, setBlockTermSize, reactiveRegister, reactiveUnregister, reactivePollerConfig } from "@/util/tauri-rpc";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/app/store/global";
@@ -52,6 +53,9 @@ const registeredAgentsByBlock = new Map<string, string>();
 
 // Register an agent with the reactive messaging backend
 async function registerAgent(agentId: string, blockId: string, tabId?: string): Promise<void> {
+    if (isRustBackend()) {
+        return reactiveRegister(blockId, agentId, tabId);
+    }
     try {
         const url = getWebServerEndpoint() + "/wave/reactive/register";
         const response = await fetch(url, {
@@ -82,6 +86,9 @@ async function registerAgent(agentId: string, blockId: string, tabId?: string): 
 
 // Unregister an agent from the reactive messaging backend
 async function unregisterAgent(agentId: string): Promise<void> {
+    if (isRustBackend()) {
+        return reactiveUnregister(agentId);
+    }
     try {
         const url = getWebServerEndpoint() + "/wave/reactive/unregister";
         const response = await fetch(url, {
@@ -400,6 +407,14 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             // AgentMux configuration - update poller config at runtime
             fireAndForget(async () => {
                 try {
+                    if (isRustBackend()) {
+                        const data = await reactivePollerConfig(
+                            cmd.data.agentmux_url || "",
+                            cmd.data.agentmux_token || "",
+                        );
+                        console.log("[reactive] agentmux configured:", data?.running ? "running" : "stopped");
+                        return;
+                    }
                     const url = getWebServerEndpoint() + "/wave/reactive/poller/config";
                     const response = await fetch(url, {
                         method: "POST",
@@ -733,13 +748,17 @@ export class TermWrap {
         const oldCols = this.terminal.cols;
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
-            const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            const wsCommand: SetBlockTermSizeWSCommand = {
-                wscommand: "setblocktermsize",
-                blockid: this.blockId,
-                termsize: termSize,
-            };
-            sendWSCommand(wsCommand);
+            if (isRustBackend()) {
+                setBlockTermSize(this.blockId, this.terminal.rows, this.terminal.cols);
+            } else {
+                const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+                const wsCommand: SetBlockTermSizeWSCommand = {
+                    wscommand: "setblocktermsize",
+                    blockid: this.blockId,
+                    termsize: termSize,
+                };
+                sendWSCommand(wsCommand);
+            }
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {

@@ -45,6 +45,21 @@ pub struct AppState {
 
     #[cfg(feature = "rust-backend")]
     pub router: Arc<crate::backend::rpc::router::WshRouter>,
+
+    #[cfg(feature = "rust-backend")]
+    pub file_store: Arc<crate::backend::storage::filestore::FileStore>,
+
+    /// Path to the wsh IPC socket (named pipe on Windows, Unix socket on macOS/Linux)
+    #[cfg(feature = "rust-backend")]
+    pub wsh_socket_path: Mutex<String>,
+
+    /// Config watcher holding the full loaded config (rust-backend mode only)
+    #[cfg(feature = "rust-backend")]
+    pub config_watcher: Arc<crate::backend::wconfig::ConfigWatcher>,
+
+    /// Path to the Wave config directory (~/.waveterm/config)
+    #[cfg(feature = "rust-backend")]
+    pub config_dir: std::path::PathBuf,
 }
 
 #[derive(Default, Clone, serde::Serialize)]

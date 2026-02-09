@@ -2,14 +2,65 @@
 // SPDX-License-Identifier: Apache-2.0s
 
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { isRustBackend } from "@/util/tauri-rpc";
 import { boundNumber, isBlank } from "@/util/util";
 import { generate as generateCSS, parse as parseCSS, walk as walkCSS } from "css-tree";
 
+/**
+ * Get a streaming URL for a remote (or local) file.
+ * In rust-backend mode, uses the `wavefile://` custom protocol.
+ * In go-sidecar mode, uses the Go HTTP server endpoint.
+ */
+export function getStreamFileUrl(remotePath: string, connection?: string): string {
+    const remoteUri = formatRemoteUri(remotePath, connection ?? "local");
+    if (isRustBackend()) {
+        const usp = new URLSearchParams();
+        usp.set("path", remoteUri);
+        if (connection != null) {
+            usp.set("connection", connection);
+        }
+        return `wavefile://localhost/stream?${usp.toString()}`;
+    }
+    const usp = new URLSearchParams();
+    usp.set("path", remoteUri);
+    if (connection != null) {
+        usp.set("connection", connection);
+    }
+    return `${getWebServerEndpoint()}/wave/stream-file?${usp.toString()}`;
+}
+
+/**
+ * Get a streaming URL for a local file (no remote connection).
+ * In rust-backend mode, uses the `wavefile://` custom protocol.
+ * In go-sidecar mode, uses the Go HTTP server endpoint.
+ */
+export function getStreamLocalFileUrl(path: string, no404?: boolean): string {
+    if (isRustBackend()) {
+        const usp = new URLSearchParams();
+        usp.set("path", path);
+        if (no404) {
+            usp.set("no404", "1");
+        }
+        return `wavefile://localhost/stream-local-file?${usp.toString()}`;
+    }
+    const usp = new URLSearchParams();
+    usp.set("path", path);
+    if (no404) {
+        usp.set("no404", "1");
+    }
+    return `${getWebServerEndpoint()}/wave/stream-local-file?${usp.toString()}`;
+}
+
 function encodeFileURL(file: string) {
-    const webEndpoint = getWebServerEndpoint();
-    const fileUri = formatRemoteUri(file, "local");
-    const rtn = webEndpoint + `/wave/stream-file?path=${encodeURIComponent(fileUri)}&no404=1`;
-    return rtn;
+    if (isRustBackend()) {
+        const remoteUri = formatRemoteUri(file, "local");
+        const usp = new URLSearchParams();
+        usp.set("path", remoteUri);
+        usp.set("no404", "1");
+        return `wavefile://localhost/stream?${usp.toString()}`;
+    }
+    const remoteUri = formatRemoteUri(file, "local");
+    return `${getWebServerEndpoint()}/wave/stream-file?path=${encodeURIComponent(remoteUri)}&no404=1`;
 }
 
 export function processBackgroundUrls(cssText: string): string {

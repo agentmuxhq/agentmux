@@ -12,6 +12,7 @@ import { modalsModel } from "@/app/store/modalmodel";
 import { ClientService, WindowService, WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
+import { isRustBackend, initTauriWpsEventListener } from "@/util/tauri-rpc";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
@@ -369,6 +370,9 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
     initGlobalWaveEventSubs(initOpts);
+    if (isRustBackend()) {
+        await initTauriWpsEventListener();
+    }
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering

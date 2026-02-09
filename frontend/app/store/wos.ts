@@ -6,6 +6,7 @@
 import { waveEventSubscribe } from "@/app/store/wps";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
+import { isRustBackend, callTauriService } from "@/util/tauri-rpc";
 import { fireAndForget } from "@/util/util";
 import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
 import { useEffect } from "react";
@@ -91,24 +92,41 @@ function wpsSubscribeToObject(oref: string): () => void {
 
 function callBackendService(service: string, method: string, args: any[], noUIContext?: boolean): Promise<any> {
     const startTs = Date.now();
+    const methodName = `${service}.${method}`;
     let uiContext: UIContext = null;
     if (!noUIContext && globalThis.window != null && (window as any).globalAtoms) {
         uiContext = globalStore.get(((window as any).globalAtoms as GlobalAtomsType).uiContext);
     }
+
+    // In rust-backend mode, use Tauri IPC instead of HTTP
+    if (isRustBackend()) {
+        return callTauriService(service, method, args, uiContext).then((respData: WebReturnType) => {
+            if (respData == null) {
+                return null;
+            }
+            if (respData.updates != null) {
+                updateWaveObjects(respData.updates);
+            }
+            if (respData.error != null) {
+                throw new Error(`call ${methodName} error: ${respData.error}`);
+            }
+            const durationStr = Date.now() - startTs + "ms";
+            debugLogBackendCall(methodName, durationStr, args);
+            return respData.data;
+        });
+    }
+
+    // Go-sidecar mode: HTTP POST to /wave/service
     const waveCall: WebCallType = {
         service: service,
         method: method,
         args: args,
         uicontext: uiContext,
     };
-    // usp is just for debugging (easier to filter URLs)
-    const methodName = `${service}.${method}`;
     const usp = new URLSearchParams();
     usp.set("service", service);
     usp.set("method", method);
 
-    // For Tauri: add auth key as query parameter (Electron injects via session.webRequest)
-    // Only in browser context (not Electron main process)
     if (globalThis.window != null) {
         const authKey = getApi()?.getAuthKey?.();
         if (authKey) {

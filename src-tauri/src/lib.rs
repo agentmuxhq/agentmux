@@ -92,6 +92,9 @@ pub fn run() {
             commands::stubs::set_window_init_status,
             commands::stubs::set_waveai_open,
             commands::stubs::install_update,
+            // RPC bridge commands (rust-backend mode)
+            commands::rpc::rpc_request,
+            commands::rpc::service_request,
         ])
         // Application setup
         .setup(|app| {

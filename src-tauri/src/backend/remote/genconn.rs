@@ -535,3 +535,235 @@ mod tests {
         assert_eq!(cmd, "echo test");
     }
 }
+
+// ---- SSH Shell Client (system ssh binary) ----
+
+use std::process::{Child, Command, Stdio};
+
+/// SSH shell client using system `ssh` binary.
+pub struct SSHShellClient {
+    pub host: String,
+    pub port: u16,
+    pub ssh_opts: Vec<String>,
+}
+
+impl SSHShellClient {
+    pub fn new(host: impl Into<String>) -> Self {
+        Self {
+            host: host.into(),
+            port: 22,
+            ssh_opts: Vec::new(),
+        }
+    }
+}
+
+impl ShellClient for SSHShellClient {
+    fn make_process_controller(&self, spec: CommandSpec) -> Result<Box<dyn ShellProcessController>, String> {
+        Ok(Box::new(SSHProcessController::new(
+            self.host.clone(),
+            self.port,
+            self.ssh_opts.clone(),
+            spec,
+        )))
+    }
+}
+
+pub struct SSHProcessController {
+    host: String,
+    port: u16,
+    ssh_opts: Vec<String>,
+    spec: CommandSpec,
+    process: Arc<Mutex<Option<Child>>>,
+    started: Arc<Mutex<bool>>,
+}
+
+impl SSHProcessController {
+    fn new(host: String, port: u16, ssh_opts: Vec<String>, spec: CommandSpec) -> Self {
+        Self {
+            host,
+            port,
+            ssh_opts,
+            spec,
+            process: Arc::new(Mutex::new(None)),
+            started: Arc::new(Mutex::new(false)),
+        }
+    }
+}
+
+impl ShellProcessController for SSHProcessController {
+    fn start(&mut self) -> Result<(), String> {
+        let mut started = self.started.lock().unwrap();
+        if *started {
+            return Err("process already started".to_string());
+        }
+
+        let shell_cmd = build_shell_command(&self.spec);
+        let mut cmd = Command::new("ssh");
+        cmd.arg("-p").arg(self.port.to_string());
+        for opt in &self.ssh_opts {
+            cmd.arg(opt);
+        }
+        cmd.arg(&self.host)
+            .arg(shell_cmd)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let child = cmd.spawn().map_err(|e| format!("failed to spawn ssh: {}", e))?;
+        *self.process.lock().unwrap() = Some(child);
+        *started = true;
+        Ok(())
+    }
+
+    fn wait(&mut self) -> Result<i32, String> {
+        let mut process_guard = self.process.lock().unwrap();
+        if let Some(child) = process_guard.as_mut() {
+            let status = child.wait().map_err(|e| format!("wait failed: {}", e))?;
+            Ok(status.code().unwrap_or(-1))
+        } else {
+            Err("process not started".to_string())
+        }
+    }
+
+    fn kill(&self) {
+        if let Some(child) = self.process.lock().unwrap().as_mut() {
+            let _ = child.kill();
+        }
+    }
+
+    fn write_stdin(&self, _data: &[u8]) -> Result<(), String> {
+        Err("stdin I/O not yet implemented for SSH".to_string())
+    }
+
+    fn read_stdout(&self, _buf: &mut [u8]) -> Result<usize, String> {
+        Err("stdout I/O not yet implemented for SSH".to_string())
+    }
+
+    fn read_stderr(&self, _buf: &mut [u8]) -> Result<usize, String> {
+        Err("stderr I/O not yet implemented for SSH".to_string())
+    }
+
+    fn is_started(&self) -> bool {
+        *self.started.lock().unwrap()
+    }
+}
+
+// ---- WSL Shell Client (Windows only) ----
+
+#[cfg(windows)]
+pub struct WSLShellClient {
+    pub distro: String,
+}
+
+#[cfg(windows)]
+impl WSLShellClient {
+    pub fn new(distro: impl Into<String>) -> Self {
+        Self {
+            distro: distro.into(),
+        }
+    }
+}
+
+#[cfg(windows)]
+impl ShellClient for WSLShellClient {
+    fn make_process_controller(&self, spec: CommandSpec) -> Result<Box<dyn ShellProcessController>, String> {
+        crate::backend::wslconn::get_distro(&self.distro)?;
+        Ok(Box::new(WSLProcessController::new(self.distro.clone(), spec)))
+    }
+}
+
+#[cfg(windows)]
+pub struct WSLProcessController {
+    distro: String,
+    spec: CommandSpec,
+    process: Arc<Mutex<Option<Child>>>,
+    started: Arc<Mutex<bool>>,
+}
+
+#[cfg(windows)]
+impl WSLProcessController {
+    fn new(distro: String, spec: CommandSpec) -> Self {
+        Self {
+            distro,
+            spec,
+            process: Arc::new(Mutex::new(None)),
+            started: Arc::new(Mutex::new(false)),
+        }
+    }
+}
+
+#[cfg(windows)]
+impl ShellProcessController for WSLProcessController {
+    fn start(&mut self) -> Result<(), String> {
+        let mut started = self.started.lock().unwrap();
+        if *started {
+            return Err("process already started".to_string());
+        }
+
+        let shell_cmd = build_shell_command(&self.spec);
+        let mut cmd = Command::new("wsl.exe");
+        cmd.arg("-d")
+            .arg(&self.distro)
+            .arg("--")
+            .arg("sh")
+            .arg("-c")
+            .arg(shell_cmd)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let child = cmd.spawn().map_err(|e| format!("failed to spawn wsl: {}", e))?;
+        *self.process.lock().unwrap() = Some(child);
+        *started = true;
+        Ok(())
+    }
+
+    fn wait(&mut self) -> Result<i32, String> {
+        let mut process_guard = self.process.lock().unwrap();
+        if let Some(child) = process_guard.as_mut() {
+            let status = child.wait().map_err(|e| format!("wait failed: {}", e))?;
+            Ok(status.code().unwrap_or(-1))
+        } else {
+            Err("process not started".to_string())
+        }
+    }
+
+    fn kill(&self) {
+        if let Some(child) = self.process.lock().unwrap().as_mut() {
+            let _ = child.kill();
+        }
+    }
+
+    fn write_stdin(&self, _data: &[u8]) -> Result<(), String> {
+        Err("stdin I/O not yet implemented for WSL".to_string())
+    }
+
+    fn read_stdout(&self, _buf: &mut [u8]) -> Result<usize, String> {
+        Err("stdout I/O not yet implemented for WSL".to_string())
+    }
+
+    fn read_stderr(&self, _buf: &mut [u8]) -> Result<usize, String> {
+        Err("stderr I/O not yet implemented for WSL".to_string())
+    }
+
+    fn is_started(&self) -> bool {
+        *self.started.lock().unwrap()
+    }
+}
+
+#[cfg(not(windows))]
+pub struct WSLShellClient;
+
+#[cfg(not(windows))]
+impl WSLShellClient {
+    pub fn new(_distro: impl Into<String>) -> Self {
+        Self
+    }
+}
+
+#[cfg(not(windows))]
+impl ShellClient for WSLShellClient {
+    fn make_process_controller(&self, _spec: CommandSpec) -> Result<Box<dyn ShellProcessController>, String> {
+        Err("WSL is only available on Windows".to_string())
+    }
+}

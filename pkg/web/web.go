@@ -533,6 +533,7 @@ func RunWebServer(listener net.Listener) {
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
 
 	handler := http.Handler(gr)
+	// Enable CORS for dev mode and Tauri (tauri.localhost)
 	if wavebase.IsDevMode() {
 		originalHandler := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -548,6 +549,27 @@ func RunWebServer(listener net.Listener) {
 			if r.Method == "OPTIONS" {
 				w.WriteHeader(204)
 				return
+			}
+
+			originalHandler.ServeHTTP(w, r)
+		})
+	} else {
+		// In production, still allow CORS for Tauri
+		originalHandler := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			// Allow tauri.localhost and ipc.localhost origins
+			if origin == "http://tauri.localhost" || origin == "http://ipc.localhost" || origin == "https://tauri.localhost" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Session-Id, X-AuthKey, Authorization, X-Requested-With, Accept, x-vercel-ai-ui-message-stream")
+				w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo, Content-Length, Content-Type, x-vercel-ai-ui-message-stream")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+				if r.Method == "OPTIONS" {
+					w.WriteHeader(204)
+					return
+				}
 			}
 
 			originalHandler.ServeHTTP(w, r)

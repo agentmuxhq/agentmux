@@ -6,6 +6,7 @@ pub mod blockcontroller;
 pub mod blocklogger;
 pub mod eventbus;
 pub mod oref;
+pub mod remote;
 pub mod rpc;
 pub mod rpc_types;
 pub mod shellexec;

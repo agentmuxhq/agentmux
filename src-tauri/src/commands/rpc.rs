@@ -111,13 +111,17 @@ async fn handle_rpc_request(
         }
 
         "getfullconfig" => {
-            // Return a minimal config for now
-            Ok(serde_json::json!({
-                "settings": {},
-                "presets": {},
-                "termthemes": {},
-                "mimetofileext": {},
-            }))
+            let config = state.config_watcher.get_full_config();
+            serde_json::to_value(&*config)
+                .map_err(|e| format!("serialize config: {}", e))
+        }
+
+        "setconfig" => {
+            handle_set_config(&data, state)
+        }
+
+        "setconnectionsconfig" => {
+            handle_set_connections_config(&data, state)
         }
 
         "getmeta" => {
@@ -735,6 +739,99 @@ pub async fn reactive_poller_config(
     {
         let _ = (agentmux_url, agentmux_token, _state);
         Err("reactive_poller_config only available in rust-backend mode".to_string())
+    }
+}
+
+/// Handle setconfig: merge values into settings.json, reload config, broadcast.
+#[cfg(feature = "rust-backend")]
+fn handle_set_config(data: &Value, state: &AppState) -> Result<Value, String> {
+    let to_merge = data
+        .as_object()
+        .ok_or_else(|| "setconfig: expected object".to_string())?;
+
+    crate::backend::wconfig::set_base_config_value(&state.config_dir, to_merge)?;
+
+    // Reload and broadcast
+    let new_config = crate::backend::wconfig::load_full_config(&state.config_dir);
+    state.config_watcher.set_config(new_config);
+    state.broker.publish(crate::backend::wps::WaveEvent {
+        event: crate::backend::wps::EVENT_CONFIG.to_string(),
+        scopes: vec![],
+        sender: String::new(),
+        persist: 0,
+        data: None,
+    });
+
+    Ok(Value::Null)
+}
+
+/// Handle setconnectionsconfig: merge values for a specific connection, reload, broadcast.
+#[cfg(feature = "rust-backend")]
+fn handle_set_connections_config(data: &Value, state: &AppState) -> Result<Value, String> {
+    let conn_name = data
+        .get("conn")
+        .or_else(|| data.get("host"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "setconnectionsconfig: missing conn/host".to_string())?;
+
+    let meta_map = data
+        .get("metamaptype")
+        .or_else(|| data.get("meta"))
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| "setconnectionsconfig: missing metamaptype/meta".to_string())?;
+
+    crate::backend::wconfig::set_connections_config_value(
+        &state.config_dir,
+        conn_name,
+        meta_map,
+    )?;
+
+    // Reload and broadcast
+    let new_config = crate::backend::wconfig::load_full_config(&state.config_dir);
+    state.config_watcher.set_config(new_config);
+    state.broker.publish(crate::backend::wps::WaveEvent {
+        event: crate::backend::wps::EVENT_CONFIG.to_string(),
+        scopes: vec![],
+        sender: String::new(),
+        persist: 0,
+        data: None,
+    });
+
+    Ok(Value::Null)
+}
+
+// ---- Schema delivery via Tauri IPC ----
+
+#[cfg(feature = "rust-backend")]
+const SCHEMA_SETTINGS: &str = include_str!("../../../schema/settings.json");
+#[cfg(feature = "rust-backend")]
+const SCHEMA_CONNECTIONS: &str = include_str!("../../../schema/connections.json");
+#[cfg(feature = "rust-backend")]
+const SCHEMA_AIPRESETS: &str = include_str!("../../../schema/aipresets.json");
+#[cfg(feature = "rust-backend")]
+const SCHEMA_WIDGETS: &str = include_str!("../../../schema/widgets.json");
+
+/// Tauri command to deliver JSON schema for Monaco editor validation.
+/// Replaces HTTP GET /schema/{name}.json in rust-backend mode.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn get_schema(schema_name: String) -> Result<Value, String> {
+    #[cfg(feature = "rust-backend")]
+    {
+        let json_str = match schema_name.as_str() {
+            "settings" => SCHEMA_SETTINGS,
+            "connections" => SCHEMA_CONNECTIONS,
+            "aipresets" => SCHEMA_AIPRESETS,
+            "widgets" => SCHEMA_WIDGETS,
+            _ => return Err(format!("unknown schema: {}", schema_name)),
+        };
+        serde_json::from_str(json_str)
+            .map_err(|e| format!("parse schema {}: {}", schema_name, e))
+    }
+
+    #[cfg(not(feature = "rust-backend"))]
+    {
+        let _ = schema_name;
+        Err("get_schema only available in rust-backend mode".to_string())
     }
 }
 

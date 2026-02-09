@@ -3,8 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getWebServerEndpoint } from "@/util/endpoints";
-import { formatRemoteUri } from "@/util/waveutil";
+import { formatRemoteUri, getStreamFileUrl } from "@/util/waveutil";
 import parseSrcSet from "parse-srcset";
 
 export type MarkdownContentBlockType = {
@@ -161,11 +160,8 @@ export const resolveRemoteFile = async (filepath: string, resolveOpts: MarkdownR
     try {
         const baseDirUri = formatRemoteUri(resolveOpts.baseDir, resolveOpts.connName);
         const fileInfo = await RpcApi.FileJoinCommand(TabRpcClient, [baseDirUri, filepath]);
-        const remoteUri = formatRemoteUri(fileInfo.path, resolveOpts.connName);
-        // console.log("markdown resolve", resolveOpts, filepath, "=>", baseDirUri, remoteUri);
-        const usp = new URLSearchParams();
-        usp.set("path", remoteUri);
-        return getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
+        // console.log("markdown resolve", resolveOpts, filepath, "=>", baseDirUri);
+        return getStreamFileUrl(fileInfo.path, resolveOpts.connName);
     } catch (err) {
         console.warn("Failed to resolve remote file:", filepath, err);
         return null;

@@ -15,7 +15,9 @@ pub mod storage;
 pub mod suggestion;
 pub mod trimquotes;
 pub mod userinput;
+pub mod wavebase;
 pub mod waveobj;
+pub mod wconfig;
 pub mod wcore;
 pub mod wps;
 

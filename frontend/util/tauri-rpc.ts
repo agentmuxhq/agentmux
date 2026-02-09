@@ -106,6 +106,7 @@ export async function setBlockTermSize(blockId: string, rows: number, cols: numb
     }
 }
 
+
 /**
  * Fetch a wave file's data and metadata via Tauri IPC.
  * Replaces HTTP GET /wave/file in rust-backend mode.

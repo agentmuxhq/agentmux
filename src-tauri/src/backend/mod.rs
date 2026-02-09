@@ -1,10 +1,14 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod ai;
+pub mod blockcontroller;
+pub mod blocklogger;
 pub mod eventbus;
 pub mod oref;
 pub mod rpc;
 pub mod rpc_types;
+pub mod shellexec;
 pub mod storage;
 pub mod waveobj;
 pub mod wcore;

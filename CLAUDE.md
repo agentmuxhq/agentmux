@@ -21,8 +21,8 @@
 
 - **Name:** WaveMux
 - **GitHub:** https://github.com/a5af/wavemux
-- **Type:** Independent terminal multiplexer project
-- **Version:** 0.12.15
+- **Type:** Tauri v2 terminal application
+- **Version:** 0.19.0
 
 ## Git & Pull Requests
 
@@ -52,9 +52,13 @@
 
 ### Architecture
 
-- **WaveMux.exe** = Electron app (UI)
-- **wavemuxsrv** = Go backend (auto-spawned, don't run manually)
-- **wsh** = Shell integration (must be versioned correctly)
+WaveMux is built on **Tauri v2** (NOT Electron):
+
+- **wavemux.exe** = Tauri app (Rust + single webview)
+- **wavemuxsrv** = Go backend sidecar (auto-spawned, don't run manually)
+- **wsh** = Shell integration binary (must be versioned correctly)
+
+**Important:** All Electron code has been removed (Phase 14). Only Tauri is supported.
 
 ---
 

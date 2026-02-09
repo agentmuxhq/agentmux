@@ -12,7 +12,7 @@ use super::waveobj::VALID_OTYPES;
 
 /// Object reference combining a type name and UUID.
 /// Wire format: `"block:550e8400-e29b-41d4-a716-446655440000"`
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct ORef {
     pub otype: String,
     pub oid: String,

@@ -50,8 +50,8 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
             &data_dir.to_string_lossy(),
         ])
         .env("WAVETERM_AUTH_KEY", &auth_key)
-        .env("WAVETERM_CONFIG_HOME", &config_dir.to_string_lossy().to_string())
-        .env("WAVETERM_DATA_HOME", &data_dir.to_string_lossy().to_string())
+        .env("WAVETERM_CONFIG_HOME", config_dir.to_string_lossy().to_string())
+        .env("WAVETERM_DATA_HOME", data_dir.to_string_lossy().to_string())
         .env("WAVETERM_DEV", if cfg!(debug_assertions) { "1" } else { "" })
         .env("WCLOUD_ENDPOINT", "https://api.waveterm.dev/central")
         .env("WCLOUD_WS_ENDPOINT", "wss://wsapi.waveterm.dev/")
@@ -81,19 +81,18 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                             let parts: Vec<&str> = l.split_whitespace().collect();
                             let ws = parts
                                 .iter()
-                                .find(|p| p.starts_with("ws:"))
-                                .map(|p| p[3..].to_string())
+                                .find_map(|p| p.strip_prefix("ws:"))
+                                .map(|s| s.to_string())
                                 .unwrap_or_default();
                             let web = parts
                                 .iter()
-                                .find(|p| p.starts_with("web:"))
-                                .map(|p| p[4..].to_string())
+                                .find_map(|p| p.strip_prefix("web:"))
+                                .map(|s| s.to_string())
                                 .unwrap_or_default();
 
                             tracing::info!("Backend started: ws={}, web={}", ws, web);
                             let _ = tx.send((ws, web)).await;
-                        } else if l.starts_with("WAVESRV-EVENT:") {
-                            let event_data = &l[14..];
+                        } else if let Some(event_data) = l.strip_prefix("WAVESRV-EVENT:") {
                             handle_backend_event(&app_handle, event_data);
                         } else {
                             tracing::info!("[wavemuxsrv] {}", l);

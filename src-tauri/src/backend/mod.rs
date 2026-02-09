@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod ai;
+pub mod authkey;
 pub mod blockcontroller;
 pub mod blocklogger;
 pub mod daystr;
 pub mod eventbus;
+pub mod faviconcache;
 pub mod ijson;
 pub mod oref;
 pub mod panichandler;
@@ -20,6 +22,7 @@ pub mod trimquotes;
 pub mod userinput;
 pub mod wavebase;
 pub mod waveobj;
+pub mod wcloud;
 pub mod wconfig;
 pub mod wcore;
 pub mod wps;

@@ -271,7 +271,11 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // TODO: Call workspace service
         }
         _ => {
-            tracing::debug!("Unhandled menu event: {:?}", event.id);
+            // Context menu items from frontend use UUID IDs.
+            // Forward them back as contextmenu-click events.
+            if let Some(w) = window {
+                let _ = w.emit("contextmenu-click", event.id.as_ref());
+            }
         }
     }
 }

@@ -40,3 +40,4 @@ test-results/
 # Tauri
 src-tauri/target/
 src-tauri/binaries/
+backend-test/

@@ -35,6 +35,17 @@ pub fn set_auth_key_from_env() -> Result<(), String> {
     Ok(())
 }
 
+/// Set the auth key directly (for rust-backend mode where there's no env var).
+/// Returns Ok(()) if set successfully, Err if already set.
+pub fn set_auth_key(key: String) -> Result<(), String> {
+    if key.is_empty() {
+        return Err("auth key is empty".to_string());
+    }
+    AUTH_KEY
+        .set(key)
+        .map_err(|_| "auth key already set".to_string())
+}
+
 /// Get the cached auth key. Returns empty string if not set.
 pub fn get_auth_key() -> &'static str {
     AUTH_KEY.get().map_or("", |k| k.as_str())

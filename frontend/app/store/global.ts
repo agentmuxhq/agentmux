@@ -524,6 +524,12 @@ async function fetchWaveFile(
     fileName: string,
     offset?: number
 ): Promise<{ data: Uint8Array; fileInfo: WaveFile }> {
+    // In rust-backend mode, use Tauri IPC instead of HTTP
+    const { isRustBackend: isRB, fetchWaveFileTauri } = await import("@/util/tauri-rpc");
+    if (isRB()) {
+        return fetchWaveFileTauri(zoneId, fileName, offset);
+    }
+
     const usp = new URLSearchParams();
     usp.set("zoneid", zoneId);
     usp.set("name", fileName);

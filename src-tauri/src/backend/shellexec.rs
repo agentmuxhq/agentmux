@@ -445,7 +445,7 @@ pub mod local_pty {
                 let status = child
                     .wait()
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("wait: {}", e)))?;
-                let code = status.exit_code() as i32;
+                let code = if status.success() { 0 } else { 1 };
                 *self.exit_code_val.lock().unwrap() = code;
                 Ok(code)
             } else {

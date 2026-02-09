@@ -1,6 +1,6 @@
 [package]
 name = "wavemux"
-version = "0.20.4"
+version = "0.20.5"
 description = "WaveMux - AI-Native Terminal"
 authors = ["a5af"]
 edition = "2021"
@@ -42,6 +42,11 @@ base64 = "0.22"
 dirs = "6"
 libc = "0.2"
 subtle = "2"
+
+[features]
+default = ["go-sidecar"]
+go-sidecar = []
+rust-backend = []
 
 [profile.release]
 strip = true

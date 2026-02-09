@@ -3,8 +3,7 @@
 
 import { Button } from "@/app/element/button";
 import { CenteredDiv } from "@/app/element/quickelems";
-import { getWebServerEndpoint } from "@/util/endpoints";
-import { formatRemoteUri } from "@/util/waveutil";
+import { getStreamFileUrl } from "@/util/waveutil";
 import { useAtomValue } from "jotai";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import type { SpecializedViewProps } from "./preview";
@@ -48,13 +47,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     const conn = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
     const filePath = fileInfo.path;
-    const remotePath = formatRemoteUri(filePath, conn);
-    const usp = new URLSearchParams();
-    usp.set("path", remotePath);
-    if (conn != null) {
-        usp.set("connection", conn);
-    }
-    const streamingUrl = `${getWebServerEndpoint()}/wave/stream-file?${usp.toString()}`;
+    const streamingUrl = getStreamFileUrl(filePath, conn);
     if (fileInfo.mimetype === "application/pdf") {
         return (
             <div className="flex flex-row h-full overflow-hidden items-center justify-center p-[5px]">

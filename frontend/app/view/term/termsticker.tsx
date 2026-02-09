@@ -4,7 +4,7 @@
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { createBlock } from "@/store/global";
-import { getWebServerEndpoint } from "@/util/endpoints";
+import { getStreamLocalFileUrl } from "@/util/waveutil";
 import { stringToBase64 } from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -106,8 +106,7 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
         if (sticker.imgsrc == null) {
             return null;
         }
-        const streamingUrl =
-            getWebServerEndpoint() + "/wave/stream-local-file?path=" + encodeURIComponent(sticker.imgsrc);
+        const streamingUrl = getStreamLocalFileUrl(sticker.imgsrc);
         return (
             <div className="term-sticker term-sticker-image" style={style} onClick={clickHandler}>
                 <img src={streamingUrl} />

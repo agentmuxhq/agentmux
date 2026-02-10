@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentMux - AI Agent Orchestrator</title>
+  <meta name="description" content="Orchestrate AI agents in one workspace. Run Claude, GPT, Ollama side by side. Route tasks, compare outputs, coordinate workflows.">
+  <meta name="theme-color" content="#58C142">
+  <meta property="og:title" content="AgentMux - AI Agent Orchestrator">
+  <meta property="og:description" content="Orchestrate AI agents in one workspace. Run Claude, GPT, Ollama side by side. Route tasks, compare outputs, coordinate workflows.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://agentmux.dev">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green-dark: #1F4D22;
+      --green-mid: #418D31;
+      --green-light: #58C142;
+      --green-pale: #a3e89a;
+      --bg-primary: #09090b;
+      --bg-surface: #111113;
+      --bg-surface-2: #18181b;
+      --bg-surface-3: #222225;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --border: #27272a;
+      --border-light: #3f3f46;
+      --radius: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── NAV ──────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(20px) saturate(1.5);
+      background: rgba(9, 9, 11, 0.75);
+      border-bottom: 1px solid rgba(88, 193, 66, 0.08);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .nav-logo span {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--green-light);
+      letter-spacing: 1px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--green-light); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--green-light);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: var(--green-pale);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 30px rgba(88, 193, 66, 0.25);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--green-light);
+      color: var(--green-light);
+    }
+
+    .btn-lg {
+      padding: 14px 36px;
+      font-size: 16px;
+      border-radius: 10px;
+    }
+
+    /* ─── HERO ─────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      overflow: hidden;
+    }
+
+    .hero-glow {
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(88, 193, 66, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(88, 193, 66, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88, 193, 66, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse at center, black 20%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-logo {
+      position: relative;
+      margin-bottom: 40px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(88, 193, 66, 0.08);
+      border: 1px solid rgba(88, 193, 66, 0.15);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--green-light);
+      margin-bottom: 28px;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green-light);
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(88,193,66,0.5); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(88,193,66,0); }
+    }
+
+    .hero h1 {
+      font-size: clamp(48px, 7vw, 80px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--green-mid), var(--green-light), var(--green-pale));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: clamp(18px, 2.2vw, 22px);
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto 40px;
+      line-height: 1.6;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .hero-platforms {
+      margin-top: 24px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .hero-screenshot {
+      position: relative;
+      margin-top: 80px;
+      width: 100%;
+      max-width: 1100px;
+      aspect-ratio: 16/9;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(88, 193, 66, 0.05),
+        0 20px 80px rgba(0, 0, 0, 0.6),
+        0 0 120px rgba(88, 193, 66, 0.06);
+    }
+
+    .screenshot-inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screenshot-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--bg-surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .screenshot-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--bg-surface-3);
+    }
+
+    .screenshot-dot:nth-child(1) { background: #ff5f57; }
+    .screenshot-dot:nth-child(2) { background: #ffbd2e; }
+    .screenshot-dot:nth-child(3) { background: #28c840; }
+
+    .screenshot-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .screenshot-pane {
+      background: var(--bg-primary);
+      padding: 16px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--text-secondary);
+      overflow: hidden;
+    }
+
+    .screenshot-pane.ai-pane {
+      grid-row: 1 / -1;
+      background: var(--bg-surface);
+    }
+
+    .pane-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--green-light);
+      margin-bottom: 10px;
+      opacity: 0.7;
+    }
+
+    .pane-prompt { color: var(--green-light); }
+    .pane-cmd { color: var(--text-primary); }
+    .pane-output { color: var(--text-muted); }
+    .pane-ai-user { color: var(--green-pale); font-weight: 500; }
+    .pane-ai-reply { color: var(--text-secondary); }
+
+    /* ─── SECTION SHARED ──────────────────────────────── */
+    section {
+      padding: 120px 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--green-light);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .section-header {
+      margin-bottom: 64px;
+    }
+
+    .section-header.center {
+      text-align: center;
+    }
+
+    .section-header.center .section-desc {
+      margin: 0 auto;
+    }
+
+    /* ─── FEATURES GRID ───────────────────────────────── */
+    #features {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(88, 193, 66, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(88, 193, 66, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 22px;
+    }
+
+    .feature-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .feature-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 12px;
+    }
+
+    .tag-free, .tag-community {
+      background: rgba(88, 193, 66, 0.1);
+      color: var(--green-light);
+    }
+
+    .tag-pro {
+      background: rgba(168, 85, 247, 0.12);
+      color: #c084fc;
+    }
+
+    /* ─── PRO FEATURES SHOWCASE ──────────────────────── */
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .showcase-grid.reversed {
+      direction: rtl;
+    }
+
+    .showcase-grid.reversed > * {
+      direction: ltr;
+    }
+
+    .showcase-visual {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .showcase-content h3 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+
+    .showcase-content p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.7;
+    }
+
+    .showcase-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .showcase-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+
+    .showcase-list li::before {
+      content: '';
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      border-radius: 50%;
+      background: rgba(88, 193, 66, 0.1);
+      border: 1.5px solid var(--green-light);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .showcase-section {
+      padding: 100px 24px;
+    }
+
+    .showcase-section:nth-child(even) {
+      background: var(--bg-surface);
+    }
+
+    .showcase-section + .showcase-section {
+      border-top: 1px solid var(--border);
+    }
+
+    /* ─── AI PANEL MOCK ───────────────────────────────── */
+    .ai-mock {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .ai-mock-header {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green-light);
+    }
+
+    .ai-mock-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .ai-msg {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 85%;
+    }
+
+    .ai-msg.user {
+      background: rgba(88, 193, 66, 0.08);
+      border: 1px solid rgba(88, 193, 66, 0.12);
+      color: var(--text-primary);
+      align-self: flex-end;
+    }
+
+    .ai-msg.assistant {
+      background: var(--bg-surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      align-self: flex-start;
+    }
+
+    .ai-mock-model {
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--bg-surface-2);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ─── PRICING ──────────────────────────────────────── */
+    #pricing {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .price-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      position: relative;
+    }
+
+    .price-tier {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .price-amount {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin-bottom: 4px;
+    }
+
+    .price-amount span {
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--text-muted);
+      letter-spacing: 0;
+    }
+
+    .price-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .price-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 36px;
+    }
+
+    .price-features li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .price-features li .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .check-green {
+      background: rgba(88, 193, 66, 0.15);
+      color: var(--green-light);
+      font-size: 11px;
+    }
+
+    .check-muted {
+      background: var(--bg-surface-2);
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .price-card .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* ─── COMPARISON TABLE ─────────────────────────────── */
+    .comparison-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 64px;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .comparison-table th {
+      font-weight: 700;
+      color: var(--text-primary);
+      background: var(--bg-surface-2);
+    }
+
+    .comparison-table th:first-child {
+      border-radius: 10px 0 0 0;
+    }
+
+    .comparison-table th:last-child {
+      border-radius: 0 10px 0 0;
+    }
+
+    .comparison-table td {
+      color: var(--text-secondary);
+    }
+
+    .comparison-table td:nth-child(2),
+    .comparison-table td:nth-child(3) {
+      text-align: center;
+    }
+
+    .comparison-table th:nth-child(2),
+    .comparison-table th:nth-child(3) {
+      text-align: center;
+    }
+
+    .comparison-table tr:hover td {
+      background: rgba(88, 193, 66, 0.02);
+    }
+
+    .comparison-table .category-row td {
+      font-weight: 600;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .table-check { color: var(--green-light); font-size: 16px; }
+    .table-cross { color: var(--text-muted); font-size: 14px; }
+    .table-limit { color: var(--text-muted); font-size: 13px; }
+
+    /* ─── CTA ──────────────────────────────────────────── */
+    .cta-section {
+      position: relative;
+      text-align: center;
+      padding: 140px 24px;
+      overflow: hidden;
+    }
+
+    .cta-glow {
+      position: absolute;
+      bottom: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse at center, rgba(88, 193, 66, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-section h2 {
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .cta-section p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 500px;
+      margin: 0 auto 36px;
+    }
+
+    .cta-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* ─── FOOTER ───────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 60px 24px;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 48px;
+    }
+
+    .footer-brand p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 16px;
+      line-height: 1.6;
+      max-width: 280px;
+    }
+
+    .footer-col h4 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .footer-col a {
+      font-size: 14px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover { color: var(--green-light); }
+
+    .footer-bottom {
+      max-width: 1200px;
+      margin: 40px auto 0;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ─── RESPONSIVE ───────────────────────────────────── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .features-grid { grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .pricing-grid { grid-template-columns: 1fr; }
+      .showcase-grid, .showcase-grid.reversed { grid-template-columns: 1fr; direction: ltr; }
+      .footer-inner { grid-template-columns: 1fr 1fr; }
+      .screenshot-body { grid-template-columns: 1fr; }
+      .screenshot-pane.ai-pane { grid-row: auto; }
+      .comparison-table { font-size: 13px; }
+      .comparison-table th, .comparison-table td { padding: 10px 12px; }
+    }
+
+    /* ─── ANIMATIONS ───────────────────────────────────── */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-logo { animation: float 6s ease-in-out infinite; }
+    .hero-badge { animation: fade-up 0.6s ease-out 0.1s both; }
+    .hero h1 { animation: fade-up 0.6s ease-out 0.2s both; }
+    .hero p { animation: fade-up 0.6s ease-out 0.35s both; }
+    .hero-cta { animation: fade-up 0.6s ease-out 0.5s both; }
+    .hero-screenshot { animation: fade-up 0.8s ease-out 0.7s both; }
+  </style>
+</head>
+<body>
+
+<!-- ───────────────────── NAV ───────────────────── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <svg width="32" height="32" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="nav-g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1F4D22" />
+          <stop offset="100%" style="stop-color:#58C142" />
+        </linearGradient>
+      </defs>
+      <rect width="200" height="200" rx="40" fill="#000"/>
+      <path d="M 30 95 C 50 55, 85 55, 100 82 C 115 109, 150 109, 170 69 L 170 82 C 150 122, 115 122, 100 95 C 85 68, 50 68, 30 108 Z" fill="url(#nav-g)" opacity="0.85"/>
+      <path d="M 30 118 C 50 78, 85 78, 100 105 C 115 132, 150 132, 170 92 L 170 105 C 150 145, 115 145, 100 118 C 85 91, 50 91, 30 131 Z" fill="url(#nav-g)" opacity="0.45"/>
+      <path d="M 100 78 L 112 95 L 100 112 L 88 95 Z" fill="#58C142" opacity="0.8"/>
+      <path d="M 100 85 L 107 95 L 100 105 L 93 95 Z" fill="#fff" opacity="0.6"/>
+    </svg>
+    <span>AgentMux</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#pro">Pro</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="https://docs.agentmux.dev">Docs</a></li>
+    <li><a href="https://github.com/a5af/wavemux" class="btn btn-ghost">GitHub</a></li>
+    <li><a href="#download" class="btn btn-primary">Download</a></li>
+  </ul>
+</nav>
+
+<!-- ───────────────────── HERO ──────────────────── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+
+  <div class="hero-logo">
+    <svg width="120" height="120" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hero-g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1F4D22" />
+          <stop offset="100%" style="stop-color:#58C142" />
+        </linearGradient>
+      </defs>
+      <rect width="200" height="200" rx="40" fill="#000"/>
+      <path d="M 30 95 C 50 55, 85 55, 100 82 C 115 109, 150 109, 170 69 L 170 82 C 150 122, 115 122, 100 95 C 85 68, 50 68, 30 108 Z" fill="url(#hero-g)" opacity="0.85"/>
+      <path d="M 30 118 C 50 78, 85 78, 100 105 C 115 132, 150 132, 170 92 L 170 105 C 150 145, 115 145, 100 118 C 85 91, 50 91, 30 131 Z" fill="url(#hero-g)" opacity="0.45"/>
+      <path d="M 100 78 L 112 95 L 100 112 L 88 95 Z" fill="#58C142" opacity="0.8"/>
+      <path d="M 100 85 L 107 95 L 100 105 L 93 95 Z" fill="#ffffff" opacity="0.6"/>
+    </svg>
+  </div>
+
+  <div class="hero-badge">Now in Public Beta</div>
+
+  <h1>Your AI agents,<br><span class="gradient">multiplexed.</span></h1>
+
+  <p>Run multiple AI agents side by side. Route tasks between Claude, GPT, and Ollama. Compare outputs, coordinate workflows, and ship faster with agents working in parallel.</p>
+
+  <div class="hero-cta">
+    <a href="#download" class="btn btn-primary btn-lg">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Free
+    </a>
+    <a href="#pricing" class="btn btn-ghost btn-lg">View Pricing</a>
+  </div>
+
+  <p class="hero-platforms">Available for Windows, macOS, and Linux</p>
+
+  <!-- Screenshot Mock -->
+  <div class="hero-screenshot">
+    <div class="screenshot-inner">
+      <div class="screenshot-titlebar">
+        <div class="screenshot-dot"></div>
+        <div class="screenshot-dot"></div>
+        <div class="screenshot-dot"></div>
+        <div style="flex:1;display:flex;gap:2px;margin-left:12px;">
+          <div style="padding:4px 14px;background:var(--bg-surface-3);border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--green-light);font-weight:600;">Agent 1: Backend</div>
+          <div style="padding:4px 14px;border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--text-muted);">Agent 2: Frontend</div>
+          <div style="padding:4px 14px;border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--text-muted);">Agent 3: Infra</div>
+        </div>
+      </div>
+      <div class="screenshot-body">
+        <div class="screenshot-pane">
+          <div class="pane-label">Agent 1 &middot; Claude Opus</div>
+          <span class="pane-prompt">agent1 $</span> <span class="pane-cmd">Implementing auth middleware...</span><br>
+          <span class="pane-output">Created src/middleware/auth.ts<br>
+          Added JWT validation with Ed25519<br>
+          Added rate limiting (100 req/min)<br>
+          Running tests... 14/14 passed<br>
+          <span style="color:var(--green-light);">PR #247 created: feat: auth middleware</span></span>
+        </div>
+        <div class="screenshot-pane ai-pane">
+          <div class="pane-label">Orchestrator</div>
+          <span class="pane-ai-user">Route: Agent1 handles backend auth, Agent2 handles login UI, Agent3 deploys staging</span><br><br>
+          <span class="pane-ai-reply"><strong>Agent 1</strong> (Claude Opus) - auth middleware PR ready, tests passing<br><br><strong>Agent 2</strong> (GPT-5) - login form 80% complete, waiting on Agent 1's auth types<br><br><strong>Agent 3</strong> (Claude Sonnet) - staging env provisioned, waiting for PRs to merge</span><br><br>
+          <span class="pane-ai-user">Compare Agent 1 and Agent 2 approaches to token refresh</span>
+        </div>
+        <div class="screenshot-pane">
+          <div class="pane-label">Agent 2 &middot; GPT-5</div>
+          <span class="pane-prompt">agent2 $</span> <span class="pane-cmd">Building login component...</span><br>
+          <span class="pane-output">Created components/LoginForm.tsx<br>
+          Added OAuth2 PKCE flow<br>
+          Waiting for auth types from Agent 1...<br>
+          <span style="color:#ffbd2e;">Blocked: needs AuthToken type export</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── FREE FEATURES ────────────── -->
+<section id="features">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-label">Core Features</div>
+      <h2 class="section-title">Everything you need to orchestrate agents</h2>
+      <p class="section-desc">A visual workspace for running, routing, and coordinating AI agents. Free to start.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
+        </div>
+        <h3>Multi-Agent Workspace</h3>
+        <p>Run multiple AI agents in split panes. Each agent gets its own context, model, and task. See all your agents working at once. Up to 4 panes free.</p>
+        <span class="feature-tag tag-free">Community</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><path d="M21 3l-4 4"/></svg>
+        </div>
+        <h3>Multi-Model Support</h3>
+        <p>Connect any AI model: <strong>Claude</strong>, <strong>GPT</strong>, <strong>Gemini</strong>, <strong>Ollama</strong>, or custom endpoints. Bring your own API keys. Switch models per agent instantly.</p>
+        <span class="feature-tag tag-free">Community</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><path d="M4 12h4l3-9 4 18 3-9h4"/></svg>
+        </div>
+        <h3>Agent Messaging</h3>
+        <p>Agents communicate through a built-in message bus. Route context between agents, pass outputs as inputs, and coordinate multi-step workflows.</p>
+        <span class="feature-tag tag-free">Community</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        </div>
+        <h3>Remote Agents</h3>
+        <p>Run agents on remote machines via SSH. Manage cloud instances, connect to dev servers, and orchestrate agents across your entire infrastructure.</p>
+        <span class="feature-tag tag-free">Community</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <h3>Context & File Aware</h3>
+        <p>Agents see your files, terminals, and web views. Preview code, images, markdown, and dashboards inline. Every agent has the context it needs.</p>
+        <span class="feature-tag tag-free">Community</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </div>
+        <h3>Built-in Terminal</h3>
+        <p>Full-featured terminal with shell integration, command completion, and wsh CLI. Agents can execute commands, and you can intervene at any point.</p>
+        <span class="feature-tag tag-free">Community</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────── PRO SHOWCASE ─────────────── -->
+<section id="pro">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-label">Pro Features</div>
+      <h2 class="section-title">Scale your agent fleet</h2>
+      <p class="section-desc">Advanced orchestration, workflow automation, and team features for professionals running agents in production.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Teams & Workspaces -->
+<div class="showcase-section">
+  <div class="container">
+    <div class="showcase-grid">
+      <div class="showcase-visual">
+        <div style="display:flex;gap:2px;margin-bottom:16px;">
+          <div style="padding:8px 20px;background:var(--bg-surface-2);border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;font-size:13px;color:var(--green-light);font-weight:600;">Backend</div>
+          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Frontend</div>
+          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Infra</div>
+          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Monitoring</div>
+          <div style="padding:8px 12px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">+</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:16px;background:var(--bg-surface-2);">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">Workspace: Production</div>
+          <span class="pane-prompt">~/api $</span> <span class="pane-cmd">cargo test --lib</span><br>
+          <span class="pane-output" style="color:var(--green-light);">test result: ok. 142 passed; 0 failed</span>
+        </div>
+      </div>
+      <div class="showcase-content">
+        <h3>Agent Teams</h3>
+        <p>Organize agents into <strong>teams</strong> by project. Keep your backend agents, frontend agents, and infra agents in separate teams, each with their own workspace, context, and layout.</p>
+        <ul class="showcase-list">
+          <li>Unlimited agent teams with drag-and-drop reorder</li>
+          <li>Named workspaces with custom icons and colors</li>
+          <li>Pin critical agents so they're always running</li>
+          <li>Each workspace preserves agent state and layout</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI Power Features -->
+<div class="showcase-section">
+  <div class="container">
+    <div class="showcase-grid reversed">
+      <div class="showcase-visual">
+        <div class="ai-mock">
+          <div class="ai-mock-header">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+            AI Chat
+            <div style="margin-left:auto;display:flex;gap:6px;">
+              <span class="ai-mock-model">Claude Sonnet</span>
+              <span class="ai-mock-model" style="opacity:0.5;">GPT-5</span>
+              <span class="ai-mock-model" style="opacity:0.5;">Ollama</span>
+            </div>
+          </div>
+          <div class="ai-mock-body">
+            <div class="ai-msg user">Review @terminal:prod for errors</div>
+            <div class="ai-msg assistant">I found 2 issues in your production logs:<br><br>1. <strong>Rate limit warning</strong> at 14:32:08 - requests approaching threshold<br>2. <strong>Connection pool</strong> near capacity (8/10 active)</div>
+            <div class="ai-msg user">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+              Fork this to try a different approach
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="showcase-content">
+        <h3>Advanced Orchestration</h3>
+        <p>Go beyond running agents in isolation. Pin shared context, @mention other agents inline, branch conversations to explore alternatives, and compare model outputs side by side.</p>
+        <ul class="showcase-list">
+          <li>Full conversation history with search across all agents</li>
+          <li><strong>Model presets</strong>: assign Claude, GPT, Ollama per agent</li>
+          <li><strong>Context pinning</strong>: share files across agents persistently</li>
+          <li><strong>@mentions</strong>: reference any agent, terminal, or file inline</li>
+          <li><strong>Conversation branching</strong>: fork any agent's thread</li>
+          <li><strong>Multi-model compare</strong>: same task, different models, side by side</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Productivity -->
+<div class="showcase-section">
+  <div class="container">
+    <div class="showcase-grid">
+      <div class="showcase-visual">
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--green-light);display:flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Command History
+          </div>
+          <div style="padding:4px;">
+            <div style="padding:10px 14px;border-radius:8px;background:rgba(88,193,66,0.06);border:1px solid rgba(88,193,66,0.1);margin-bottom:4px;font-size:13px;">
+              <span style="color:var(--text-primary);">cargo test --release</span>
+              <span style="float:right;color:var(--text-muted);font-size:11px;">x142 &middot; 2m ago</span>
+            </div>
+            <div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">
+              docker compose up -d
+              <span style="float:right;color:var(--text-muted);font-size:11px;">x89 &middot; 1h ago</span>
+            </div>
+            <div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">
+              ssh prod-server
+              <span style="float:right;color:var(--text-muted);font-size:11px;">x67 &middot; 3h ago</span>
+            </div>
+            <div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">
+              git rebase -i HEAD~5
+              <span style="float:right;color:var(--text-muted);font-size:11px;">x34 &middot; 1d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="showcase-content">
+        <h3>Workflow Automation</h3>
+        <p>Define multi-step agent workflows, record sessions for replay, and build a library of reusable agent configurations. Automate the repetitive parts of orchestration.</p>
+        <ul class="showcase-list">
+          <li><strong>Agent workflows</strong>: chain actions into reusable sequences</li>
+          <li><strong>Session recording</strong> and replay (asciinema compatible)</li>
+          <li><strong>Smart command history</strong> with frequency ranking</li>
+          <li><strong>Agent templates</strong>: save and restore full agent setups</li>
+          <li><strong>Snippet library</strong> for reusable prompts and commands</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Customization -->
+<div class="showcase-section">
+  <div class="container">
+    <div class="showcase-grid reversed">
+      <div class="showcase-visual">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#7c83ff;">Nord</div>
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#282a36,#44475a);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#bd93f9;">Dracula</div>
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#1e1e2e,#313244);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#cba6f7;">Catppuccin</div>
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#1a1b26,#24283b);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#7aa2f7;">Tokyo</div>
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#002b36,#073642);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#859900;">Solarized</div>
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#272822,#3e3d32);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#f92672;">Monokai</div>
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#282c34,#3e4451);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#61afef;">One Dark</div>
+          <div style="aspect-ratio:1;border-radius:10px;background:linear-gradient(135deg,#1d2021,#282828);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fabd2f;">Gruvbox</div>
+        </div>
+        <div style="margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-muted);text-align:center;">
+          + Create your own with the visual Theme Studio
+        </div>
+      </div>
+      <div class="showcase-content">
+        <h3>Make It Yours</h3>
+        <p>Full settings UI, visual theme studio with live preview, custom keybindings, and portable config export. Your orchestrator, your rules.</p>
+        <ul class="showcase-list">
+          <li>Visual theme editor with live terminal preview</li>
+          <li>10+ built-in themes (Nord, Dracula, Catppuccin, etc.)</li>
+          <li><strong>GUI settings editor</strong>: no more editing JSON files</li>
+          <li>Export / import configs across machines</li>
+          <li>Priority auto-updates with early access channel</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────── PRICING ──────────────────── -->
+<section id="pricing">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-label">Pricing</div>
+      <h2 class="section-title">Pricing that scales with you</h2>
+      <p class="section-desc">Start with Community for free. Upgrade when you need advanced orchestration, team collaboration, or enterprise controls.</p>
+    </div>
+
+    <!-- Billing Toggle -->
+    <div style="display:flex;justify-content:center;margin-bottom:40px;gap:12px;align-items:center;">
+      <span id="label-monthly" style="font-size:14px;font-weight:600;color:var(--text-primary);">Monthly</span>
+      <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer;">
+        <input type="checkbox" id="billing-toggle" style="opacity:0;width:0;height:0;" onchange="toggleBilling()">
+        <span style="position:absolute;inset:0;background:var(--bg-surface-3);border-radius:28px;border:1px solid var(--border);transition:0.3s;"></span>
+        <span id="toggle-knob" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:var(--green-light);border-radius:50%;transition:0.3s;"></span>
+      </label>
+      <span id="label-annual" style="font-size:14px;font-weight:500;color:var(--text-muted);">Annual <span style="background:rgba(88,193,66,0.12);color:var(--green-light);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600;margin-left:4px;">Save 17%</span></span>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Community -->
+      <div class="price-card">
+        <div class="price-tier">Community</div>
+        <div class="price-amount">$0</div>
+        <p class="price-desc">Everything you need to start orchestrating AI agents.</p>
+        <ul class="price-features">
+          <li><span class="check check-green">&#10003;</span> Up to 4 agent panes</li>
+          <li><span class="check check-green">&#10003;</span> Multi-model support (BYOK)</li>
+          <li><span class="check check-green">&#10003;</span> Agent messaging</li>
+          <li><span class="check check-green">&#10003;</span> SSH &amp; remote agents</li>
+          <li><span class="check check-green">&#10003;</span> File previews &amp; web views</li>
+          <li><span class="check check-green">&#10003;</span> Built-in themes</li>
+          <li><span class="check check-muted">&#10007;</span> <span style="color:var(--text-muted)">1 team, 1 workspace</span></li>
+          <li><span class="check check-muted">&#10007;</span> <span style="color:var(--text-muted)">No conversation history</span></li>
+        </ul>
+        <a href="#download" class="btn btn-ghost" style="width:100%;justify-content:center;">Download</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="price-card">
+        <div class="price-tier">Pro</div>
+        <div class="price-amount"><span id="price-pro-value">$14.99</span> <span id="price-pro-period">/month</span></div>
+        <p class="price-desc">Advanced orchestration, workflows, and unlimited agents for individual users.</p>
+        <ul class="price-features">
+          <li><span class="check check-green">&#10003;</span> <strong>Unlimited</strong> agent panes</li>
+          <li><span class="check check-green">&#10003;</span> <strong>Unlimited</strong> teams &amp; workspaces</li>
+          <li><span class="check check-green">&#10003;</span> Conversation history &amp; search</li>
+          <li><span class="check check-green">&#10003;</span> Model presets &amp; quick-switch</li>
+          <li><span class="check check-green">&#10003;</span> Context pinning &amp; @mentions</li>
+          <li><span class="check check-green">&#10003;</span> Conversation branching</li>
+          <li><span class="check check-green">&#10003;</span> Multi-model compare</li>
+          <li><span class="check check-green">&#10003;</span> Agent workflows &amp; macros</li>
+          <li><span class="check check-green">&#10003;</span> Session recording &amp; replay</li>
+          <li><span class="check check-green">&#10003;</span> Custom keybindings &amp; theme studio</li>
+          <li><span class="check check-green">&#10003;</span> Priority auto-updates</li>
+        </ul>
+        <a href="#" class="btn btn-primary" style="width:100%;justify-content:center;">Get Pro</a>
+      </div>
+
+      <!-- Team -->
+      <div class="price-card">
+        <div class="price-tier">Team</div>
+        <div class="price-amount"><span id="price-team-value">$49.99</span> <span id="price-team-period">/month</span></div>
+        <p class="price-desc">Everything in Pro for your whole team. Includes <strong>3 seats</strong>.</p>
+        <ul class="price-features">
+          <li><span class="check check-green">&#10003;</span> Everything in <strong>Pro</strong></li>
+          <li><span class="check check-green">&#10003;</span> <strong>3 seats</strong> included</li>
+          <li><span class="check check-green">&#10003;</span> Additional seats: <span id="seat-price">$4/mo</span></li>
+          <li><span class="check check-green">&#10003;</span> Shared agent templates</li>
+          <li><span class="check check-green">&#10003;</span> Shared snippet library</li>
+          <li><span class="check check-green">&#10003;</span> Team config sync</li>
+        </ul>
+        <a href="#" class="btn btn-primary" style="width:100%;justify-content:center;">Get Team</a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="price-card">
+        <div class="price-tier">Enterprise</div>
+        <div class="price-amount" style="font-size:28px;">Let's talk</div>
+        <p class="price-desc">Custom deployment, SSO, audit logs, and dedicated support for your organization.</p>
+        <ul class="price-features">
+          <li><span class="check check-green">&#10003;</span> Everything in <strong>Team</strong></li>
+          <li><span class="check check-green">&#10003;</span> <strong>Unlimited</strong> seats</li>
+          <li><span class="check check-green">&#10003;</span> SSO / SAML integration</li>
+          <li><span class="check check-green">&#10003;</span> Audit logs &amp; compliance</li>
+          <li><span class="check check-green">&#10003;</span> Custom SLA</li>
+          <li><span class="check check-green">&#10003;</span> Dedicated support</li>
+        </ul>
+        <a href="mailto:enterprise@agentmux.dev" class="btn btn-ghost" style="width:100%;justify-content:center;">Contact Sales</a>
+      </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Community</th>
+          <th>Pro</th>
+          <th>Team</th>
+          <th>Enterprise</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="category-row"><td colspan="5">Agents &amp; Workspace</td></tr>
+        <tr>
+          <td>Agent panes</td>
+          <td><span class="table-limit">Up to 4</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+        </tr>
+        <tr>
+          <td>Teams</td>
+          <td><span class="table-limit">1 team</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+        </tr>
+        <tr>
+          <td>Workspaces</td>
+          <td><span class="table-limit">1 workspace</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+          <td><span class="table-check">&#10003; Unlimited</span></td>
+        </tr>
+        <tr>
+          <td>Seats</td>
+          <td>1</td>
+          <td>1</td>
+          <td>3 included (+$4/mo each)</td>
+          <td>Unlimited</td>
+        </tr>
+        <tr>
+          <td>Agent messaging</td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>SSH &amp; remote agents</td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+
+        <tr class="category-row"><td colspan="5">Orchestration</td></tr>
+        <tr>
+          <td>Multi-model support (BYOK)</td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Conversation history &amp; search</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Model presets</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Context pinning &amp; @mentions</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Conversation branching</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Multi-model compare</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Agent workflows / macros</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Session recording &amp; replay</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+
+        <tr class="category-row"><td colspan="5">Collaboration</td></tr>
+        <tr>
+          <td>Shared agent templates</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Shared snippet library</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Team config sync</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>SSO / SAML</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Audit logs</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Custom SLA</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+
+        <tr class="category-row"><td colspan="5">Customization</td></tr>
+        <tr>
+          <td>Built-in themes</td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Theme studio</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Custom keybindings</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Config export / import</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+        <tr>
+          <td>Priority auto-updates</td>
+          <td><span class="table-cross">&#10007;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+          <td><span class="table-check">&#10003;</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────────────── DOWNLOAD CTA ─────────────── -->
+<section class="cta-section" id="download">
+  <div class="cta-glow"></div>
+
+  <div class="hero-logo" style="margin-bottom:32px;">
+    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="cta-g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1F4D22" />
+          <stop offset="100%" style="stop-color:#58C142" />
+        </linearGradient>
+      </defs>
+      <rect width="200" height="200" rx="40" fill="#000"/>
+      <path d="M 30 95 C 50 55, 85 55, 100 82 C 115 109, 150 109, 170 69 L 170 82 C 150 122, 115 122, 100 95 C 85 68, 50 68, 30 108 Z" fill="url(#cta-g)" opacity="0.85"/>
+      <path d="M 30 118 C 50 78, 85 78, 100 105 C 115 132, 150 132, 170 92 L 170 105 C 150 145, 115 145, 100 118 C 85 91, 50 91, 30 131 Z" fill="url(#cta-g)" opacity="0.45"/>
+      <path d="M 100 78 L 112 95 L 100 112 L 88 95 Z" fill="#58C142" opacity="0.8"/>
+      <path d="M 100 85 L 107 95 L 100 105 L 93 95 Z" fill="#ffffff" opacity="0.6"/>
+    </svg>
+  </div>
+
+  <h2>Ready to orchestrate<br>your agents?</h2>
+  <p>Free to download. No account required. Start orchestrating in seconds.</p>
+
+  <div class="cta-actions">
+    <a href="#" class="btn btn-primary btn-lg">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download for Windows
+    </a>
+    <a href="#" class="btn btn-ghost btn-lg">macOS</a>
+    <a href="#" class="btn btn-ghost btn-lg">Linux</a>
+  </div>
+</section>
+
+<!-- ───────────────────── FOOTER ────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="#" class="nav-logo">
+        <svg width="28" height="28" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="ft-g" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#1F4D22" />
+              <stop offset="100%" style="stop-color:#58C142" />
+            </linearGradient>
+          </defs>
+          <rect width="200" height="200" rx="40" fill="#000"/>
+          <path d="M 30 95 C 50 55, 85 55, 100 82 C 115 109, 150 109, 170 69 L 170 82 C 150 122, 115 122, 100 95 C 85 68, 50 68, 30 108 Z" fill="url(#ft-g)" opacity="0.85"/>
+          <path d="M 30 118 C 50 78, 85 78, 100 105 C 115 132, 150 132, 170 92 L 170 105 C 150 145, 115 145, 100 118 C 85 91, 50 91, 30 131 Z" fill="url(#ft-g)" opacity="0.45"/>
+          <path d="M 100 78 L 112 95 L 100 112 L 88 95 Z" fill="#58C142" opacity="0.7"/>
+          <path d="M 100 85 L 107 95 L 100 105 L 93 95 Z" fill="#fff" opacity="0.5"/>
+        </svg>
+        <span style="font-size:18px;">AgentMux</span>
+      </a>
+      <p>AI agent orchestrator. Cross-platform and built for developers who run agents in production.</p>
+    </div>
+
+    <div class="footer-col">
+      <h4>Product</h4>
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#download">Download</a></li>
+        <li><a href="#">Changelog</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Resources</h4>
+      <ul>
+        <li><a href="https://docs.agentmux.dev">Documentation</a></li>
+        <li><a href="#">Getting Started</a></li>
+        <li><a href="#">Key Bindings</a></li>
+        <li><a href="#">Configuration</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Community</h4>
+      <ul>
+        <li><a href="https://github.com/a5af/wavemux">GitHub</a></li>
+        <li><a href="#">Discord</a></li>
+        <li><a href="#">Twitter</a></li>
+        <li><a href="#">Contributing</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Origin Disclosure -->
+  <div style="max-width:1200px;margin:40px auto 0;padding:24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-surface);">
+    <p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin:0;">
+      <strong style="color:var(--text-secondary);">About AgentMux</strong> -
+      AgentMux is a <strong>private fork</strong> of <a href="https://github.com/wavetermdev/waveterm" style="color:var(--green-light);text-decoration:none;">Wave Terminal</a>.
+      While it inherits Wave's terminal foundation, AgentMux's <strong>core orchestration systems</strong> - <strong>agent messaging</strong>, <strong>multi-model routing</strong>, <strong>workflow automation</strong>, and the <strong>inter-agent coordination layer</strong> - were designed and <strong>built from scratch by AI agents</strong> running inside AgentMux itself.
+    </p>
+  </div>
+
+  <div class="footer-bottom">
+    <span>&copy; 2026 AgentMux. All rights reserved.</span>
+    <span>
+      <a href="#" style="color:var(--text-muted);text-decoration:none;margin-left:24px;">Privacy</a>
+      <a href="#" style="color:var(--text-muted);text-decoration:none;margin-left:24px;">Terms</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+function toggleBilling() {
+  const toggle = document.getElementById('billing-toggle');
+  const knob = document.getElementById('toggle-knob');
+  const labelMonthly = document.getElementById('label-monthly');
+  const labelAnnual = document.getElementById('label-annual');
+
+  const proValue = document.getElementById('price-pro-value');
+  const proPeriod = document.getElementById('price-pro-period');
+  const teamValue = document.getElementById('price-team-value');
+  const teamPeriod = document.getElementById('price-team-period');
+  const seatPrice = document.getElementById('seat-price');
+
+  if (toggle.checked) {
+    knob.style.left = '29px';
+    proValue.textContent = '$150';
+    proPeriod.textContent = '/year';
+    teamValue.textContent = '$500';
+    teamPeriod.textContent = '/year';
+    seatPrice.textContent = '$40/yr';
+    labelMonthly.style.color = 'var(--text-muted)';
+    labelMonthly.style.fontWeight = '500';
+    labelAnnual.style.color = 'var(--text-primary)';
+    labelAnnual.style.fontWeight = '600';
+  } else {
+    knob.style.left = '3px';
+    proValue.textContent = '$14.99';
+    proPeriod.textContent = '/month';
+    teamValue.textContent = '$49.99';
+    teamPeriod.textContent = '/month';
+    seatPrice.textContent = '$4/mo';
+    labelMonthly.style.color = 'var(--text-primary)';
+    labelMonthly.style.fontWeight = '600';
+    labelAnnual.style.color = 'var(--text-muted)';
+    labelAnnual.style.fontWeight = '500';
+  }
+}
+</script>
+
+</body>
+</html>

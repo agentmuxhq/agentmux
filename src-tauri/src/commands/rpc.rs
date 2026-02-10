@@ -762,6 +762,7 @@ pub async fn get_schema(schema_name: String) -> Result<Value, String> {
 }
 
 /// Helper: get a WaveObj as JSON by otype/oid.
+/// Adds the "otype" field to the JSON response since it's not part of the struct fields.
 fn get_obj_json(
     store: &crate::backend::storage::wstore::WaveStore,
     otype: &str,
@@ -769,25 +770,32 @@ fn get_obj_json(
 ) -> Result<Value, String> {
     use crate::backend::waveobj::*;
 
-    match otype {
+    let mut obj_json = match otype {
         OTYPE_CLIENT => store.must_get::<Client>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_WINDOW => store.must_get::<Window>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_WORKSPACE => store.must_get::<Workspace>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_TAB => store.must_get::<Tab>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_LAYOUT => store.must_get::<LayoutState>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_BLOCK => store.must_get::<Block>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
-        _ => Err(format!("unknown otype: {}", otype)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
+        _ => return Err(format!("unknown otype: {}", otype)),
+    };
+
+    // Frontend expects "otype" field in the JSON (not just the trait method)
+    if let Value::Object(ref mut map) = obj_json {
+        map.insert("otype".to_string(), Value::String(otype.to_string()));
     }
+
+    Ok(obj_json)
 }

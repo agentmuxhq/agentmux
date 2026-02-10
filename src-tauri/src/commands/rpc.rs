@@ -450,6 +450,26 @@ fn handle_service_request(
                 .map_err(|e| format!("GetClientData serialize: {}", e))?)
         }
 
+        ("window", "GetWindow") => {
+            let window_id = args.get(0)
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "GetWindow: missing windowId arg".to_string())?;
+            let window = store.must_get::<crate::backend::waveobj::Window>(window_id)
+                .map_err(|e| format!("GetWindow: {}", e))?;
+            Ok(serde_json::to_value(&window)
+                .map_err(|e| format!("GetWindow serialize: {}", e))?)
+        }
+
+        ("workspace", "GetWorkspace") => {
+            let workspace_id = args.get(0)
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "GetWorkspace: missing workspaceId arg".to_string())?;
+            let workspace = crate::backend::wcore::get_workspace(store, workspace_id)
+                .map_err(|e| format!("GetWorkspace: {}", e))?;
+            Ok(serde_json::to_value(&workspace)
+                .map_err(|e| format!("GetWorkspace serialize: {}", e))?)
+        }
+
         ("object", "GetObject") => {
             let oref = args.get(0)
                 .and_then(|v| v.as_str())

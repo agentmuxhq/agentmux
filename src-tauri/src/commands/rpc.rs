@@ -31,7 +31,9 @@ pub async fn service_request(
     ui_context: Option<Value>,
     state: tauri::State<'_, AppState>,
 ) -> Result<Value, String> {
-    handle_service_request(&service, &method, &args, ui_context.as_ref(), &state)
+    let result = handle_service_request(&service, &method, &args, ui_context.as_ref(), &state)?;
+    tracing::debug!("service_request: {}.{} => {:?}", service, method, result);
+    Ok(result)
 }
 
 /// Direct Tauri command for terminal resize.
@@ -443,6 +445,45 @@ fn handle_service_request(
     let store = &state.wave_store;
 
     match (service, method) {
+        ("client", "GetClientData") => {
+            let client = crate::backend::wcore::get_client(store)
+                .map_err(|e| format!("GetClientData: {}", e))?;
+            let client_json = serde_json::to_value(&client)
+                .map_err(|e| format!("GetClientData serialize: {}", e))?;
+            Ok(serde_json::json!({
+                "data": client_json,
+                "updates": [],
+            }))
+        }
+
+        ("window", "GetWindow") => {
+            let window_id = args.get(0)
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "GetWindow: missing windowId arg".to_string())?;
+            let window = store.must_get::<crate::backend::waveobj::Window>(window_id)
+                .map_err(|e| format!("GetWindow: {}", e))?;
+            let window_json = serde_json::to_value(&window)
+                .map_err(|e| format!("GetWindow serialize: {}", e))?;
+            Ok(serde_json::json!({
+                "data": window_json,
+                "updates": [],
+            }))
+        }
+
+        ("workspace", "GetWorkspace") => {
+            let workspace_id = args.get(0)
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "GetWorkspace: missing workspaceId arg".to_string())?;
+            let workspace = crate::backend::wcore::get_workspace(store, workspace_id)
+                .map_err(|e| format!("GetWorkspace: {}", e))?;
+            let workspace_json = serde_json::to_value(&workspace)
+                .map_err(|e| format!("GetWorkspace serialize: {}", e))?;
+            Ok(serde_json::json!({
+                "data": workspace_json,
+                "updates": [],
+            }))
+        }
+
         ("object", "GetObject") => {
             let oref = args.get(0)
                 .and_then(|v| v.as_str())
@@ -721,6 +762,7 @@ pub async fn get_schema(schema_name: String) -> Result<Value, String> {
 }
 
 /// Helper: get a WaveObj as JSON by otype/oid.
+/// Adds the "otype" field to the JSON response since it's not part of the struct fields.
 fn get_obj_json(
     store: &crate::backend::storage::wstore::WaveStore,
     otype: &str,
@@ -728,25 +770,32 @@ fn get_obj_json(
 ) -> Result<Value, String> {
     use crate::backend::waveobj::*;
 
-    match otype {
+    let mut obj_json = match otype {
         OTYPE_CLIENT => store.must_get::<Client>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_WINDOW => store.must_get::<Window>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_WORKSPACE => store.must_get::<Workspace>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_TAB => store.must_get::<Tab>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_LAYOUT => store.must_get::<LayoutState>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
         OTYPE_BLOCK => store.must_get::<Block>(oid)
             .map(|o| serde_json::to_value(&o).unwrap_or(Value::Null))
-            .map_err(|e| format!("get {}: {}", otype, e)),
-        _ => Err(format!("unknown otype: {}", otype)),
+            .map_err(|e| format!("get {}: {}", otype, e))?,
+        _ => return Err(format!("unknown otype: {}", otype)),
+    };
+
+    // Frontend expects "otype" field in the JSON (not just the trait method)
+    if let Value::Object(ref mut map) = obj_json {
+        map.insert("otype".to_string(), Value::String(otype.to_string()));
     }
+
+    Ok(obj_json)
 }

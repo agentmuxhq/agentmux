@@ -123,7 +123,7 @@ impl WshRouter {
             input_tx,
         });
         let router_clone = router.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             router_clone.run_server(input_rx).await;
         });
         router

@@ -28,12 +28,12 @@ pub struct AppState {
 
     pub rpc_engine: Arc<crate::backend::rpc::engine::WshRpcEngine>,
 
-    pub router: Arc<crate::backend::rpc::router::WshRouter>,
+    pub router: Mutex<Option<Arc<crate::backend::rpc::router::WshRouter>>>,
 
     pub file_store: Arc<crate::backend::storage::filestore::FileStore>,
 
     /// Path to the wsh IPC socket (named pipe on Windows, Unix socket on macOS/Linux)
-    pub wsh_socket_path: Mutex<String>,
+    pub wsh_socket_path: Mutex<Option<String>>,
 
     /// Config watcher holding the full loaded config
     pub config_watcher: Arc<crate::backend::wconfig::ConfigWatcher>,

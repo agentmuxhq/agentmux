@@ -258,6 +258,11 @@ pub struct SpawnAgentRequest {
     /// Initial prompt to send after spawn (optional).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub initial_prompt: Option<String>,
+
+    /// Resume a previous Claude Code session by ID (optional).
+    /// When provided, spawns with `--resume {session_id}` flag.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_session_id: Option<String>,
 }
 
 /// Response after spawning an agent.

@@ -195,6 +195,37 @@ export class UnifiedAIViewModel implements ViewModel {
         }
     }
 
+    async resumeSession(): Promise<void> {
+        const backend = globalStore.get(this.selectedBackendAtom);
+        const sessionId = globalStore.get(this.sessionIdAtom);
+
+        if (!backend) {
+            this.addErrorMessage("No backend selected");
+            return;
+        }
+
+        if (!sessionId) {
+            this.addErrorMessage("No session to resume");
+            return;
+        }
+
+        try {
+            const response = await spawnAgent({
+                pane_id: this.blockId,
+                backend_id: backend,
+                resume_session_id: sessionId,
+            });
+
+            globalStore.set(this.instanceIdAtom, response.instance_id);
+            globalStore.set(this.statusAtom, "running");
+            this.setupListeners();
+        } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            globalStore.set(this.statusAtom, "error");
+            this.addErrorMessage(errMsg);
+        }
+    }
+
     async sendMessage(text: string): Promise<void> {
         const status = globalStore.get(this.statusAtom);
 

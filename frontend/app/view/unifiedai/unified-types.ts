@@ -246,6 +246,7 @@ export interface SpawnAgentRequest {
     cwd?: string;
     env?: Record<string, string>;
     initial_prompt?: string;
+    resume_session_id?: string;
 }
 
 export interface SpawnAgentResponse {

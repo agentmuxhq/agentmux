@@ -161,4 +161,99 @@ mod tests {
     fn test_oref_invalid_uuid() {
         assert!(ORef::parse("block:not-a-uuid").is_err());
     }
+
+    #[test]
+    fn test_oref_display_nonempty() {
+        let oref = ORef::new("tab", "550e8400-e29b-41d4-a716-446655440000");
+        assert_eq!(oref.to_string(), "tab:550e8400-e29b-41d4-a716-446655440000");
+    }
+
+    #[test]
+    fn test_oref_display_empty() {
+        let oref = ORef::default();
+        assert_eq!(oref.to_string(), "");
+    }
+
+    #[test]
+    fn test_oref_is_empty() {
+        assert!(ORef::default().is_empty());
+        assert!(ORef::new("", "something").is_empty());
+        assert!(ORef::new("block", "").is_empty());
+        assert!(!ORef::new("block", "abc").is_empty());
+    }
+
+    #[test]
+    fn test_oref_parse_uppercase_fails() {
+        let result = ORef::parse("BLOCK:550e8400-e29b-41d4-a716-446655440000");
+        assert!(matches!(result, Err(ORefParseError::InvalidOType(_))));
+    }
+
+    #[test]
+    fn test_oref_parse_mixed_case_fails() {
+        let result = ORef::parse("Block:550e8400-e29b-41d4-a716-446655440000");
+        assert!(matches!(result, Err(ORefParseError::InvalidOType(_))));
+    }
+
+    #[test]
+    fn test_oref_parse_empty_otype_colon() {
+        let result = ORef::parse(":550e8400-e29b-41d4-a716-446655440000");
+        assert!(matches!(result, Err(ORefParseError::InvalidOType(_))));
+    }
+
+    #[test]
+    fn test_oref_equality_and_hash() {
+        use std::collections::HashSet;
+        let a = ORef::new("block", "abc");
+        let b = ORef::new("block", "abc");
+        let c = ORef::new("tab", "abc");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+
+        let mut set = HashSet::new();
+        set.insert(a.clone());
+        set.insert(b);
+        assert_eq!(set.len(), 1);
+        set.insert(c);
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_valid_otypes_completeness() {
+        assert!(VALID_OTYPES.contains(&OTYPE_CLIENT));
+        assert!(VALID_OTYPES.contains(&OTYPE_WINDOW));
+        assert!(VALID_OTYPES.contains(&OTYPE_WORKSPACE));
+        assert!(VALID_OTYPES.contains(&OTYPE_TAB));
+        assert!(VALID_OTYPES.contains(&OTYPE_LAYOUT));
+        assert!(VALID_OTYPES.contains(&OTYPE_BLOCK));
+        assert!(VALID_OTYPES.contains(&OTYPE_TEMP));
+        assert_eq!(VALID_OTYPES.len(), 7);
+    }
+
+    #[test]
+    fn test_oref_parse_error_messages() {
+        let err = ORefParseError::InvalidFormat("bad".into());
+        assert!(err.to_string().contains("bad"));
+
+        let err = ORefParseError::InvalidOType("BAD".into());
+        assert!(err.to_string().contains("BAD"));
+
+        let err = ORefParseError::UnknownOType("foobar".into());
+        assert!(err.to_string().contains("foobar"));
+
+        let err = ORefParseError::InvalidOID("not-uuid".into());
+        assert!(err.to_string().contains("not-uuid"));
+    }
+
+    #[test]
+    fn test_oref_serde_empty_roundtrip() {
+        let oref = ORef::parse("").unwrap();
+        let json = serde_json::to_string(&oref).unwrap();
+        assert_eq!(json, r#""""#);
+    }
+
+    #[test]
+    fn test_oref_parse_no_colon() {
+        let result = ORef::parse("blockonly");
+        assert!(matches!(result, Err(ORefParseError::InvalidFormat(_))));
+    }
 }

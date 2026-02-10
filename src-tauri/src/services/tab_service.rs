@@ -209,4 +209,85 @@ mod tests {
         service.delete_tab(&tab_id).unwrap();
         assert!(service.get_tab(&tab_id).is_err());
     }
+
+    #[test]
+    fn test_delete_tab_cascades_layout() {
+        let store = Arc::new(MockStore::new());
+        let service = TabService::new(store.clone());
+
+        let tab = service.create_tab("CascadeTest").unwrap();
+        let layout_id = tab.layoutstate.clone();
+        assert!(!layout_id.is_empty());
+
+        // Layout should exist
+        assert!(store.get_object_json(OTYPE_LAYOUT, &layout_id).is_ok());
+
+        service.delete_tab(&tab.oid).unwrap();
+
+        // Layout should be gone
+        assert!(store.get_object_json(OTYPE_LAYOUT, &layout_id).is_err());
+    }
+
+    #[test]
+    fn test_add_multiple_blocks() {
+        let store = Arc::new(MockStore::new());
+        let service = TabService::new(store);
+
+        let tab = service.create_tab("Multi").unwrap();
+        service.add_block(&tab.oid, "block-1").unwrap();
+        service.add_block(&tab.oid, "block-2").unwrap();
+        service.add_block(&tab.oid, "block-3").unwrap();
+
+        let loaded = service.get_tab(&tab.oid).unwrap();
+        assert_eq!(loaded.blockids.len(), 3);
+        assert_eq!(loaded.version, 4); // 1 initial + 3 adds
+    }
+
+    #[test]
+    fn test_remove_nonexistent_block() {
+        let store = Arc::new(MockStore::new());
+        let service = TabService::new(store);
+
+        let tab = service.create_tab("Test").unwrap();
+        let removed = service.remove_block(&tab.oid, "nonexistent").unwrap();
+        assert!(!removed);
+    }
+
+    #[test]
+    fn test_create_tab_with_empty_name() {
+        let store = Arc::new(MockStore::new());
+        let service = TabService::new(store);
+
+        let tab = service.create_tab("").unwrap();
+        assert!(tab.name.is_empty());
+        assert!(!tab.oid.is_empty());
+        assert!(!tab.layoutstate.is_empty());
+    }
+
+    #[test]
+    fn test_get_nonexistent_tab() {
+        let store = Arc::new(MockStore::new());
+        let service = TabService::new(store);
+
+        let result = service.get_tab("nonexistent");
+        assert!(matches!(result, Err(RepositoryError::NotFound(_))));
+    }
+
+    #[test]
+    fn test_add_block_to_nonexistent_tab() {
+        let store = Arc::new(MockStore::new());
+        let service = TabService::new(store);
+
+        let result = service.add_block("nonexistent", "block-1");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_remove_block_from_nonexistent_tab() {
+        let store = Arc::new(MockStore::new());
+        let service = TabService::new(store);
+
+        let result = service.remove_block("nonexistent", "block-1");
+        assert!(result.is_err());
+    }
 }

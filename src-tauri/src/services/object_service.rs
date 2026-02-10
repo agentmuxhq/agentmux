@@ -203,4 +203,119 @@ mod tests {
         let result = service.get_object("foobar", "some-id");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_save_and_get_window() {
+        let store = Arc::new(MockObjectStore::new());
+        let service = ObjectService::new(store);
+
+        let window = Window {
+            oid: "win-1".to_string(),
+            version: 1,
+            workspaceid: "ws-1".to_string(),
+            ..Default::default()
+        };
+
+        service.save_object(&window).unwrap();
+        let loaded = service.get_window("win-1").unwrap();
+        assert_eq!(loaded.workspaceid, "ws-1");
+    }
+
+    #[test]
+    fn test_save_and_get_tab() {
+        let store = Arc::new(MockObjectStore::new());
+        let service = ObjectService::new(store);
+
+        let tab = Tab {
+            oid: "tab-1".to_string(),
+            version: 1,
+            name: "Shell".to_string(),
+            ..Default::default()
+        };
+
+        service.save_object(&tab).unwrap();
+        let loaded = service.get_tab("tab-1").unwrap();
+        assert_eq!(loaded.name, "Shell");
+    }
+
+    #[test]
+    fn test_save_and_get_block() {
+        let store = Arc::new(MockObjectStore::new());
+        let service = ObjectService::new(store);
+
+        let block = Block {
+            oid: "blk-1".to_string(),
+            version: 1,
+            parentoref: "tab:t-1".to_string(),
+            ..Default::default()
+        };
+
+        service.save_object(&block).unwrap();
+        let loaded = service.get_block("blk-1").unwrap();
+        assert_eq!(loaded.parentoref, "tab:t-1");
+    }
+
+    #[test]
+    fn test_save_and_get_layout() {
+        let store = Arc::new(MockObjectStore::new());
+        let service = ObjectService::new(store);
+
+        let layout = LayoutState {
+            oid: "ls-1".to_string(),
+            version: 1,
+            focusednodeid: "node-1".to_string(),
+            ..Default::default()
+        };
+
+        service.save_object(&layout).unwrap();
+        let loaded = service.get_layout("ls-1").unwrap();
+        assert_eq!(loaded.focusednodeid, "node-1");
+    }
+
+    #[test]
+    fn test_get_object_valid_otype() {
+        let store = Arc::new(MockObjectStore::new());
+        let service = ObjectService::new(store);
+
+        let tab = Tab {
+            oid: "tab-2".to_string(),
+            version: 1,
+            name: "Test".to_string(),
+            ..Default::default()
+        };
+        service.save_object(&tab).unwrap();
+
+        let json = service.get_object("tab", "tab-2").unwrap();
+        assert_eq!(json["name"], "Test");
+    }
+
+    #[test]
+    fn test_delete_nonexistent_object() {
+        let store = Arc::new(MockObjectStore::new());
+        let service = ObjectService::new(store);
+        let result = service.delete_object(OTYPE_TAB, "nonexistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_save_overwrite() {
+        let store = Arc::new(MockObjectStore::new());
+        let service = ObjectService::new(store);
+
+        let mut ws = Workspace {
+            oid: "ws-1".to_string(),
+            version: 1,
+            name: "Original".to_string(),
+            ..Default::default()
+        };
+        service.save_object(&ws).unwrap();
+
+        ws.name = "Updated".to_string();
+        ws.version = 2;
+        service.save_object(&ws).unwrap();
+
+        let loaded = service.get_workspace("ws-1").unwrap();
+        assert_eq!(loaded.name, "Updated");
+        assert_eq!(loaded.version, 2);
+    }
 }

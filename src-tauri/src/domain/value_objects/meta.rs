@@ -152,4 +152,126 @@ mod tests {
         assert!(meta_get_bool(&meta, "edit", false));
         assert!(!meta_get_bool(&meta, "missing", false));
     }
+
+    #[test]
+    fn test_merge_meta_both_empty() {
+        let base = MetaMapType::new();
+        let update = MetaMapType::new();
+        let result = merge_meta(&base, &update, true);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_merge_meta_empty_update() {
+        let mut base = MetaMapType::new();
+        base.insert("key".into(), serde_json::json!("value"));
+        let update = MetaMapType::new();
+        let result = merge_meta(&base, &update, true);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result["key"], "value");
+    }
+
+    #[test]
+    fn test_merge_meta_section_clear_false_value() {
+        let mut base = MetaMapType::new();
+        base.insert("frame".into(), serde_json::json!(true));
+        base.insert("frame:title".into(), serde_json::json!("hello"));
+
+        let mut update = MetaMapType::new();
+        update.insert("frame:*".into(), serde_json::json!(false));
+
+        let result = merge_meta(&base, &update, true);
+        // false value should NOT trigger section clear
+        assert!(result.contains_key("frame"));
+        assert!(result.contains_key("frame:title"));
+    }
+
+    #[test]
+    fn test_merge_meta_section_clear_non_bool() {
+        let mut base = MetaMapType::new();
+        base.insert("frame".into(), serde_json::json!(true));
+        base.insert("frame:title".into(), serde_json::json!("hello"));
+
+        let mut update = MetaMapType::new();
+        update.insert("frame:*".into(), serde_json::json!("yes"));
+
+        let result = merge_meta(&base, &update, true);
+        // non-bool value should NOT trigger section clear
+        assert!(result.contains_key("frame"));
+    }
+
+    #[test]
+    fn test_merge_meta_display_included_when_special() {
+        let base = MetaMapType::new();
+        let mut update = MetaMapType::new();
+        update.insert("display:name".into(), serde_json::json!("test"));
+
+        let result = merge_meta(&base, &update, true);
+        assert!(result.contains_key("display:name"));
+    }
+
+    #[test]
+    fn test_merge_meta_overwrite_preserves_other_keys() {
+        let mut base = MetaMapType::new();
+        base.insert("a".into(), serde_json::json!(1));
+        base.insert("b".into(), serde_json::json!(2));
+
+        let mut update = MetaMapType::new();
+        update.insert("a".into(), serde_json::json!(10));
+
+        let result = merge_meta(&base, &update, true);
+        assert_eq!(result["a"], 10);
+        assert_eq!(result["b"], 2);
+    }
+
+    #[test]
+    fn test_meta_get_string_with_non_string_value() {
+        let mut meta = MetaMapType::new();
+        meta.insert("count".into(), serde_json::json!(42));
+        assert_eq!(meta_get_string(&meta, "count", "default"), "default");
+    }
+
+    #[test]
+    fn test_meta_get_bool_with_non_bool_value() {
+        let mut meta = MetaMapType::new();
+        meta.insert("name".into(), serde_json::json!("hello"));
+        assert!(!meta_get_bool(&meta, "name", false));
+        assert!(meta_get_bool(&meta, "name", true));
+    }
+
+    #[test]
+    fn test_wave_obj_update_serde() {
+        let update = WaveObjUpdate {
+            updatetype: UPDATE_TYPE_UPDATE.to_string(),
+            otype: "tab".to_string(),
+            oid: "t-123".to_string(),
+            obj: Some(serde_json::json!({"name": "Shell"})),
+        };
+        let json = serde_json::to_string(&update).unwrap();
+        let parsed: WaveObjUpdate = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.updatetype, "update");
+        assert_eq!(parsed.otype, "tab");
+        assert!(parsed.obj.is_some());
+    }
+
+    #[test]
+    fn test_wave_obj_update_delete_no_obj() {
+        let update = WaveObjUpdate {
+            updatetype: UPDATE_TYPE_DELETE.to_string(),
+            otype: "block".to_string(),
+            oid: "b-123".to_string(),
+            obj: None,
+        };
+        let json = serde_json::to_string(&update).unwrap();
+        assert!(!json.contains("obj"));
+        let parsed: WaveObjUpdate = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.updatetype, "delete");
+        assert!(parsed.obj.is_none());
+    }
+
+    #[test]
+    fn test_update_type_constants() {
+        assert_eq!(UPDATE_TYPE_UPDATE, "update");
+        assert_eq!(UPDATE_TYPE_DELETE, "delete");
+    }
 }

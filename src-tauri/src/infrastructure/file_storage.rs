@@ -122,4 +122,53 @@ mod tests {
         let result = adapter.read_file("no-zone", "no-file");
         assert!(matches!(result, Err(RepositoryError::NotFound(_))));
     }
+
+    #[test]
+    fn test_overwrite_file() {
+        let adapter = make_adapter();
+        let zone = "test-zone";
+        let name = "overwrite.txt";
+
+        adapter
+            .inner()
+            .make_file(zone, name, FileMeta::new(), FileOpts::default())
+            .unwrap();
+
+        adapter.write_file(zone, name, b"first").unwrap();
+        assert_eq!(adapter.read_file(zone, name).unwrap(), b"first");
+
+        adapter.write_file(zone, name, b"second").unwrap();
+        assert_eq!(adapter.read_file(zone, name).unwrap(), b"second");
+    }
+
+    #[test]
+    fn test_list_files_empty_zone() {
+        let adapter = make_adapter();
+        let files = adapter.list_files("empty-zone").unwrap();
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_write_and_read_binary() {
+        let adapter = make_adapter();
+        let zone = "bin-zone";
+        let name = "data.bin";
+
+        adapter
+            .inner()
+            .make_file(zone, name, FileMeta::new(), FileOpts::default())
+            .unwrap();
+
+        let binary_data: Vec<u8> = (0..=255).collect();
+        adapter.write_file(zone, name, &binary_data).unwrap();
+        let read_back = adapter.read_file(zone, name).unwrap();
+        assert_eq!(read_back, binary_data);
+    }
+
+    #[test]
+    fn test_inner_access() {
+        let adapter = make_adapter();
+        let _inner = adapter.inner();
+        // Verify inner() returns a reference without panicking
+    }
 }

@@ -233,4 +233,84 @@ mod tests {
         // Workspace should be gone
         assert!(service.get_workspace(&ws_id).is_err());
     }
+
+    #[test]
+    fn test_delete_workspace_cascades_tabs_and_layouts() {
+        let store = Arc::new(MockStore::new());
+        let service = WorkspaceService::new(store.clone());
+
+        let ws = service
+            .create_workspace("Cascade", "icon", "#000")
+            .unwrap();
+        let tab_id = ws.tabids[0].clone();
+
+        // Get the tab's layout ID before deletion
+        let tab_json = store.get_object_json(OTYPE_TAB, &tab_id).unwrap();
+        let tab: Tab = serde_json::from_value(tab_json).unwrap();
+        let layout_id = tab.layoutstate.clone();
+        assert!(!layout_id.is_empty());
+
+        // Verify tab and layout exist
+        assert!(store.get_object_json(OTYPE_TAB, &tab_id).is_ok());
+        assert!(store.get_object_json(OTYPE_LAYOUT, &layout_id).is_ok());
+
+        // Delete workspace
+        service.delete_workspace(&ws.oid).unwrap();
+
+        // Tab and layout should both be gone
+        assert!(store.get_object_json(OTYPE_TAB, &tab_id).is_err());
+        assert!(store.get_object_json(OTYPE_LAYOUT, &layout_id).is_err());
+    }
+
+    #[test]
+    fn test_set_active_tab_updates_stored() {
+        let store = Arc::new(MockStore::new());
+        let service = WorkspaceService::new(store);
+
+        let ws = service
+            .create_workspace("Test", "icon", "#000")
+            .unwrap();
+        let tab_id = &ws.tabids[0];
+
+        service.set_active_tab(&ws.oid, tab_id).unwrap();
+
+        let loaded = service.get_workspace(&ws.oid).unwrap();
+        assert_eq!(loaded.activetabid, *tab_id);
+        assert_eq!(loaded.version, 2); // version incremented
+    }
+
+    #[test]
+    fn test_create_multiple_workspaces() {
+        let store = Arc::new(MockStore::new());
+        let service = WorkspaceService::new(store);
+
+        let ws1 = service.create_workspace("WS1", "terminal", "#111").unwrap();
+        let ws2 = service.create_workspace("WS2", "code", "#222").unwrap();
+
+        assert_ne!(ws1.oid, ws2.oid);
+        assert_ne!(ws1.tabids[0], ws2.tabids[0]);
+
+        let loaded1 = service.get_workspace(&ws1.oid).unwrap();
+        let loaded2 = service.get_workspace(&ws2.oid).unwrap();
+        assert_eq!(loaded1.name, "WS1");
+        assert_eq!(loaded2.name, "WS2");
+    }
+
+    #[test]
+    fn test_delete_nonexistent_workspace() {
+        let store = Arc::new(MockStore::new());
+        let service = WorkspaceService::new(store);
+
+        let result = service.delete_workspace("nonexistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_nonexistent_workspace() {
+        let store = Arc::new(MockStore::new());
+        let service = WorkspaceService::new(store);
+
+        let result = service.get_workspace("nonexistent");
+        assert!(matches!(result, Err(RepositoryError::NotFound(_))));
+    }
 }

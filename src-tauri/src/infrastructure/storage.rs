@@ -388,4 +388,199 @@ mod tests {
         let result = adapter.get_workspace("nonexistent");
         assert!(matches!(result, Err(RepositoryError::NotFound(_))));
     }
+
+    #[test]
+    fn test_window_repository() {
+        let adapter = make_adapter();
+
+        let window = Window {
+            oid: uuid::Uuid::new_v4().to_string(),
+            version: 1,
+            workspaceid: "ws-1".into(),
+            ..Default::default()
+        };
+
+        adapter.save_window(&window).unwrap();
+        let loaded = adapter.get_window(&window.oid).unwrap();
+        assert_eq!(loaded.workspaceid, "ws-1");
+
+        adapter.delete_window(&window.oid).unwrap();
+        assert!(adapter.get_window(&window.oid).is_err());
+    }
+
+    #[test]
+    fn test_tab_repository() {
+        let adapter = make_adapter();
+
+        let tab = Tab {
+            oid: uuid::Uuid::new_v4().to_string(),
+            version: 1,
+            name: "Shell".into(),
+            layoutstate: "ls-1".into(),
+            blockids: vec!["b1".into()],
+            meta: MetaMapType::new(),
+        };
+
+        adapter.save_tab(&tab).unwrap();
+        let loaded = adapter.get_tab(&tab.oid).unwrap();
+        assert_eq!(loaded.name, "Shell");
+        assert_eq!(loaded.blockids, vec!["b1"]);
+
+        adapter.delete_tab(&tab.oid).unwrap();
+        assert!(adapter.get_tab(&tab.oid).is_err());
+    }
+
+    #[test]
+    fn test_layout_repository() {
+        let adapter = make_adapter();
+
+        let layout = LayoutState {
+            oid: uuid::Uuid::new_v4().to_string(),
+            version: 1,
+            focusednodeid: "n1".into(),
+            rootnode: Some(serde_json::json!({"type": "leaf"})),
+            ..Default::default()
+        };
+
+        adapter.save_layout(&layout).unwrap();
+        let loaded = adapter.get_layout(&layout.oid).unwrap();
+        assert_eq!(loaded.focusednodeid, "n1");
+        assert!(loaded.rootnode.is_some());
+
+        adapter.delete_layout(&layout.oid).unwrap();
+        assert!(adapter.get_layout(&layout.oid).is_err());
+    }
+
+    #[test]
+    fn test_object_store_unknown_otype_get() {
+        let adapter = make_adapter();
+        let result = adapter.get_object_json("foobar", "some-id");
+        assert!(matches!(result, Err(RepositoryError::NotFound(_))));
+    }
+
+    #[test]
+    fn test_object_store_unknown_otype_set() {
+        let adapter = make_adapter();
+        let result = adapter.set_object_json("foobar", "some-id", &serde_json::json!({}));
+        assert!(matches!(result, Err(RepositoryError::NotFound(_))));
+    }
+
+    #[test]
+    fn test_set_object_json_fills_empty_oid() {
+        let adapter = make_adapter();
+
+        let oid = uuid::Uuid::new_v4().to_string();
+        let tab_json = serde_json::json!({
+            "oid": "",
+            "version": 1,
+            "name": "Filled OID",
+            "layoutstate": "",
+            "blockids": [],
+            "meta": {}
+        });
+
+        adapter.set_object_json(OTYPE_TAB, &oid, &tab_json).unwrap();
+        let loaded = adapter.get_object_json(OTYPE_TAB, &oid).unwrap();
+        assert_eq!(loaded["name"], "Filled OID");
+    }
+
+    #[test]
+    fn test_upsert_update_existing() {
+        let adapter = make_adapter();
+
+        let mut ws = Workspace {
+            oid: uuid::Uuid::new_v4().to_string(),
+            version: 1,
+            name: "Original".into(),
+            ..Default::default()
+        };
+
+        adapter.save_workspace(&ws).unwrap();
+
+        ws.name = "Updated".into();
+        ws.version = 2;
+        adapter.save_workspace(&ws).unwrap();
+
+        let loaded = adapter.get_workspace(&ws.oid).unwrap();
+        assert_eq!(loaded.name, "Updated");
+    }
+
+    #[test]
+    fn test_client_save_and_update() {
+        let adapter = make_adapter();
+
+        let mut client = Client {
+            oid: uuid::Uuid::new_v4().to_string(),
+            version: 1,
+            windowids: vec!["w1".into()],
+            meta: MetaMapType::new(),
+            ..Default::default()
+        };
+
+        adapter.save_client(&client).unwrap();
+        let loaded = adapter.get_client().unwrap();
+        assert_eq!(loaded.windowids, vec!["w1"]);
+
+        client.windowids.push("w2".into());
+        client.version = 2;
+        adapter.save_client(&client).unwrap();
+
+        let loaded = adapter.get_client().unwrap();
+        assert_eq!(loaded.windowids, vec!["w1", "w2"]);
+    }
+
+    #[test]
+    fn test_list_workspaces_empty() {
+        let adapter = make_adapter();
+        let all = adapter.list_workspaces().unwrap();
+        assert!(all.is_empty());
+    }
+
+    #[test]
+    fn test_list_workspaces_multiple() {
+        let adapter = make_adapter();
+
+        for i in 0..3 {
+            let ws = Workspace {
+                oid: uuid::Uuid::new_v4().to_string(),
+                version: 1,
+                name: format!("WS {i}"),
+                ..Default::default()
+            };
+            adapter.save_workspace(&ws).unwrap();
+        }
+
+        let all = adapter.list_workspaces().unwrap();
+        assert_eq!(all.len(), 3);
+    }
+
+    #[test]
+    fn test_store_err_conversion_variants() {
+        // Test all StoreError → RepositoryError conversion paths
+        let err = store_err_to_repo(StoreError::NotFound);
+        assert!(matches!(err, RepositoryError::NotFound(_)));
+
+        let err = store_err_to_repo(StoreError::AlreadyExists);
+        assert!(matches!(err, RepositoryError::Constraint(_)));
+
+        let err = store_err_to_repo(StoreError::EmptyOID);
+        assert!(matches!(err, RepositoryError::Constraint(_)));
+
+        let err = store_err_to_repo(StoreError::VersionMismatch {
+            expected: 1,
+            actual: 2,
+        });
+        assert!(matches!(err, RepositoryError::Constraint(_)));
+        assert!(err.to_string().contains("version mismatch"));
+
+        let err = store_err_to_repo(StoreError::Other("custom".into()));
+        assert!(matches!(err, RepositoryError::Storage(_)));
+    }
+
+    #[test]
+    fn test_inner_access() {
+        let adapter = make_adapter();
+        let _inner = adapter.inner();
+        // Just verify inner() doesn't panic and returns a reference
+    }
 }

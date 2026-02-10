@@ -92,4 +92,23 @@ mod tests {
         let err = RepositoryError::Storage("disk full".to_string());
         assert_eq!(err.to_string(), "storage error: disk full");
     }
+
+    #[test]
+    fn test_repository_error_serialization() {
+        let err = RepositoryError::Serialization("invalid json".to_string());
+        assert_eq!(err.to_string(), "serialization error: invalid json");
+    }
+
+    #[test]
+    fn test_repository_error_constraint() {
+        let err = RepositoryError::Constraint("version mismatch".to_string());
+        assert_eq!(err.to_string(), "constraint violation: version mismatch");
+    }
+
+    #[test]
+    fn test_repository_error_is_debug() {
+        let err = RepositoryError::NotFound("test".into());
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("NotFound"));
+    }
 }

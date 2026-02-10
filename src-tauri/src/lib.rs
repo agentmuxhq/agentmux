@@ -44,7 +44,8 @@ pub fn run() {
                     let _ = window.set_focus();
                 }
             }),
-        );
+        )
+        .plugin(tauri_plugin_updater::Builder::new().build());
 
     // Register wavefile:// custom protocol for file streaming (rust-backend mode)
     #[cfg(feature = "rust-backend")]
@@ -103,7 +104,7 @@ pub fn run() {
             commands::stubs::close_tab,
             commands::stubs::set_window_init_status,
             commands::stubs::set_waveai_open,
-            commands::stubs::install_update,
+            commands::updater::install_update,
             // RPC bridge commands (rust-backend mode)
             commands::rpc::rpc_request,
             commands::rpc::service_request,
@@ -205,6 +206,12 @@ pub fn run() {
                 }
             }
 
+            // Spawn background update check (runs after 5s delay)
+            let check_handle = app.handle().clone();
+            tauri::async_runtime::spawn(
+                commands::updater::check_for_updates_background(check_handle),
+            );
+
             Ok(())
         })
         // Menu event handling
@@ -252,6 +259,8 @@ pub fn run() {
     // Manage state based on feature
     #[cfg(feature = "go-sidecar")]
     let builder = builder.manage(app_state);
+
+    let builder = builder.manage(commands::updater::PendingUpdate(std::sync::Mutex::new(None)));
 
     builder
         .run(tauri::generate_context!())

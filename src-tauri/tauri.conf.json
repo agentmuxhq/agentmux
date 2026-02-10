@@ -51,11 +51,18 @@
     },
     "macOS": {
       "minimumSystemVersion": "10.15"
-    }
+    },
+    "createUpdaterArtifacts": "v1Compatible"
   },
   "plugins": {
     "shell": {
       "open": true
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/a5af/wavemux/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYyRTQwODUxNDg3MjhEMzUKUldRMWpYSklVUWprWXIyT1lmSTlQM2J4WVc2bk44U2RJdEx2THVpdmpUUDhjKytZQnhEUzgzRnYK"
     }
   }
 }

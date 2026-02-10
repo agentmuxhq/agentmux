@@ -51,6 +51,7 @@
     "process:default",
     "store:default",
     "window-state:default",
-    "websocket:default"
+    "websocket:default",
+    "updater:default"
   ]
 }

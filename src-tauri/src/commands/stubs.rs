@@ -306,10 +306,3 @@ pub fn register_global_webview_keys(keys: Vec<String>) {
         keys.len()
     );
 }
-
-/// Install a pending app update.
-/// TODO: Phase J — implement with tauri-plugin-updater + update server
-#[tauri::command]
-pub fn install_update() {
-    tracing::debug!("stub: install_update");
-}

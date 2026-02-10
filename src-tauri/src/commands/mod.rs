@@ -5,4 +5,5 @@ pub mod devtools;
 pub mod platform;
 pub mod rpc;
 pub mod stubs;
+pub mod updater;
 pub mod window;

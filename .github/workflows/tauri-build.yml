@@ -145,10 +145,21 @@ jobs:
         with:
           path: artifacts
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate updater manifest
+        shell: bash
+        run: node scripts/generate-updater-manifest.js
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/**/*
+          files: |
+            artifacts/**/*
+            latest.json
           draft: false
           prerelease: false
           generate_release_notes: true

@@ -3,8 +3,7 @@
 
 //! Repository trait definitions — contracts that storage implementations must fulfill.
 
-use crate::domain::entities::{Block, Client, LayoutState, Tab, WaveObj, Window, Workspace};
-use crate::domain::value_objects::MetaMapType;
+use crate::domain::entities::{Block, Client, LayoutState, Tab, Window, Workspace};
 
 /// Unified error type for repository operations.
 #[derive(Debug, thiserror::Error)]

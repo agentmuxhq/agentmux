@@ -15,7 +15,7 @@ AgentMux is migrating from Electron to Tauri v2 to achieve significant performan
 - **Idle memory:** 150-300MB → 30-50MB (5x reduction)
 - **Startup time:** 1-2s → <0.5s (3x faster)
 
-**Current Status:** 🚀 **Advanced features complete** - All core phases (0-10) merged + multi-window, system tray, CI/CD, and DevTools. **93% acceptance criteria complete.** Ready for benchmarking and cross-platform testing.
+**Current Status:** 🚀 **Migration complete** - All core phases (0-10) merged + multi-window, system tray, CI/CD, DevTools, Rust backend port, and Go sidecar removal. **100% acceptance criteria complete.** The Go backend sidecar (`agentmuxsrv`) has been fully replaced by an in-process Rust backend. Only `wsh` (shell integration CLI) remains as a Go sidecar.
 
 ---
 
@@ -347,31 +347,46 @@ task package:tauri    # Release packaging
 
 ---
 
-### ⏳ Phase 11: Auto-Updater (Deferred)
+### ✅ Phase 11: Auto-Updater
 
-**Status:** Not Implemented
-**Original Spec:** Agent3 Phase 11
-**Reason:** Currently disabled in AgentMux fork. Will implement when needed.
+**Status:** Complete (PR #229)
+**Lead:** AgentA
 
-**Planned Implementation:**
-- tauri-plugin-updater
-- Signature verification
-- Release endpoint configuration
+**Deliverables:**
+- [x] tauri-plugin-updater integration
+- [x] Signature verification
+- [x] GitHub Releases endpoint
 
 ---
 
-## What Does NOT Change (As Per Original Spec)
+### ✅ Phase 12: Go Sidecar Removal
 
-✅ **Confirmed Unchanged:**
-- Go backend (`cmd/`, `pkg/`) - Zero modifications, same binary
+**Status:** Complete
+**Lead:** AgentA
+
+**Deliverables:**
+- [x] Full Rust backend port (PRs #191-#226): WaveStore, FileStore, WPS Broker, RPC Engine, Router, PTY, wsh IPC, file streaming, config system
+- [x] Removed `agentmuxsrv` Go sidecar — Rust backend is now the only backend
+- [x] Removed all `#[cfg(feature = "go-sidecar")]` and `#[cfg(feature = "rust-backend")]` feature gates
+- [x] Removed `cmd/server/`, `cmd/generatego/`, `cmd/generatets/` Go source
+- [x] Updated build system: Taskfile.yml, CI workflow, scripts
+- [x] Single binary architecture: `agentmux.exe` (~14MB) + `wsh` (~11MB)
+- [x] `wsh` (Go shell integration CLI) still bundled as sidecar for remote host deployment
+
+---
+
+## What Changed Since Original Spec
+
+**Updated after Rust backend port (Phases 2-17, A-I, sidecar removal):**
+- ~~Go backend (`cmd/server/`, `pkg/`)~~ → **Replaced by Rust backend** (`src-tauri/src/backend/`)
+- ~~WebSocket communication~~ → **Tauri IPC** (frontend uses `invoke()` instead of WebSocket)
 - React components - All UI components unchanged
-- WebSocket communication - Frontend ↔ Go backend identical
-- Wave Object Store - `wos.ts`, `wps.ts`, `services.ts` unchanged
+- Wave Object Store - `wos.ts`, `wps.ts` adapted for Tauri IPC
 - Block system - Terminal, file, AI blocks unchanged
-- Shell integration - `wsh` binary unchanged
-- Data storage - SQLite in Go backend unchanged
-- SSH/Remote - Go backend handles, unchanged
-- AI integration - Go backend handles, unchanged
+- Shell integration - `wsh` binary unchanged (still Go)
+- Data storage - SQLite now in Rust backend (same schema)
+- SSH/Remote - Handled by Rust backend
+- AI integration - Handled by Rust backend
 
 ---
 
@@ -403,30 +418,35 @@ task package:tauri    # Release packaging
 └────────────────────────────────────┘
 ```
 
-### After (Tauri)
+### After (Tauri + Rust Backend)
 ```
 ┌────────────────────────────────────┐
-│    Tauri Rust Backend             │ 2-5MB
+│    Tauri App (agentmux.exe)       │ ~14MB
 │  - Window management               │
-│  - IPC commands                    │
-│  - Menu system                     │
+│  - Rust backend (in-process):      │
+│    - SQLite (WaveStore, FileStore) │
+│    - Terminal PTY management       │
+│    - WPS pub/sub broker            │
+│    - RPC engine + router           │
+│    - Config system                 │
 │  - Native webview (OS-provided)    │ 0MB
 └──────────┬─────────────────────────┘
-           │ Tauri sidecar
-           ▼
-┌────────────────────────────────────┐
-│    Go Backend (agentmuxsrv)        │ 25MB
-│  - UNCHANGED                       │
-└──────────┬─────────────────────────┘
-           │ WebSocket/HTTP (same)
+           │ Tauri IPC (invoke)
            ▼
 ┌────────────────────────────────────┐
 │    React Frontend (Vite)          │ Embedded
 │  - UNCHANGED                       │
 └────────────────────────────────────┘
+
+┌────────────────────────────────────┐
+│    wsh (sidecar)                  │ ~11MB
+│  - Shell integration CLI (Go)     │
+│  - Remote host RPC server         │
+│  - Domain socket IPC to backend   │
+└────────────────────────────────────┘
 ```
 
-**Size Reduction:** ~95MB (no bundled Chromium)
+**Size Reduction:** ~110MB (no Chromium, no Go backend server)
 
 ---
 

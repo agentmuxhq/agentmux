@@ -1144,7 +1144,6 @@ pub fn set_connections_config_value(
 // ---- Config filesystem watching ----
 
 /// Subdirectories under the config dir that contain per-item JSON files.
-#[cfg(feature = "rust-backend")]
 const CONFIG_SUBDIRS: &[&str] = &[
     "termthemes",
     "widgets",
@@ -1156,7 +1155,6 @@ const CONFIG_SUBDIRS: &[&str] = &[
 
 /// Check if a filename is a valid config file name.
 /// Must end with `.json` and contain only alphanumeric, `_`, `@`, `.`, `-`.
-#[cfg(feature = "rust-backend")]
 fn is_valid_config_filename(name: &str) -> bool {
     if !name.ends_with(".json") {
         return false;
@@ -1167,7 +1165,6 @@ fn is_valid_config_filename(name: &str) -> bool {
 /// Start watching the config directory for changes.
 /// On valid changes, reloads config, updates the watcher, and publishes to the broker.
 /// Returns an error if the watcher cannot be created, but this is non-fatal.
-#[cfg(feature = "rust-backend")]
 pub fn start_config_watcher(
     config_dir: std::path::PathBuf,
     config_watcher: std::sync::Arc<ConfigWatcher>,

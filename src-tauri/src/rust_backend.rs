@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Rust-native backend initialization.
-//! Replaces the Go sidecar (agentmuxsrv) with in-process Rust services.
 //!
 //! Initializes: WaveStore (SQLite), WPS Broker, RPC Engine, RPC Router.
-//! The frontend communicates via Tauri IPC instead of WebSocket.
+//! The frontend communicates via Tauri IPC.
 
 use std::sync::Arc;
 
@@ -50,7 +49,7 @@ impl WpsClient for TauriWpsClient {
 /// Creates AppState with all backend services, manages it on the Tauri app,
 /// bootstraps initial data, and emits backend-ready to the frontend.
 ///
-/// This replaces `sidecar::spawn_backend()` — no external process needed.
+/// Initializes all backend services in-process (no external process needed).
 pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
     let handle = app.handle();
 
@@ -180,8 +179,7 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
         &active_tab_id[..8],
     );
 
-    // Emit backend-ready to frontend (matching Go sidecar protocol)
-    // In rust-backend mode, there's no WebSocket — frontend uses Tauri IPC
+    // Emit backend-ready to frontend — frontend uses Tauri IPC
     if let Some(webview_window) = handle.get_webview_window("main") {
         let _ = webview_window.emit(
             "backend-ready",

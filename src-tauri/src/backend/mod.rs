@@ -14,7 +14,6 @@ pub mod ds;
 pub mod envutil;
 pub mod eventbus;
 pub mod faviconcache;
-#[cfg(feature = "rust-backend")]
 pub mod filestream;
 pub mod fileutil;
 pub mod ijson;

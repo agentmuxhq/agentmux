@@ -31,17 +31,12 @@ if ($Clean) {
     # Kill running processes (ignore if not running)
     $ErrorActionPreference = "SilentlyContinue"
     taskkill /F /IM AgentMux.exe 2>$null | Out-Null
-    taskkill /F /IM agentmuxsrv.x64.exe 2>$null | Out-Null
     $ErrorActionPreference = "Stop"
 
     # Remove stale directories
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue make
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue .task
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue dist/bin
-
-    # Remove stale lock files
-    Remove-Item -Force -ErrorAction SilentlyContinue node_modules/electron/dist/wave-data/wave.lock
-    Remove-Item -Force -ErrorAction SilentlyContinue node_modules/electron/dist/wave-data/wave.sock
 
     Write-Host "  Cleaned." -ForegroundColor Green
 } else {
@@ -96,12 +91,6 @@ if (-not (Test-Path $WshBinary)) {
     }
 }
 
-# Check agentmuxsrv exists
-$SrvBinary = "dist/bin/agentmuxsrv.x64.exe"
-if (-not (Test-Path $SrvBinary)) {
-    $Errors += "agentmuxsrv binary not found: $SrvBinary"
-}
-
 # Check all wsh platform variants exist
 $Platforms = @(
     "darwin.arm64", "darwin.x64",
@@ -120,11 +109,6 @@ if (-not (Test-Path "dist/frontend/index.html")) {
     $Errors += "Frontend build missing: dist/frontend/index.html"
 }
 
-# Check main process build exists
-if (-not (Test-Path "dist/main/index.js")) {
-    $Errors += "Main process build missing: dist/main/index.js"
-}
-
 # Report errors
 if ($Errors.Count -gt 0) {
     Write-Host ""
@@ -140,8 +124,8 @@ Write-Host "  All versions verified: v$Version" -ForegroundColor Green
 
 # Step 5: Package
 if (-not $SkipPackage) {
-    Write-Host "[5/6] Packaging with electron-builder..." -ForegroundColor Yellow
-    npm exec electron-builder -- -c electron-builder.config.cjs -p never --win dir
+    Write-Host "[5/6] Packaging with Tauri..." -ForegroundColor Yellow
+    npx tauri build
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  Packaging FAILED" -ForegroundColor Red
         exit 1
@@ -155,7 +139,7 @@ if (-not $SkipPackage) {
 Write-Host "[6/6] Final verification..." -ForegroundColor Yellow
 
 if (-not $SkipPackage) {
-    $ExePath = "make/win-unpacked/AgentMux.exe"
+    $ExePath = "src-tauri/target/release/agentmux.exe"
     if (-not (Test-Path $ExePath)) {
         Write-Host "  Final exe not found: $ExePath" -ForegroundColor Red
         exit 1
@@ -171,7 +155,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 
 if (-not $SkipPackage) {
-    Write-Host "To deploy to desktop:" -ForegroundColor Cyan
-    Write-Host "  xcopy /E /Y /I make\win-unpacked C:\Users\asafe\Desktop\AgentMux-$Version\" -ForegroundColor White
+    Write-Host "Tauri installer output:" -ForegroundColor Cyan
+    Write-Host "  src-tauri\target\release\bundle\nsis\AgentMux_${Version}_x64-setup.exe" -ForegroundColor White
     Write-Host ""
 }

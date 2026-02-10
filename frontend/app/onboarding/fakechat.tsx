@@ -16,32 +16,27 @@ const chatConfigs: ChatConfig[] = [
         userPrompt: "Check out ~/waveterm and summarize the project — what it does and how it's organized.",
         toolName: "read_dir",
         toolDescription: 'reading directory "~/waveterm"',
-        markdownResponse: `Here's a quick, file-structure–driven overview of this repo (Wave Terminal):
+        markdownResponse: `Here's a quick, file-structure–driven overview of this repo (AgentMux):
 
 ## What it is
-- Electron + React front end with a Go backend ("agentmuxsrv"). Provides a terminal with GUI widgets, previews, web, and AI. (README.md)
+- Tauri v2 app with a Rust backend and React frontend. Provides an AI-native terminal multiplexer with reactive agent messaging. (README.md)
 - Licensed Apache-2.0. (LICENSE)
 
 ## Architecture at a glance
-- **Electron main process:** \`emain/*.ts\` configures windows, menus, preload scripts, updater, and ties into the Go backend via local RPC. (\`emain/\`)
-- **Renderer UI:** React/TS built with Vite, Tailwind. (\`frontend/\`, \`index.html\`, \`electron.vite.config.ts\`)
-- **Go backend ("agentmuxsrv"):** starts services, web and websocket listeners, telemetry loops, config watcher, local RPC, filestore and SQLite-backed object store. (\`cmd/server/main-server.go\`, \`pkg/*\`)
-- **CLI/helper ("wsh"):** built for multiple OS/arch; used for shell integration and remote operations. (\`cmd/wsh/\`, \`Taskfile.yml build:wsh\`)
+- **Tauri + Rust backend:** \`src-tauri/src/\` handles windows, menus, and all backend services in-process: SQLite database, terminal PTY, pub/sub broker, RPC engine, config system. (\`src-tauri/\`)
+- **Renderer UI:** React/TS built with Vite, Tailwind. (\`frontend/\`, \`index.html\`, \`vite.config.tauri.ts\`)
+- **CLI/helper ("wsh"):** Go binary built for multiple OS/arch; used for shell integration and remote operations. (\`cmd/wsh/\`, \`Taskfile.yml build:wsh\`)
 
 ## Key directories
-- **cmd/:** entrypoints and generators
-  - \`server/\`: agentmuxsrv main
-  - \`generategs/\`, \`generatego/\`: TS/Go bindings generation
-  - \`wsh/\`: shell helper
+- **src-tauri/src/:** Rust backend
+  - \`backend/storage/\`: SQLite WaveStore + FileStore
+  - \`backend/wps/\`: pub/sub event broker
+  - \`backend/rpc/\`: RPC engine + router
+  - \`backend/blockcontroller/\`: terminal PTY management
+  - \`commands/\`: Tauri IPC command handlers
 
-- **pkg/:** backend packages
-  - \`wcore/\`: startup coordination, initial data, window/workspace creation
-  - \`web/\`: HTTP+WS servers, Unix listener
-  - \`waveai/\`: AI backends (OpenAI, Anthropic, Google, Perplexity)
-  - \`wshrpc\`, \`wshutil\`, \`wslconn\`, \`remote/*\`: local/remote RPC, WSL, SSH, fileshare
-  - \`wstore/\`: persistent store (SQLite via sqlx); \`waveobj/\`: object model
-  - \`filestore/\`: local file cache/storage
-  - \`telemetry/\`: metrics/events, periodic reporting`,
+- **cmd/wsh/:** shell integration CLI
+- **frontend/:** React UI with xterm.js terminals, Monaco editor, AI chat`,
     },
     {
         userPrompt: "can you analyze the log output in my terminal?",

@@ -3,9 +3,6 @@ mod commands;
 mod crash;
 mod heartbeat;
 mod menu;
-#[cfg(feature = "go-sidecar")]
-mod sidecar;
-#[cfg(feature = "rust-backend")]
 mod rust_backend;
 mod state;
 mod tray;
@@ -15,15 +12,9 @@ use tauri::Manager;
 
 /// Initialize and run the AgentMux Tauri application.
 ///
-/// Supports two backend modes (controlled by Cargo features):
-/// - `go-sidecar` (default): Spawns agentmuxsrv Go binary as sidecar
-/// - `rust-backend`: Uses in-process Rust backend (no external process)
+/// Uses in-process Rust backend (no external sidecar process).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Create app state based on active feature
-    #[cfg(feature = "go-sidecar")]
-    let app_state = state::AppState::default();
-
     let builder = tauri::Builder::default()
         // Plugins
         .plugin(tauri_plugin_shell::init())
@@ -49,8 +40,7 @@ pub fn run() {
         // .plugin(tauri_plugin_updater::Builder::new().build())
         ;
 
-    // Register wavefile:// custom protocol for file streaming (rust-backend mode)
-    #[cfg(feature = "rust-backend")]
+    // Register wavefile:// custom protocol for file streaming
     let builder = builder.register_asynchronous_uri_scheme_protocol(
         "wavefile",
         |_ctx, request, responder| {
@@ -114,11 +104,11 @@ pub fn run() {
             commands::agent::kill_agent,
             commands::agent::get_agent_status,
             commands::agent::list_agent_backends,
-            // RPC bridge commands (rust-backend mode)
+            // RPC bridge commands
             commands::rpc::rpc_request,
             commands::rpc::service_request,
             commands::rpc::set_block_term_size,
-            // File and reactive commands (rust-backend mode)
+            // File and reactive commands
             commands::rpc::fetch_wave_file,
             commands::rpc::reactive_register,
             commands::rpc::reactive_unregister,
@@ -168,50 +158,17 @@ pub fn run() {
                 }
             }
 
-            // ---- Backend initialization (feature-gated) ----
+            // ---- Backend initialization ----
 
-            #[cfg(feature = "go-sidecar")]
-            {
-                // Spawn the Go backend as a sidecar
-                tauri::async_runtime::spawn(async move {
-                    match sidecar::spawn_backend(&handle).await {
-                        Ok(backend_state) => {
-                            let state = handle.state::<state::AppState>();
-                            let mut endpoints = state.backend_endpoints.lock().unwrap();
-                            endpoints.ws_endpoint = backend_state.ws_endpoint;
-                            endpoints.web_endpoint = backend_state.web_endpoint;
-                            tracing::info!("Backend ready: ws={}, web={}",
-                                endpoints.ws_endpoint, endpoints.web_endpoint);
-
-                            tracing::info!("Frontend should call backend RPC to get initialized client data");
-
-                            if let Some(window) = handle.get_webview_window("main") {
-                                let _ = window.emit("backend-ready", serde_json::json!({
-                                    "ws": endpoints.ws_endpoint.clone(),
-                                    "web": endpoints.web_endpoint.clone(),
-                                }));
-                            }
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to start backend: {}", e);
-                            let _ = handle.emit("backend-error", e.clone());
-                        }
-                    }
-                });
-            }
-
-            #[cfg(feature = "rust-backend")]
-            {
-                // Initialize Rust-native backend (no external process)
-                // This creates and manages AppState on the app handle
-                match rust_backend::initialize(app) {
-                    Ok(()) => {
-                        tracing::info!("Rust-native backend initialized successfully");
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to initialize Rust backend: {}", e);
-                        let _ = app.handle().emit("backend-error", e.clone());
-                    }
+            // Initialize Rust-native backend (no external process)
+            // This creates and manages AppState on the app handle
+            match rust_backend::initialize(app) {
+                Ok(()) => {
+                    tracing::info!("Rust-native backend initialized successfully");
+                }
+                Err(e) => {
+                    tracing::error!("Failed to initialize Rust backend: {}", e);
+                    let _ = app.handle().emit("backend-error", e.clone());
                 }
             }
 
@@ -231,17 +188,6 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // Graceful shutdown
-                    #[cfg(feature = "go-sidecar")]
-                    {
-                        let state = window.app_handle().state::<state::AppState>();
-                        let mut sidecar = state.sidecar_child.lock().unwrap();
-                        if let Some(child) = sidecar.take() {
-                            tracing::info!("Shutting down backend sidecar");
-                            let _ = child.kill();
-                        }
-                    }
-
                     // Kill any running agent subprocesses
                     {
                         let registry = window
@@ -289,10 +235,6 @@ pub fn run() {
                 _ => {}
             }
         });
-
-    // Manage state based on feature
-    #[cfg(feature = "go-sidecar")]
-    let builder = builder.manage(app_state);
 
     let builder = builder.manage(commands::updater::PendingUpdate(std::sync::Mutex::new(None)));
 

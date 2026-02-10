@@ -42,11 +42,10 @@ tasks:
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     quickdev:
-        desc: Run the Tauri application in quick dev mode (no docsite, arm64 only, no generate, no wsh).
+        desc: Run the Tauri application in quick dev mode (no docsite, no wsh rebuild).
         cmd: npm run dev
         deps:
             - npm:install
-            - build:backend:quickdev
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
@@ -141,24 +140,9 @@ tasks:
             - npm:install
 
     build:backend:
-        desc: Build the agentmuxsrv and wsh components.
+        desc: Build the wsh shell integration binary.
         cmds:
-            - task: build:server
             - task: build:wsh
-
-    build:backend:quickdev:
-        desc: Build only the agentmuxsrv component for quickdev (arm64 macOS only, no generate, no wsh).
-        cmds:
-            - task: build:server:quickdev
-        sources:
-            - go.mod
-            - go.sum
-            - pkg/**/*.go
-            - pkg/**/*.sh
-            - cmd/**/*.go
-            - tsunami/go.mod
-            - tsunami/go.sum
-            - tsunami/**/*.go
 
     build:schema:
         desc: Build the schema for configuration.
@@ -172,91 +156,6 @@ tasks:
             - cmd: '{{.RMRF}} "dist/schema"'
               ignore_error: true
             - task: copyfiles:'schema':'dist/schema'
-
-    build:server:
-        desc: Build the agentmuxsrv component.
-        cmds:
-            - task: build:server:linux
-            - task: build:server:macos
-            - task: build:server:windows
-        deps:
-            - go:mod:tidy
-            - generate
-        sources:
-            - "version.cjs"
-            - "cmd/server/*.go"
-            - "pkg/**/*.go"
-            - "pkg/**/*.json"
-            - "pkg/**/*.sh"
-            - tsunami/**/*.go
-        generates:
-            - dist/bin/agentmuxsrv.*
-
-    build:server:macos:
-        desc: Build the agentmuxsrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
-        platforms: [darwin]
-        cmds:
-            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
-              ignore_error: true
-            - task: build:server:internal
-              vars:
-                  ARCHS: arm64,amd64
-
-    build:server:quickdev:
-        desc: Build the agentmuxsrv component for quickdev (arm64 macOS only, no generate).
-        platforms: [darwin]
-        cmds:
-            - task: build:server:internal
-              vars:
-                  ARCHS: arm64
-        deps:
-            - go:mod:tidy
-        sources:
-            - "cmd/server/*.go"
-            - "pkg/**/*.go"
-            - "pkg/**/*.json"
-            - "pkg/**/*.sh"
-            - "tsunami/**/*.go"
-        generates:
-            - dist/bin/agentmuxsrv.*
-
-    build:server:windows:
-        desc: Build the agentmuxsrv component for Windows platforms (only generates artifacts for the current architecture).
-        platforms: [windows]
-        cmds:
-            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
-              ignore_error: true
-            - task: build:server:internal
-              vars:
-                  ARCHS:
-                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
-                  GO_ENV_VARS:
-                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-windows-gnu\"{{else}}CC=\"zig cc -target aarch64-windows-gnu\"{{end}}"
-
-    build:server:linux:
-        desc: Build the agentmuxsrv component for Linux platforms (only generates artifacts for the current architecture).
-        platforms: [linux]
-        cmds:
-            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
-              ignore_error: true
-            - task: build:server:internal
-              vars:
-                  ARCHS:
-                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
-                  GO_ENV_VARS:
-                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-linux-gnu.2.28\"{{else}}CC=\"zig cc -target aarch64-linux-gnu.2.28\"{{end}}"
-
-    build:server:internal:
-        requires:
-            vars:
-                - ARCHS
-        cmd:
-            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/agentmuxsrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
-            for:
-                var: ARCHS
-                split: ","
-                as: GOARCH
-        internal: true
 
     build:wsh:
         desc: Build the wsh component for all possible targets.
@@ -320,17 +219,9 @@ tasks:
         internal: true
 
     generate:
-        desc: Generate Typescript bindings for the Go backend.
+        desc: Generate configuration schema.
         cmds:
-            - go run cmd/generatets/main-generatets.go
-            - go run cmd/generatego/main-generatego.go
-        deps:
-            - build:schema
-        sources:
-            - "cmd/generatego/*.go"
-            - "cmd/generatets/*.go"
-            - "pkg/**/*.go"
-        # don't add generates key (otherwise will always execute)
+            - task: build:schema
 
     outdated:
         desc: Check for outdated packages using npm-check-updates.
@@ -577,7 +468,7 @@ tasks:
         desc: Run Tauri in development mode
         cmds:
             - task: build:backend
-            - task: tauri:copy-sidecars
+            - task: tauri:copy-wsh
             - npm run dev
         deps:
             - npm:install
@@ -587,28 +478,26 @@ tasks:
         cmds:
             - task: build:frontend:prod
             - task: build:backend
-            - task: tauri:copy-sidecars
+            - task: tauri:copy-wsh
             - npx tauri build
         deps:
             - npm:install
 
-    tauri:copy-sidecars:
-        desc: Copy Go binaries to src-tauri/binaries with target-specific names
+    tauri:copy-wsh:
+        desc: Copy wsh binary to src-tauri/binaries with target-specific name
         cmds:
             - powershell -Command "New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null"
             - |
                 {{if eq OS "windows"}}
-                powershell -Command "Copy-Item dist/bin/agentmuxsrv.x64.exe src-tauri/binaries/agentmuxsrv-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"
+                powershell -Command "Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied wsh for x86_64-pc-windows-msvc'"
                 {{else}}
                 TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
                 {{if eq OS "darwin"}}
-                cp dist/bin/agentmuxsrv.arm64 src-tauri/binaries/agentmuxsrv-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/binaries/wsh-$TRIPLE 2>/dev/null || cp dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{else}}
-                cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-linux.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{end}}
-                echo "Copied binaries for $TRIPLE"
+                echo "Copied wsh for $TRIPLE"
                 {{end}}
 
     build:frontend:prod:

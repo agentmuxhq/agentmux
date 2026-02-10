@@ -72,7 +72,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Go backend binaries
+      - name: Build wsh binary
         shell: bash
         run: |
           # Set Go environment for cross-compilation
@@ -86,12 +86,6 @@ jobs:
             export GOARCH=${{ matrix.arch }}
           fi
 
-          # Build agentmuxsrv
-          echo "Building agentmuxsrv for $GOOS/$GOARCH"
-          go build -o dist/bin/agentmuxsrv-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
-            -ldflags "-s -w" \
-            ./cmd/server/main-server.go
-
           # Build wsh
           echo "Building wsh for $GOOS/$GOARCH"
           go build -o dist/bin/wsh-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
@@ -101,12 +95,10 @@ jobs:
           # List built binaries
           ls -lh dist/bin/
 
-      - name: Copy sidecar binaries to Tauri
+      - name: Copy wsh binary to Tauri
         shell: bash
         run: |
           mkdir -p src-tauri/binaries
-          cp dist/bin/agentmuxsrv-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
-             src-tauri/binaries/
           cp dist/bin/wsh-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
              src-tauri/binaries/
           ls -lh src-tauri/binaries/

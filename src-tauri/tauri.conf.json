@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' tauri: ipc: http://ipc.localhost; connect-src 'self' tauri: ipc: http://ipc.localhost ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:* http://tauri.localhost; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: wavefile:; media-src 'self' wavefile:; frame-src 'self' wavefile:; font-src 'self' data:;"
+      "csp": "default-src 'self' tauri: ipc: http://ipc.localhost; connect-src 'self' tauri: ipc: http://ipc.localhost http://tauri.localhost; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: wavefile:; media-src 'self' wavefile:; frame-src 'self' wavefile:; font-src 'self' data:;"
     },
     "trayIcon": {
       "iconPath": "icons/icon.png",
@@ -34,7 +34,6 @@
     "active": true,
     "targets": ["nsis", "dmg", "deb", "appimage"],
     "externalBin": [
-      "binaries/agentmuxsrv",
       "binaries/wsh"
     ],
     "icon": [

@@ -318,7 +318,6 @@ impl ConnInterface for MockConn {
 
 // ---- Real PTY implementation (rust-backend only) ----
 
-#[cfg(feature = "rust-backend")]
 pub mod local_pty {
     use super::*;
     use std::io::{Read, Write};

@@ -42,24 +42,22 @@ task build
 ## Architecture
 
 ```
-agentmux.exe (Tauri v2 - Rust + webview)
-    └── agentmuxsrv (Go backend sidecar)
-        └── wsh (shell integration CLI)
+agentmux.exe (Tauri v2 - Rust backend + webview)
+    └── wsh (Go shell integration CLI, bundled sidecar)
 ```
 
 | Component | Size | Purpose |
 |-----------|------|---------|
-| `agentmux.exe` | ~14MB | Tauri frontend (Rust + native webview) |
-| `agentmuxsrv` | ~33MB | Go backend (terminals, DB, AI, SSH) |
-| `wsh` | ~11MB | Shell integration + remote RPC |
-| **Total** | ~58MB | Compare: Electron version was ~135MB |
+| `agentmux.exe` | ~14MB | Tauri app (Rust backend + native webview) |
+| `wsh` | ~11MB | Shell integration + remote RPC (Go) |
+| **Total** | ~25MB | Compare: Electron version was ~135MB |
 
 ## Development
 
 | Command | When to Use |
 |---------|-------------|
 | `task dev` | Normal development (hot reload) |
-| `task build:backend` | After Go backend changes |
+| `task build:backend` | After wsh Go code changes |
 | `task build` | Production build with installer |
 | `./bump-version.sh patch` | Version bump before release |
 

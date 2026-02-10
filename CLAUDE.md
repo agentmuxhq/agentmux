@@ -42,7 +42,7 @@
 | `task start` | Standalone testing (rare) | ❌ No |
 | `task package` | **Final release builds ONLY** | ❌ No |
 
-**CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "agentmuxsrv.x64.exe ENOENT"
+**CRITICAL:** Never launch from `make/` during development - it's stale. Always use `task dev`.
 
 ### After Code Changes
 
@@ -54,9 +54,8 @@
 
 AgentMux is built on **Tauri v2** (NOT Electron):
 
-- **agentmux.exe** = Tauri app (Rust + single webview)
-- **agentmuxsrv** = Go backend sidecar (auto-spawned, don't run manually)
-- **wsh** = Shell integration binary (must be versioned correctly)
+- **agentmux.exe** = Tauri app (Rust backend + single webview)
+- **wsh** = Go shell integration binary (bundled sidecar, must be versioned correctly)
 
 **Important:** All Electron code has been removed (Phase 14). Only Tauri is supported.
 
@@ -140,7 +139,7 @@ npm run coverage
 ### Backend (Go)
 
 ```bash
-# Build all binaries (agentmuxsrv, wsh for all platforms)
+# Build wsh for all platforms
 task build:backend
 
 # Build specific platform
@@ -224,21 +223,14 @@ Context for ReAgent (automated PR review system).
 
 AgentMux is an AI-native terminal application built on a **three-tier architecture**:
 
-### Tier 1: Tauri Shell (Rust)
+### Tier 1: Tauri App + Rust Backend
 - **Location:** `src-tauri/src/`
-- **Role:** Native window management, system tray, menus, crash handling, logging, heartbeat monitoring, and Go sidecar lifecycle management.
-- **Key files:** `lib.rs` (app setup, plugin registration, IPC handler registration), `sidecar.rs` (Go backend spawn/communication), `commands/` (Tauri IPC command handlers for platform, auth, window, backend, devtools, RPC bridge), `state.rs` (shared app state), `menu.rs`, `tray.rs`, `crash.rs`, `heartbeat.rs`.
-- **Backend modes:** Feature-gated via Cargo -- `go-sidecar` (default, spawns agentmuxsrv) or `rust-backend` (in-process, experimental). See `rust_backend.rs` and `backend/` directory.
+- **Role:** Native window management, system tray, menus, crash handling, logging, heartbeat monitoring, and all backend services (in-process).
+- **Key files:** `lib.rs` (app setup, plugin registration, IPC handler registration), `rust_backend.rs` (backend initialization), `commands/` (Tauri IPC command handlers for platform, auth, window, backend, devtools, RPC bridge), `state.rs` (shared app state), `menu.rs`, `tray.rs`, `crash.rs`, `heartbeat.rs`.
+- **Backend modules:** `backend/storage/` (SQLite WaveStore + FileStore), `backend/wps/` (pub/sub broker), `backend/rpc/` (RPC engine + router), `backend/blockcontroller/` (terminal PTY management), `backend/wconfig/` (config system), `backend/shellexec/` (shell execution), `backend/wsh_server.rs` (wsh IPC socket).
 - **Tauri plugins:** shell, dialog, notification, clipboard, global-shortcut, fs, opener, process, store, window-state, websocket, single-instance.
 
-### Tier 2: Go Backend Sidecar (`agentmuxsrv`)
-- **Location:** `cmd/server/`, `pkg/`
-- **Role:** Core business logic, terminal session management, WebSocket/HTTP API, database (SQLite via sqlx), remote connections (SSH), AI integrations (OpenAI, Google Generative AI), file storage, event bus, config management, telemetry, cloud sync.
-- **Key packages:** `pkg/wcore/` (core logic), `pkg/waveobj/` (object model), `pkg/wconfig/` (configuration), `pkg/shellexec/` (terminal shell execution), `pkg/remote/` (SSH connections), `pkg/waveai/` (AI chat), `pkg/wshrpc/` (RPC protocol), `pkg/web/` (HTTP handlers), `pkg/wps/` (pub/sub), `pkg/eventbus/`, `pkg/blockcontroller/`, `pkg/service/`.
-- **Database:** SQLite with golang-migrate migrations in `db/migrations-wstore/` and `db/migrations-filestore/`.
-- **Communication:** Backend announces readiness via stderr (`WAVESRV-ESTART ws:<addr> web:<addr>`), frontend connects to WebSocket/HTTP endpoints. Backend events forwarded via `WAVESRV-EVENT:` prefix.
-
-### Tier 3: Frontend (React/TypeScript)
+### Tier 2: Frontend (React/TypeScript)
 - **Location:** `frontend/`
 - **Role:** Terminal UI, workspace/tab management, AI chat panel, code editor, web previews, block-based layout system.
 - **Entry point:** `frontend/tauri-bootstrap.ts` -> `frontend/tauri-init.ts` -> `frontend/wave.ts`
@@ -275,23 +267,17 @@ AgentMux is an AI-native terminal application built on a **three-tier architectu
 
 ### Rust (src-tauri/) Changes
 
-- [ ] Feature gates used correctly: `#[cfg(feature = "go-sidecar")]` vs `#[cfg(feature = "rust-backend")]` -- these are mutually exclusive backend modes.
 - [ ] Tauri IPC commands registered in `lib.rs` `invoke_handler` if new commands are added.
 - [ ] Tauri plugin capabilities properly declared in `src-tauri/capabilities/`.
 - [ ] No `unwrap()` on user-facing code paths -- use proper error handling with `Result` and `thiserror`.
-- [ ] Sidecar spawn/shutdown lifecycle handled correctly (graceful kill on close).
 - [ ] Release profile optimizations preserved (`strip`, `lto`, `codegen-units = 1`).
 - [ ] CSP in `tauri.conf.json` updated if new external resources are loaded.
 
-### Go Backend (cmd/, pkg/) Changes
+### Go (wsh CLI) Changes
 
-- [ ] Database migrations are additive-only (no destructive changes to existing migrations in `db/migrations-*`).
-- [ ] RPC methods registered and have corresponding TypeScript bindings (generated via `cmd/generatets/`).
-- [ ] CGO dependencies accounted for (SQLite requires CGO_ENABLED=1 with `sqlite_omit_load_extension` tag).
-- [ ] Cross-compilation considered: `wsh` builds for 8 platform/arch targets, `agentmuxsrv` builds per-platform.
-- [ ] No breaking changes to the `WAVESRV-ESTART` or `WAVESRV-EVENT:` stderr protocol (Rust sidecar.rs parses these).
+- [ ] `wsh` builds for 8 platform/arch targets (CGO_ENABLED=0).
 - [ ] `go.mod` `replace` directives preserved for forked dependencies (ssh_config, pty, tsunami).
-- [ ] AI provider integrations (OpenAI, Google) handle API errors gracefully and respect rate limits.
+- [ ] `pkg/` packages shared between wsh and Rust backend schema generation are kept in sync.
 
 ### Frontend (frontend/) Changes
 
@@ -308,7 +294,7 @@ AgentMux is an AI-native terminal application built on a **three-tier architectu
 
 - [ ] Task dependencies chain correctly (e.g., `dev` depends on `npm:install`, `docsite:build:embedded`, `build:backend`).
 - [ ] Platform-conditional logic uses correct Taskfile syntax (`{{if eq OS "windows"}}`).
-- [ ] Sidecar copy task (`tauri:copy-sidecars`) updated if binary naming changes.
+- [ ] wsh copy task (`tauri:copy-wsh`) updated if binary naming changes.
 - [ ] Version variable (`VERSION`) sourced from `version.cjs` consistently.
 
 ### Infrastructure (infra/) Changes

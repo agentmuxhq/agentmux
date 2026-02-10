@@ -14,7 +14,6 @@
 //! 5. Bidirectional JSON-line RPC messages flow through WshRouter
 //! 6. On disconnect: unregisters route
 
-#[cfg(feature = "rust-backend")]
 mod imp {
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Arc;
@@ -237,12 +236,4 @@ mod imp {
     }
 }
 
-// Re-export when rust-backend is enabled
-#[cfg(feature = "rust-backend")]
 pub use imp::*;
-
-// Stub when rust-backend is not enabled
-#[cfg(not(feature = "rust-backend"))]
-pub fn get_socket_path(_data_dir: &std::path::Path) -> String {
-    String::new()
-}

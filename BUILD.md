@@ -2,7 +2,7 @@
 
 These instructions are for setting up dependencies and building AgentMux from source on Windows, macOS, and Linux.
 
-**Architecture:** AgentMux is built on **Tauri v2** (not Electron), with a Go backend sidecar.
+**Architecture:** AgentMux is built on **Tauri v2** with an in-process Rust backend. The `wsh` shell integration CLI (Go) is bundled as a sidecar.
 
 ---
 
@@ -13,29 +13,22 @@ These instructions are for setting up dependencies and building AgentMux from so
 | Tool | Version | Purpose |
 |------|---------|---------|
 | **Node.js** | v22 LTS | Frontend build (React/Vite) |
-| **Go** | 1.23+ | Backend (agentmuxsrv, wsh) |
+| **Go** | 1.23+ | Shell integration (wsh) |
 | **Rust** | 1.77+ | Tauri frontend (Rust) |
 | **Task** | Latest | Build orchestration |
-| **Zig** | 0.13+ | CGO cross-compilation (Windows/Linux) |
+| **Zig** | 0.13+ | CGO cross-compilation (optional, for advanced builds) |
 
 ### Platform-Specific Setup
 
 #### Windows
 
-1. **Install Zig** (for CGO):
-   ```powershell
-   # Download from https://ziglang.org/download/
-   # Extract to C:\Systems\zig-windows-x86_64-0.13.0\
-   # Add to PATH
-   ```
-
-2. **Install Rust** (for Tauri):
+1. **Install Rust** (for Tauri):
    ```powershell
    # Download from https://rustup.rs/
    rustup-init.exe
    ```
 
-3. **Install Visual Studio Build Tools** (required by Rust):
+2. **Install Visual Studio Build Tools** (required by Rust):
    - Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
    - Install: "Desktop development with C++"
 
@@ -51,7 +44,6 @@ These instructions are for setting up dependencies and building AgentMux from so
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
 
-3. **No Zig required** (macOS CGO works natively)
 
 #### Linux
 
@@ -60,9 +52,6 @@ These instructions are for setting up dependencies and building AgentMux from so
    sudo apt install zip libwebkit2gtk-4.1-dev \
      build-essential curl wget file libssl-dev \
      libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-
-   # Install Zig for CGO
-   sudo snap install zig --classic --beta
    ```
 
 2. **Install Rust**:
@@ -133,10 +122,10 @@ Features:
 
 ### Backend Rebuild
 
-If you modify Go backend code (`pkg/`, `cmd/`):
+If you modify wsh Go code (`cmd/wsh/`, `pkg/`):
 
 ```bash
-# Rebuild Go binaries
+# Rebuild wsh binary
 task build:backend
 
 # Then restart dev server
@@ -144,8 +133,9 @@ task dev
 ```
 
 This rebuilds:
-- `dist/bin/agentmuxsrv.x64.exe` (or platform-specific)
 - `dist/bin/wsh-{version}-{platform}.{arch}.exe`
+
+**Note:** The Rust backend (terminals, DB, AI, SSH) is built as part of the Tauri app — changes to `src-tauri/src/` are auto-rebuilt by `task dev`.
 
 ---
 
@@ -229,26 +219,23 @@ After building, you'll have:
 ```
 dist/
 ├── bin/
-│   ├── agentmuxsrv.x64.exe       # Go backend (33MB)
 │   └── wsh-{version}-windows.x64.exe # Shell integration (11MB)
 └── frontend/                     # Vite output (embedded in Tauri)
 
 src-tauri/target/release/
-├── agentmux.exe                   # Tauri app (14MB)
+├── agentmux.exe                   # Tauri app with Rust backend (14MB)
 └── bundle/
     └── nsis/
-        └── AgentMux_{version}_x64-setup.exe  # Installer (29MB)
+        └── AgentMux_{version}_x64-setup.exe  # Installer
 ```
 
 ### Component Sizes
 
 | Component | Size | Purpose |
 |-----------|------|---------|
-| `agentmux.exe` | ~14MB | Tauri frontend (Rust + webview) |
-| `agentmuxsrv.exe` | ~33MB | Go backend server |
-| `wsh.exe` | ~11MB | Shell integration |
-| **Total runtime** | ~58MB | All components |
-| **Installer (NSIS)** | ~29MB | Compressed with binaries |
+| `agentmux.exe` | ~14MB | Tauri app (Rust backend + webview) |
+| `wsh.exe` | ~11MB | Shell integration (Go) |
+| **Total runtime** | ~25MB | All components |
 
 Compare to Electron version: ~135MB runtime, ~120-150MB installer.
 
@@ -266,41 +253,15 @@ Logs appear in the Console tab.
 
 ### Backend Logs
 
-Go backend logs (agentmuxsrv):
+Rust backend logs appear in the terminal where you ran `task dev` (via `tracing`).
+
+Log files:
 - **Development:** `~/.waveterm-dev/waveapp.log`
 - **Production:** `~/.waveterm/waveapp.log`
-
-View logs in real-time:
-
-```bash
-# Development
-tail -f ~/.waveterm-dev/waveapp.log
-
-# Production
-tail -f ~/.waveterm/waveapp.log
-```
-
-### Tauri Logs
-
-Rust logs appear in the terminal where you ran `task dev`.
 
 ---
 
 ## Troubleshooting
-
-### Issue: "agentmuxsrv.x64.exe ENOENT"
-
-**Cause:** Backend binary not found or wrong version.
-
-**Fix:**
-```bash
-# Check version mismatch
-cat package.json | grep version
-ls -lh dist/bin/wsh-*
-
-# Rebuild backend
-task build:backend
-```
 
 ### Issue: Tauri build fails with linker errors
 
@@ -315,19 +276,6 @@ task build:backend
 **Fix (Linux):**
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev
-```
-
-### Issue: CGO errors during Go build
-
-**Cause:** Zig compiler not installed or not in PATH.
-
-**Fix:**
-```bash
-# Verify Zig is installed
-zig version
-
-# Add to PATH (example for Windows)
-$env:PATH += ";C:\Systems\zig-windows-x86_64-0.13.0"
 ```
 
 ### Issue: Frontend not loading in dev mode
@@ -385,7 +333,6 @@ git push origin main --tags
 
 - Uses **NSIS** for installers
 - WebView2 runtime required (auto-installs if missing)
-- Zig required for CGO (Go → C compilation)
 
 ### macOS
 
@@ -403,19 +350,6 @@ git push origin main --tags
 ---
 
 ## Advanced: Custom Build
-
-### Build Backend for Specific Platform
-
-```bash
-# Windows x64
-GOOS=windows GOARCH=amd64 task build:server
-
-# macOS ARM64
-GOOS=darwin GOARCH=arm64 task build:server
-
-# Linux x64
-GOOS=linux GOARCH=amd64 task build:server
-```
 
 ### Build Frontend Only
 

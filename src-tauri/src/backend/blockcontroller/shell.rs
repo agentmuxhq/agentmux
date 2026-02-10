@@ -368,7 +368,6 @@ impl Controller for ShellController {
             factory.as_ref().unwrap()(&conn_name, &block_meta)
         } else if has_broker {
             // Production path: create real PTY
-            #[cfg(feature = "rust-backend")]
             {
                 use crate::backend::shellexec::local_pty::LocalPtyConn;
 
@@ -404,10 +403,6 @@ impl Controller for ShellController {
                     crate::backend::shellexec::DEFAULT_TERM_COLS as u16,
                 );
                 Ok(Box::new(conn) as Box<dyn ConnInterface>)
-            }
-            #[cfg(not(feature = "rust-backend"))]
-            {
-                Ok(Box::new(MockConn::new(0)) as Box<dyn ConnInterface>)
             }
         } else {
             // Test/default path: MockConn

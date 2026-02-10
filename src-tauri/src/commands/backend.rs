@@ -1,41 +1,18 @@
 use crate::state::AppState;
 
-/// Get the backend WebSocket and HTTP endpoints.
+/// Get the backend endpoints.
 ///
-/// In go-sidecar mode: returns the Go backend's WS/HTTP endpoints.
-/// In rust-backend mode: returns empty endpoints (frontend uses Tauri IPC).
+/// Returns empty endpoints since the frontend uses Tauri IPC directly.
 #[tauri::command]
 pub fn get_backend_endpoints(
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    #[cfg(feature = "go-sidecar")]
-    {
-        let endpoints = state.backend_endpoints.lock().unwrap();
-        if endpoints.ws_endpoint.is_empty() {
-            return Err("Backend not ready yet".to_string());
-        }
-        return Ok(serde_json::json!({
-            "ws": endpoints.ws_endpoint,
-            "web": endpoints.web_endpoint,
-        }));
-    }
-
-    #[cfg(feature = "rust-backend")]
-    {
-        // In rust-backend mode, no WebSocket/HTTP — frontend uses Tauri IPC
-        let _ = state; // suppress unused warning
-        Ok(serde_json::json!({
-            "ws": "",
-            "web": "",
-            "rustBackend": true,
-        }))
-    }
-
-    #[cfg(not(any(feature = "go-sidecar", feature = "rust-backend")))]
-    {
-        let _ = state;
-        Err("No backend feature enabled".to_string())
-    }
+    let _ = state;
+    Ok(serde_json::json!({
+        "ws": "",
+        "web": "",
+        "rustBackend": true,
+    }))
 }
 
 /// Get the window initialization options (client/window/tab IDs).

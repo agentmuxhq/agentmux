@@ -43,14 +43,12 @@ base64 = "0.22"
 dirs = "6"
 libc = "0.2"
 subtle = "2"
-portable-pty = { version = "0.8", optional = true }
-interprocess = { version = "2.2", features = ["tokio"], optional = true }
-notify = { version = "7", optional = true }
+portable-pty = "0.8"
+interprocess = { version = "2.2", features = ["tokio"] }
+notify = "7"
 
 [features]
-default = ["go-sidecar"]
-go-sidecar = []
-rust-backend = ["portable-pty", "interprocess", "notify"]
+default = []
 
 [profile.release]
 strip = true

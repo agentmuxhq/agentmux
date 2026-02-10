@@ -31,7 +31,9 @@ pub async fn service_request(
     ui_context: Option<Value>,
     state: tauri::State<'_, AppState>,
 ) -> Result<Value, String> {
-    handle_service_request(&service, &method, &args, ui_context.as_ref(), &state)
+    let result = handle_service_request(&service, &method, &args, ui_context.as_ref(), &state)?;
+    tracing::info!("service_request: {}.{} => {:?}", service, method, result);
+    Ok(result)
 }
 
 /// Direct Tauri command for terminal resize.
@@ -446,8 +448,12 @@ fn handle_service_request(
         ("client", "GetClientData") => {
             let client = crate::backend::wcore::get_client(store)
                 .map_err(|e| format!("GetClientData: {}", e))?;
-            Ok(serde_json::to_value(&client)
-                .map_err(|e| format!("GetClientData serialize: {}", e))?)
+            let client_json = serde_json::to_value(&client)
+                .map_err(|e| format!("GetClientData serialize: {}", e))?;
+            Ok(serde_json::json!({
+                "data": client_json,
+                "updates": [],
+            }))
         }
 
         ("window", "GetWindow") => {
@@ -456,8 +462,12 @@ fn handle_service_request(
                 .ok_or_else(|| "GetWindow: missing windowId arg".to_string())?;
             let window = store.must_get::<crate::backend::waveobj::Window>(window_id)
                 .map_err(|e| format!("GetWindow: {}", e))?;
-            Ok(serde_json::to_value(&window)
-                .map_err(|e| format!("GetWindow serialize: {}", e))?)
+            let window_json = serde_json::to_value(&window)
+                .map_err(|e| format!("GetWindow serialize: {}", e))?;
+            Ok(serde_json::json!({
+                "data": window_json,
+                "updates": [],
+            }))
         }
 
         ("workspace", "GetWorkspace") => {
@@ -466,8 +476,12 @@ fn handle_service_request(
                 .ok_or_else(|| "GetWorkspace: missing workspaceId arg".to_string())?;
             let workspace = crate::backend::wcore::get_workspace(store, workspace_id)
                 .map_err(|e| format!("GetWorkspace: {}", e))?;
-            Ok(serde_json::to_value(&workspace)
-                .map_err(|e| format!("GetWorkspace serialize: {}", e))?)
+            let workspace_json = serde_json::to_value(&workspace)
+                .map_err(|e| format!("GetWorkspace serialize: {}", e))?;
+            Ok(serde_json::json!({
+                "data": workspace_json,
+                "updates": [],
+            }))
         }
 
         ("object", "GetObject") => {

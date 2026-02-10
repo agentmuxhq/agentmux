@@ -127,7 +127,7 @@ tasks:
     package:
         desc: Package the application for the current platform (Tauri).
         cmds:
-            - npm run tauri build {{.CLI_ARGS}}
+            - npm run build -- {{.CLI_ARGS}}
         deps:
             - clean
             - npm:install
@@ -578,7 +578,7 @@ tasks:
         cmds:
             - task: build:backend
             - task: tauri:copy-sidecars
-            - npm run tauri:dev
+            - npm run dev
         deps:
             - npm:install
 

@@ -11,6 +11,7 @@ import type {
     AgentStatusType,
     UnifiedMessage,
     TokenUsage,
+    AdapterEvent,
 } from "./unified-types";
 import {
     createUserMessage,
@@ -62,6 +63,8 @@ export class UnifiedAIViewModel implements ViewModel {
     availableBackendsAtom: PrimitiveAtom<AgentBackendConfig[]>;
     isStreamingAtom: PrimitiveAtom<boolean>;
     totalUsageAtom: PrimitiveAtom<TokenUsage>;
+    sessionIdAtom: PrimitiveAtom<string>;
+    totalCostAtom: PrimitiveAtom<number>;
     inputRef: React.RefObject<HTMLTextAreaElement>;
 
     // Internal
@@ -88,14 +91,16 @@ export class UnifiedAIViewModel implements ViewModel {
             input_tokens: 0,
             output_tokens: 0,
         });
+        this.sessionIdAtom = atom<string>("");
+        this.totalCostAtom = atom<number>(0);
         this.inputRef = { current: null } as React.RefObject<HTMLTextAreaElement>;
 
         // Header text: show backend + token/cost info
         this.viewText = atom((get) => {
             const backend = get(this.selectedBackendAtom);
             const backends = get(this.availableBackendsAtom);
-            const status = get(this.statusAtom);
             const usage = get(this.totalUsageAtom);
+            const cost = get(this.totalCostAtom);
 
             const parts: HeaderElem[] = [];
 
@@ -111,6 +116,14 @@ export class UnifiedAIViewModel implements ViewModel {
                 parts.push({
                     elemtype: "text",
                     text: `${(totalTokens / 1000).toFixed(1)}k`,
+                });
+            }
+
+            // Show cost if available
+            if (cost > 0) {
+                parts.push({
+                    elemtype: "text",
+                    text: `$${cost.toFixed(3)}`,
                 });
             }
 
@@ -232,6 +245,8 @@ export class UnifiedAIViewModel implements ViewModel {
         globalStore.set(this.statusAtom, "init");
         globalStore.set(this.isStreamingAtom, false);
         globalStore.set(this.totalUsageAtom, { input_tokens: 0, output_tokens: 0 });
+        globalStore.set(this.sessionIdAtom, "");
+        globalStore.set(this.totalCostAtom, 0);
         this.streamingMsg = null;
     }
 
@@ -279,11 +294,22 @@ export class UnifiedAIViewModel implements ViewModel {
 
         // Listen for adapter events
         const unlistenOutput = await onAgentOutput(paneId, (payload: AgentOutputPayload) => {
+            // Handle session-level events first (they don't modify messages)
+            for (const event of payload.events) {
+                this.handleSessionEvent(event);
+            }
+
+            // Then handle message-level events
             globalStore.set(this.messagesAtom, (prev) => {
                 const updated = [...prev];
                 let currentMsg = this.streamingMsg;
 
                 for (const event of payload.events) {
+                    // Skip session-level events (already handled above)
+                    if (event.type === "session_start" || event.type === "session_end") {
+                        continue;
+                    }
+
                     if (!currentMsg) {
                         const msgId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                         const backend = globalStore.get(this.selectedBackendAtom);
@@ -345,6 +371,26 @@ export class UnifiedAIViewModel implements ViewModel {
             unlisten();
         }
         this.unlistenFns = [];
+    }
+
+    private handleSessionEvent(event: AdapterEvent): void {
+        if (event.type === "session_start") {
+            globalStore.set(this.sessionIdAtom, event.session_id);
+            if (event.model) {
+                // Could update model display if needed
+            }
+        } else if (event.type === "session_end") {
+            globalStore.set(this.totalCostAtom, event.total_cost_usd);
+            // Update total usage from the authoritative result event
+            if (event.usage) {
+                globalStore.set(this.totalUsageAtom, {
+                    input_tokens: event.usage.input_tokens,
+                    output_tokens: event.usage.output_tokens,
+                    cache_read_tokens: event.usage.cache_read_tokens,
+                    cache_write_tokens: event.usage.cache_write_tokens,
+                });
+            }
+        }
     }
 
     private addErrorMessage(message: string): void {

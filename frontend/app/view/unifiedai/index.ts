@@ -76,6 +76,8 @@ export type {
     AgentInputRequest,
     AgentStatusEvent,
     AdapterEvent,
+    AdapterSessionStart,
+    AdapterSessionEnd,
 } from "./unified-types";
 
 // Adapter interfaces

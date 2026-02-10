@@ -85,6 +85,33 @@ pub enum AdapterEvent {
     /// Error occurred.
     #[serde(rename = "error")]
     Error { message: String },
+
+    /// Session started (from Claude Code system init event).
+    #[serde(rename = "session_start")]
+    SessionStart {
+        session_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        model: Option<String>,
+        #[serde(default)]
+        tools: Vec<String>,
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        cwd: String,
+    },
+
+    /// Session ended (from Claude Code result event).
+    #[serde(rename = "session_end")]
+    SessionEnd {
+        #[serde(default)]
+        total_cost_usd: f64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        usage: Option<super::unified::TokenUsage>,
+        #[serde(default)]
+        is_error: bool,
+        #[serde(default)]
+        num_turns: i32,
+        #[serde(default)]
+        duration_ms: i64,
+    },
 }
 
 // ---- Chat adapter: converts AIStreamEvent -> AdapterEvent ----
@@ -151,30 +178,76 @@ pub fn adapt_chat_stream_event(event: &AIStreamEvent) -> Vec<AdapterEvent> {
 
 // ---- Agent NDJSON event types (Claude Code protocol) ----
 
-/// Events from Claude Code's NDJSON stream protocol.
-/// These are the subset of events relevant for the unified pane.
+/// Top-level events from Claude Code's NDJSON stream-json protocol.
 ///
-/// The full protocol is documented in `claudecode-types.ts`.
-/// Here we define the Rust equivalents for the adapter layer.
+/// When invoked with `--output-format stream-json`, Claude Code emits 6 event types:
+/// - `system` (init/compact_boundary): Session metadata
+/// - `stream_event`: Token-level streaming (with `--include-partial-messages`)
+/// - `assistant`: Complete assistant message
+/// - `user`: Tool results
+/// - `result`: Final cost/usage statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClaudeCodeEvent {
-    /// System initialization event.
+    /// System event (init with session metadata, or compact_boundary).
     #[serde(rename = "system")]
     System {
         #[serde(default)]
+        subtype: String,
+        #[serde(default)]
         session_id: String,
+        #[serde(default)]
+        model: String,
+        #[serde(default)]
+        tools: Vec<String>,
+        #[serde(default)]
+        cwd: String,
     },
 
-    /// Wrapped stream event (contains inner event).
+    /// Token-level streaming event (wraps inner Anthropic API stream event).
+    /// Only emitted when `--include-partial-messages` is set.
     #[serde(rename = "stream_event")]
-    StreamEvent { event: ClaudeCodeStreamEvent },
+    StreamEvent {
+        #[serde(default)]
+        session_id: String,
+        event: ClaudeCodeStreamEvent,
+    },
 
-    /// Final result.
+    /// Complete assistant message (emitted after all stream events for a turn).
+    #[serde(rename = "assistant")]
+    Assistant {
+        #[serde(default)]
+        session_id: String,
+        message: ClaudeCodeMessage,
+    },
+
+    /// User message containing tool results (emitted after tool execution).
+    #[serde(rename = "user")]
+    User {
+        #[serde(default)]
+        session_id: String,
+        message: ClaudeCodeMessage,
+    },
+
+    /// Final result event with cost and usage statistics.
     #[serde(rename = "result")]
     Result {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(default)]
+        subtype: String,
+        #[serde(default)]
+        session_id: String,
+        #[serde(default)]
+        is_error: bool,
+        #[serde(default)]
+        duration_ms: i64,
+        #[serde(default)]
+        num_turns: i32,
+        #[serde(default)]
+        total_cost_usd: f64,
+        #[serde(default)]
         result: Option<serde_json::Value>,
+        #[serde(default)]
+        usage: Option<ClaudeCodeUsage>,
     },
 }
 
@@ -367,6 +440,159 @@ pub fn adapt_claude_code_stream_event(event: &ClaudeCodeStreamEvent) -> Vec<Adap
     }
 }
 
+/// Convert a complete assistant message to adapter events.
+///
+/// Used when we receive the full `assistant` event (after streaming).
+/// Extracts text, tool_use, and tool_result blocks from the message content.
+pub fn adapt_claude_code_assistant_message(message: &ClaudeCodeMessage) -> Vec<AdapterEvent> {
+    let mut events = Vec::new();
+
+    // Emit message start with model info
+    events.push(AdapterEvent::MessageStart {
+        message_id: String::new(),
+        model: if message.model.is_empty() {
+            None
+        } else {
+            Some(message.model.clone())
+        },
+    });
+
+    for block in &message.content {
+        match block {
+            ClaudeCodeContentBlock::Text { text } if !text.is_empty() => {
+                events.push(AdapterEvent::TextDelta { text: text.clone() });
+            }
+            ClaudeCodeContentBlock::ToolUse { id, name, input } => {
+                events.push(AdapterEvent::ToolUseStart {
+                    call_id: id.clone(),
+                    name: name.clone(),
+                    summary: String::new(),
+                });
+                if !input.is_null() {
+                    events.push(AdapterEvent::ToolUseInput {
+                        call_id: id.clone(),
+                        input: input.clone(),
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Emit message end with usage if available
+    events.push(AdapterEvent::MessageEnd {
+        usage: message.usage.as_ref().map(|u| super::unified::TokenUsage {
+            input_tokens: u.input_tokens,
+            output_tokens: u.output_tokens,
+            cache_read_tokens: u.cache_read_input_tokens,
+            cache_write_tokens: u.cache_creation_input_tokens,
+        }),
+    });
+
+    events
+}
+
+/// Convert a user message (tool results) to adapter events.
+///
+/// Used when we receive the `user` event after Claude Code executes tools.
+pub fn adapt_claude_code_user_message(message: &ClaudeCodeMessage) -> Vec<AdapterEvent> {
+    let mut events = Vec::new();
+
+    for block in &message.content {
+        match block {
+            ClaudeCodeContentBlock::ToolResult {
+                tool_use_id,
+                content,
+                is_error,
+            } => {
+                let content_str = match content {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Array(arr) => {
+                        // Tool results can be an array of content blocks
+                        arr.iter()
+                            .filter_map(|v| {
+                                if let Some(text) = v.get("text").and_then(|t| t.as_str()) {
+                                    Some(text.to_string())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    }
+                    other => serde_json::to_string(other).unwrap_or_default(),
+                };
+                events.push(AdapterEvent::ToolResult {
+                    call_id: tool_use_id.clone(),
+                    content: content_str,
+                    is_error: *is_error,
+                });
+            }
+            _ => {}
+        }
+    }
+
+    events
+}
+
+/// Convert a top-level Claude Code event into adapter events.
+///
+/// This is the main entry point for the Claude Code adapter. It handles
+/// all 6 event types from the stream-json protocol.
+pub fn adapt_claude_code_event(event: &ClaudeCodeEvent) -> Vec<AdapterEvent> {
+    match event {
+        ClaudeCodeEvent::System {
+            subtype,
+            session_id,
+            model,
+            tools,
+            cwd,
+        } => {
+            if subtype == "init" {
+                vec![AdapterEvent::SessionStart {
+                    session_id: session_id.clone(),
+                    model: if model.is_empty() {
+                        None
+                    } else {
+                        Some(model.clone())
+                    },
+                    tools: tools.clone(),
+                    cwd: cwd.clone(),
+                }]
+            } else {
+                // compact_boundary or other subtypes — no adapter events needed
+                vec![]
+            }
+        }
+        ClaudeCodeEvent::StreamEvent { event, .. } => adapt_claude_code_stream_event(event),
+        ClaudeCodeEvent::Assistant { message, .. } => {
+            adapt_claude_code_assistant_message(message)
+        }
+        ClaudeCodeEvent::User { message, .. } => adapt_claude_code_user_message(message),
+        ClaudeCodeEvent::Result {
+            total_cost_usd,
+            usage,
+            is_error,
+            num_turns,
+            duration_ms,
+            ..
+        } => {
+            vec![AdapterEvent::SessionEnd {
+                total_cost_usd: *total_cost_usd,
+                usage: usage.as_ref().map(|u| super::unified::TokenUsage {
+                    input_tokens: u.input_tokens,
+                    output_tokens: u.output_tokens,
+                    cache_read_tokens: u.cache_read_input_tokens,
+                    cache_write_tokens: u.cache_creation_input_tokens,
+                }),
+                is_error: *is_error,
+                num_turns: *num_turns,
+                duration_ms: *duration_ms,
+            }]
+        }
+    }
+}
+
 /// Apply an adapter event to a UnifiedMessage being built.
 ///
 /// This is the core state machine that updates the message as events arrive.
@@ -448,6 +674,8 @@ pub fn apply_adapter_event(msg: &mut UnifiedMessage, event: &AdapterEvent) {
             });
             msg.status = MSG_STATUS_ERROR.to_string();
         }
+        // Session-level events don't modify individual messages
+        AdapterEvent::SessionStart { .. } | AdapterEvent::SessionEnd { .. } => {}
     }
 }
 

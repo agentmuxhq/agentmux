@@ -17,7 +17,10 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 use tokio::sync::mpsc;
 
-use super::adapters::{adapt_claude_code_stream_event, AdapterEvent, ClaudeCodeStreamEvent};
+use super::adapters::{
+    adapt_claude_code_event, adapt_claude_code_stream_event, AdapterEvent, ClaudeCodeEvent,
+    ClaudeCodeStreamEvent,
+};
 use super::unified::AgentBackendConfig;
 
 // ---- Error types ----
@@ -130,6 +133,29 @@ impl AgentProcess {
         Ok(())
     }
 
+    /// Send a structured follow-up message to a running Claude Code subprocess.
+    ///
+    /// Uses the `--input-format stream-json` protocol. The message is formatted
+    /// as an NDJSON line with `type: "user"` and the given session ID.
+    pub async fn send_user_message(
+        &mut self,
+        session_id: &str,
+        text: &str,
+    ) -> Result<(), AgentProcessError> {
+        let msg = serde_json::json!({
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": text
+            },
+            "session_id": session_id
+        });
+        let mut line = serde_json::to_string(&msg)
+            .map_err(|e| AgentProcessError::JsonParse(e.to_string()))?;
+        line.push('\n');
+        self.write_stdin_raw(line.as_bytes()).await
+    }
+
     /// Take ownership of the child's stdout for reading in a background task.
     pub fn take_stdout(&mut self) -> Option<ChildStdout> {
         self.child.stdout.take()
@@ -191,24 +217,51 @@ impl AgentProcess {
 
 // ---- NDJSON line parser ----
 
-/// Parse a single NDJSON line from an agent's stdout into a stream event.
+/// Parse a single NDJSON line from an agent's stdout into adapter events.
 ///
-/// Claude Code outputs each event as a single JSON line. This function
-/// parses that line into a `ClaudeCodeStreamEvent` and then converts
-/// it to adapter events.
+/// Claude Code with `--output-format stream-json` outputs top-level events
+/// (system, stream_event, assistant, user, result). This function first tries
+/// to parse as a `ClaudeCodeEvent` (outer wrapper), and falls back to
+/// `ClaudeCodeStreamEvent` (inner stream event) for backwards compatibility
+/// with older invocations or partial output.
 pub fn parse_ndjson_line(line: &str) -> Result<Vec<AdapterEvent>, AgentProcessError> {
     let line = line.trim();
     if line.is_empty() {
         return Ok(vec![]);
     }
 
+    // Try outer ClaudeCodeEvent first (stream-json protocol)
+    if let Ok(event) = serde_json::from_str::<ClaudeCodeEvent>(line) {
+        return Ok(adapt_claude_code_event(&event));
+    }
+
+    // Fall back to inner ClaudeCodeStreamEvent (legacy or partial)
     let event: ClaudeCodeStreamEvent =
         serde_json::from_str(line).map_err(|e| AgentProcessError::JsonParse(e.to_string()))?;
 
     Ok(adapt_claude_code_stream_event(&event))
 }
 
-/// Parse a raw NDJSON line, returning the raw event and adapted events.
+/// Parse a raw NDJSON line, returning the raw outer event and adapted events.
+///
+/// Useful when the caller needs both the raw event for logging and
+/// the adapted events for the UI.
+pub fn parse_ndjson_line_with_event(
+    line: &str,
+) -> Result<(ClaudeCodeEvent, Vec<AdapterEvent>), AgentProcessError> {
+    let line = line.trim();
+    if line.is_empty() {
+        return Err(AgentProcessError::JsonParse("empty line".into()));
+    }
+
+    let event: ClaudeCodeEvent =
+        serde_json::from_str(line).map_err(|e| AgentProcessError::JsonParse(e.to_string()))?;
+
+    let adapted = adapt_claude_code_event(&event);
+    Ok((event, adapted))
+}
+
+/// Parse a raw NDJSON line as an inner stream event (legacy).
 ///
 /// Useful when the caller needs both the raw event for logging and
 /// the adapted events for the UI.

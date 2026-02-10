@@ -450,6 +450,7 @@ const StatusBar = memo(({ model }: { model: UnifiedAIViewModel }) => {
     const status = useAtomValue(model.statusAtom);
     const isStreaming = useAtomValue(model.isStreamingAtom);
     const usage = useAtomValue(model.totalUsageAtom);
+    const cost = useAtomValue(model.totalCostAtom);
     const selectedBackend = useAtomValue(model.selectedBackendAtom);
     const backends = useAtomValue(model.availableBackendsAtom);
 
@@ -479,6 +480,9 @@ const StatusBar = memo(({ model }: { model: UnifiedAIViewModel }) => {
             {cfg && <span className="uai-status-item">{cfg.display_name}</span>}
             {totalTokens > 0 && (
                 <span className="uai-status-item">{(totalTokens / 1000).toFixed(1)}k tokens</span>
+            )}
+            {cost > 0 && (
+                <span className="uai-status-item">${cost.toFixed(3)}</span>
             )}
             <span className="uai-status-spacer" />
             {backends.length > 1 && (

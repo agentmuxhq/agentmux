@@ -321,6 +321,23 @@ export interface AdapterError {
     message: string;
 }
 
+export interface AdapterSessionStart {
+    type: "session_start";
+    session_id: string;
+    model?: string;
+    tools: string[];
+    cwd: string;
+}
+
+export interface AdapterSessionEnd {
+    type: "session_end";
+    total_cost_usd: number;
+    usage?: TokenUsage;
+    is_error: boolean;
+    num_turns: number;
+    duration_ms: number;
+}
+
 export type AdapterEvent =
     | AdapterMessageStart
     | AdapterTextDelta
@@ -330,7 +347,9 @@ export type AdapterEvent =
     | AdapterToolApprovalNeeded
     | AdapterToolResult
     | AdapterMessageEnd
-    | AdapterError;
+    | AdapterError
+    | AdapterSessionStart
+    | AdapterSessionEnd;
 
 // ---- Helper functions ----
 
@@ -492,6 +511,11 @@ export function applyAdapterEvent(msg: UnifiedMessage, event: AdapterEvent): Uni
         case "error":
             updated.parts.push({ type: "error", message: event.message });
             updated.status = MSG_STATUS_ERROR;
+            break;
+
+        // Session-level events don't modify individual messages
+        case "session_start":
+        case "session_end":
             break;
     }
 

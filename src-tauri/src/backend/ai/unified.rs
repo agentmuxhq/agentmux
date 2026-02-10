@@ -114,16 +114,44 @@ impl Default for AgentBackendConfig {
 }
 
 /// Pre-configured agent backend for Claude Code.
+///
+/// Uses `-p` (non-interactive) mode with full NDJSON streaming:
+/// - `--output-format stream-json`: NDJSON output protocol
+/// - `--verbose`: Include system events and tool details
+/// - `--include-partial-messages`: Token-level streaming events
+/// - `--input-format stream-json`: Accept structured follow-up messages via stdin
 pub fn claude_code_config() -> AgentBackendConfig {
+    let mut env = HashMap::new();
+    // Disable non-essential traffic (autoupdater, telemetry, error reporting)
+    env.insert(
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+        "1".to_string(),
+    );
+    // Prevent terminal title changes (we manage our own)
+    env.insert(
+        "CLAUDE_CODE_DISABLE_TERMINAL_TITLE".to_string(),
+        "1".to_string(),
+    );
+    // Increase memory limit to prevent OOM on long sessions
+    env.insert(
+        "NODE_OPTIONS".to_string(),
+        "--max-old-space-size=4096".to_string(),
+    );
+
     AgentBackendConfig {
         id: AGENT_CLAUDE_CODE.to_string(),
         display_name: "Claude Code".to_string(),
         executable: "claude".to_string(),
         args: vec![
+            "-p".to_string(),
             "--output-format".to_string(),
             "stream-json".to_string(),
             "--verbose".to_string(),
+            "--include-partial-messages".to_string(),
+            "--input-format".to_string(),
+            "stream-json".to_string(),
         ],
+        env,
         stream_protocol: "ndjson".to_string(),
         supports_mcp: true,
         supports_pane_awareness: true,

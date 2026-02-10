@@ -84,18 +84,20 @@ pub fn run() {
             commands::devtools::is_devtools_open,
             // Context menu (native popup)
             commands::contextmenu::show_context_menu,
-            // Stub commands (to be implemented in later phases)
+            // Workspace commands
+            commands::workspace::create_workspace,
+            commands::workspace::switch_workspace,
+            commands::workspace::delete_workspace,
+            // Tab commands
+            commands::tab::set_active_tab,
+            commands::tab::create_tab,
+            commands::tab::close_tab,
+            // Misc commands
             commands::stubs::download_file,
             commands::stubs::quicklook,
             commands::stubs::update_wco,
             commands::stubs::set_keyboard_chord_mode,
             commands::stubs::register_global_webview_keys,
-            commands::stubs::create_workspace,
-            commands::stubs::switch_workspace,
-            commands::stubs::delete_workspace,
-            commands::stubs::set_active_tab,
-            commands::stubs::create_tab,
-            commands::stubs::close_tab,
             commands::stubs::set_window_init_status,
             commands::stubs::set_waveai_open,
             commands::updater::install_update,
@@ -111,12 +113,12 @@ pub fn run() {
             commands::rpc::service_request,
             commands::rpc::set_block_term_size,
             // File and reactive commands
-            commands::rpc::fetch_wave_file,
-            commands::rpc::reactive_register,
-            commands::rpc::reactive_unregister,
-            commands::rpc::reactive_inject,
-            commands::rpc::reactive_poller_config,
-            commands::rpc::get_schema,
+            commands::rpc::file::fetch_wave_file,
+            commands::rpc::reactive::reactive_register,
+            commands::rpc::reactive::reactive_unregister,
+            commands::rpc::reactive::reactive_inject,
+            commands::rpc::reactive::reactive_poller_config,
+            commands::rpc::schema::get_schema,
         ])
         // Application setup
         .setup(|app| {

@@ -512,6 +512,7 @@ mod tests {
             cwd: Some("/home/user/project".into()),
             env: HashMap::new(),
             initial_prompt: Some("explain this codebase".into()),
+            resume_session_id: None,
         };
 
         let json = serde_json::to_string(&req).unwrap();

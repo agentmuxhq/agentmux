@@ -6,7 +6,7 @@
 //!
 //! Provides message injection into terminal panes, agent registration,
 //! rate limiting, message sanitization, audit logging, and cross-host
-//! polling via AgentMux cloud service.
+//! polling via AgentBus cloud service.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
@@ -31,7 +31,7 @@ const RATE_LIMIT_MAX: u32 = 10;
 /// Delay between message injection and Enter key (milliseconds).
 const INJECT_ENTER_DELAY_MS: u64 = 150;
 
-/// Default poll interval for AgentMux poller (seconds).
+/// Default poll interval for AgentBus poller (seconds).
 pub const DEFAULT_POLL_INTERVAL_SECS: u64 = 30;
 
 // ---- Types ----
@@ -96,27 +96,27 @@ pub struct AuditLogEntry {
     pub request_id: String,
 }
 
-/// Poller configuration for AgentMux cloud service.
+/// Poller configuration for AgentBus cloud service.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PollerConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agentmux_url: Option<String>,
+    pub agentbus_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agentmux_token: Option<String>,
+    pub agentbus_token: Option<String>,
     #[serde(default)]
     pub poll_interval_secs: u64,
 }
 
-/// AgentMux config file format (agentmux.json).
+/// AgentBus config file format (agentbus.json).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentMuxConfigFile {
+pub struct AgentBusConfigFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
 }
 
-/// Pending injection from AgentMux cloud.
+/// Pending injection from AgentBus cloud.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PendingInjection {
     pub id: String,
@@ -129,7 +129,7 @@ pub struct PendingInjection {
     pub created_at: u64,
 }
 
-/// Response from AgentMux pending endpoint.
+/// Response from AgentBus pending endpoint.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PendingResponse {
     pub injections: Vec<PendingInjection>,
@@ -605,7 +605,7 @@ pub fn get_global_handler() -> &'static ReactiveHandler {
 
 // ---- Poller ----
 
-/// Poller state for cross-host message polling from AgentMux.
+/// Poller state for cross-host message polling from AgentBus.
 pub struct Poller {
     config: RwLock<PollerConfig>,
     _handler: &'static ReactiveHandler,
@@ -633,7 +633,7 @@ impl Poller {
     /// Check if the poller is configured (has URL and token).
     pub fn is_configured(&self) -> bool {
         let config = self.config.read().unwrap();
-        config.agentmux_url.is_some() && config.agentmux_token.is_some()
+        config.agentbus_url.is_some() && config.agentbus_token.is_some()
     }
 
     /// Check if the poller is running.
@@ -667,10 +667,10 @@ impl Poller {
     pub fn status(&self) -> PollerStatus {
         let config = self.config.read().unwrap();
         PollerStatus {
-            configured: config.agentmux_url.is_some() && config.agentmux_token.is_some(),
+            configured: config.agentbus_url.is_some() && config.agentbus_token.is_some(),
             running: self.is_running(),
-            url: config.agentmux_url.clone(),
-            has_token: config.agentmux_token.is_some(),
+            url: config.agentbus_url.clone(),
+            has_token: config.agentbus_token.is_some(),
             poll_count: *self.poll_count.lock().unwrap(),
             injections_count: *self.injections_count.lock().unwrap(),
             last_poll: *self.last_poll.lock().unwrap(),
@@ -680,8 +680,8 @@ impl Poller {
     /// Reconfigure the poller with new URL and token.
     pub fn reconfigure(&self, url: Option<String>, token: Option<String>) {
         let mut config = self.config.write().unwrap();
-        config.agentmux_url = url;
-        config.agentmux_token = token;
+        config.agentbus_url = url;
+        config.agentbus_token = token;
     }
 
     /// Record a successful poll.
@@ -847,10 +847,10 @@ pub fn format_injected_message(msg: &str, source_agent: Option<&str>, include_so
     msg.to_string()
 }
 
-/// Validate an AgentMux URL for SSRF protection.
+/// Validate an AgentBus URL for SSRF protection.
 ///
 /// Only allows https:// or http://localhost/127.0.0.1/::1.
-pub fn validate_agentmux_url(url_str: &str) -> Result<(), String> {
+pub fn validate_agentbus_url(url_str: &str) -> Result<(), String> {
     if url_str.is_empty() {
         return Err("URL is empty".to_string());
     }
@@ -1004,35 +1004,35 @@ mod tests {
 
     #[test]
     fn test_validate_url_https() {
-        assert!(validate_agentmux_url("https://agentmux.example.com/api").is_ok());
+        assert!(validate_agentbus_url("https://agentmux.example.com/api").is_ok());
     }
 
     #[test]
     fn test_validate_url_http_localhost() {
-        assert!(validate_agentmux_url("http://localhost:8080/api").is_ok());
-        assert!(validate_agentmux_url("http://127.0.0.1:8080/api").is_ok());
-        assert!(validate_agentmux_url("http://[::1]:8080/api").is_ok());
+        assert!(validate_agentbus_url("http://localhost:8080/api").is_ok());
+        assert!(validate_agentbus_url("http://127.0.0.1:8080/api").is_ok());
+        assert!(validate_agentbus_url("http://[::1]:8080/api").is_ok());
     }
 
     #[test]
     fn test_validate_url_http_remote_rejected() {
-        assert!(validate_agentmux_url("http://evil.com/api").is_err());
+        assert!(validate_agentbus_url("http://evil.com/api").is_err());
     }
 
     #[test]
     fn test_validate_url_bad_scheme() {
-        assert!(validate_agentmux_url("ftp://example.com").is_err());
-        assert!(validate_agentmux_url("file:///etc/passwd").is_err());
+        assert!(validate_agentbus_url("ftp://example.com").is_err());
+        assert!(validate_agentbus_url("file:///etc/passwd").is_err());
     }
 
     #[test]
     fn test_validate_url_empty() {
-        assert!(validate_agentmux_url("").is_err());
+        assert!(validate_agentbus_url("").is_err());
     }
 
     #[test]
     fn test_validate_url_no_scheme() {
-        assert!(validate_agentmux_url("example.com/api").is_err());
+        assert!(validate_agentbus_url("example.com/api").is_err());
     }
 
     // -- Format injected message tests --
@@ -1275,8 +1275,8 @@ mod tests {
         let handler = get_global_handler();
         let poller = Poller::new(
             PollerConfig {
-                agentmux_url: None,
-                agentmux_token: None,
+                agentbus_url: None,
+                agentbus_token: None,
                 poll_interval_secs: 30,
             },
             handler,
@@ -1292,8 +1292,8 @@ mod tests {
         let handler = get_global_handler();
         let poller = Poller::new(
             PollerConfig {
-                agentmux_url: Some("https://example.com".to_string()),
-                agentmux_token: Some("token123".to_string()),
+                agentbus_url: Some("https://example.com".to_string()),
+                agentbus_token: Some("token123".to_string()),
                 poll_interval_secs: 30,
             },
             handler,
@@ -1309,8 +1309,8 @@ mod tests {
         let handler = get_global_handler();
         let poller = Poller::new(
             PollerConfig {
-                agentmux_url: Some("https://example.com".to_string()),
-                agentmux_token: Some("token123".to_string()),
+                agentbus_url: Some("https://example.com".to_string()),
+                agentbus_token: Some("token123".to_string()),
                 poll_interval_secs: 30,
             },
             handler,
@@ -1331,8 +1331,8 @@ mod tests {
         let handler = get_global_handler();
         let poller = Poller::new(
             PollerConfig {
-                agentmux_url: None,
-                agentmux_token: None,
+                agentbus_url: None,
+                agentbus_token: None,
                 poll_interval_secs: 30,
             },
             handler,
@@ -1399,14 +1399,14 @@ mod tests {
     }
 
     #[test]
-    fn test_agentmux_config_serde() {
-        let config = AgentMuxConfigFile {
+    fn test_agentbus_config_serde() {
+        let config = AgentBusConfigFile {
             url: Some("https://mux.example.com".to_string()),
             token: Some("secret".to_string()),
         };
 
         let json = serde_json::to_string(&config).unwrap();
-        let parsed: AgentMuxConfigFile = serde_json::from_str(&json).unwrap();
+        let parsed: AgentBusConfigFile = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.url.as_deref(), Some("https://mux.example.com"));
     }
 

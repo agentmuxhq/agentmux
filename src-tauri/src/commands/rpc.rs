@@ -32,7 +32,7 @@ pub async fn service_request(
     state: tauri::State<'_, AppState>,
 ) -> Result<Value, String> {
     let result = handle_service_request(&service, &method, &args, ui_context.as_ref(), &state)?;
-    tracing::info!("service_request: {}.{} => {:?}", service, method, result);
+    tracing::debug!("service_request: {}.{} => {:?}", service, method, result);
     Ok(result)
 }
 

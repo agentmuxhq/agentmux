@@ -1,3 +1,4 @@
+pub mod domain;
 mod backend;
 mod commands;
 mod crash;

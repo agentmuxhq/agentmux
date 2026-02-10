@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! WCloud client: telemetry submission to the WaveMux cloud API.
+//! WCloud client: telemetry submission to the AgentMux cloud API.
 //! Port of Go's pkg/wcloud/.
 
 use crate::backend::telemetry::{ActivityType, TEvent};

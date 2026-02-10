@@ -17,7 +17,7 @@ os.environ['WEBHOOK_CONFIG_TABLE'] = 'test-config-table'
 os.environ['CONNECTION_TABLE'] = 'test-connection-table'
 os.environ['ENVIRONMENT'] = 'test'
 os.environ['SECRET_NAME'] = 'services/prod'
-os.environ['PROJECT_NAME'] = 'wavemux'
+os.environ['PROJECT_NAME'] = 'agentmux'
 
 import handler
 
@@ -40,7 +40,7 @@ class TestHealthCheck(unittest.TestCase):
         self.assertEqual(response['statusCode'], 200)
         body = json.loads(response['body'])
         self.assertEqual(body['status'], 'healthy')
-        self.assertEqual(body['service'], 'wavemux-webhook-router')
+        self.assertEqual(body['service'], 'agentmux-webhook-router')
         self.assertEqual(body['environment'], 'test')
 
 
@@ -142,7 +142,7 @@ class TestFilterMatching(unittest.TestCase):
 
     def test_wildcard_match(self):
         filters = {'repository': 'a5af/*'}
-        data = {'repository': 'a5af/wavemux'}
+        data = {'repository': 'a5af/agentmux'}
 
         result = handler.matches_filters(filters, data)
         self.assertTrue(result)

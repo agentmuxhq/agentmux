@@ -33,7 +33,7 @@ import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
 
 // Debug logging function - writes to file
-const DEBUG_LOG_PATH = "C:/Systems/wavemux-debug.log";
+const DEBUG_LOG_PATH = "C:/Systems/agentmux-debug.log";
 
 function stringToBase64(str: string): string {
     const bytes = new TextEncoder().encode(str);

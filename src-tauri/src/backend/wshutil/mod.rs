@@ -4,7 +4,7 @@
 //! WSH RPC transport layer.
 //! Port of Go's `pkg/wshutil/` — OSC encoding, RPC proxy, event system, and I/O adapters.
 //!
-//! This module provides the communication layer between WaveMux terminals and the
+//! This module provides the communication layer between AgentMux terminals and the
 //! backend RPC system. Key components:
 //!
 //! - **OSC encoding/decoding:** Terminal escape sequences for RPC messages

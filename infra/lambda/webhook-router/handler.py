@@ -1,7 +1,7 @@
 """
-WaveMux Webhook Router Lambda Handler
+AgentMux Webhook Router Lambda Handler
 
-Routes incoming webhooks to WaveMux terminal instances via WebSocket.
+Routes incoming webhooks to AgentMux terminal instances via WebSocket.
 """
 
 import json
@@ -27,7 +27,7 @@ WEBHOOK_CONFIG_TABLE = os.environ['WEBHOOK_CONFIG_TABLE']
 CONNECTION_TABLE = os.environ['CONNECTION_TABLE']
 ENVIRONMENT = os.environ['ENVIRONMENT']
 SECRET_NAME = os.environ.get('SECRET_NAME', 'services/prod')
-PROJECT_NAME = os.environ.get('PROJECT_NAME', 'wavemux')
+PROJECT_NAME = os.environ.get('PROJECT_NAME', 'agentmux')
 
 # DynamoDB tables
 webhook_config_table = dynamodb.Table(WEBHOOK_CONFIG_TABLE)
@@ -48,7 +48,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     - POST /register - Register terminal subscription
     - POST /unregister - Remove terminal subscription
     - GET /health - Health check
-    - WebSocket $connect - Establish connection from WaveMux instance
+    - WebSocket $connect - Establish connection from AgentMux instance
     - WebSocket $disconnect - Clean up connection
     """
 
@@ -88,7 +88,7 @@ def handle_health_check(event: Dict[str, Any]) -> Dict[str, Any]:
         'statusCode': 200,
         'body': json.dumps({
             'status': 'healthy',
-            'service': 'wavemux-webhook-router',
+            'service': 'agentmux-webhook-router',
             'environment': ENVIRONMENT,
             'timestamp': int(time.time())
         })
@@ -154,7 +154,7 @@ def handle_webhook_delivery(event: Dict[str, Any]) -> Dict[str, Any]:
                     body
                 )
 
-                # Send to WaveMux instance via WebSocket
+                # Send to AgentMux instance via WebSocket
                 success = send_to_terminal(
                     subscription['workspaceId'],
                     subscription['terminalId'],
@@ -478,7 +478,7 @@ def handle_unregistration(event: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def handle_websocket_connect(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle WebSocket connection from WaveMux instance."""
+    """Handle WebSocket connection from AgentMux instance."""
 
     connection_id = event['requestContext']['connectionId']
     domain_name = event['requestContext']['domainName']
@@ -565,7 +565,7 @@ def get_webhook_secret(key: str) -> str:
 
     Secrets are stored in services/prod with structure:
     {
-      "wavemux": {
+      "agentmux": {
         "GITHUB_WEBHOOK_SECRET": "...",
         "CUSTOM_WEBHOOK_SECRET": "...",
         "DEFAULT_AUTH_SECRET": "..."

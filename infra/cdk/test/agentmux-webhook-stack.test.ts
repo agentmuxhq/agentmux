@@ -1,15 +1,15 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
-import { WaveMuxWebhookStack } from '../lib/wavemux-webhook-stack';
+import { AgentMuxWebhookStack } from '../lib/agentmux-webhook-stack';
 
-describe('WaveMuxWebhookStack', () => {
+describe('AgentMuxWebhookStack', () => {
   let app: cdk.App;
-  let stack: WaveMuxWebhookStack;
+  let stack: AgentMuxWebhookStack;
   let template: Template;
 
   beforeEach(() => {
     app = new cdk.App();
-    stack = new WaveMuxWebhookStack(app, 'TestStack', {
+    stack = new AgentMuxWebhookStack(app, 'TestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -22,7 +22,7 @@ describe('WaveMuxWebhookStack', () => {
   describe('DynamoDB Tables', () => {
     test('creates WebhookConfigTable with correct configuration', () => {
       template.hasResourceProperties('AWS::DynamoDB::Table', {
-        TableName: 'WaveMuxWebhookConfig-test',
+        TableName: 'AgentMuxWebhookConfig-test',
         BillingMode: 'PAY_PER_REQUEST',
         KeySchema: [
           {
@@ -35,7 +35,7 @@ describe('WaveMuxWebhookStack', () => {
 
     test('WebhookConfigTable has ProviderEventIndex GSI', () => {
       template.hasResourceProperties('AWS::DynamoDB::Table', {
-        TableName: 'WaveMuxWebhookConfig-test',
+        TableName: 'AgentMuxWebhookConfig-test',
         GlobalSecondaryIndexes: Match.arrayWith([
           Match.objectLike({
             IndexName: 'ProviderEventIndex',
@@ -56,7 +56,7 @@ describe('WaveMuxWebhookStack', () => {
 
     test('WebhookConfigTable has WorkspaceIndex GSI', () => {
       template.hasResourceProperties('AWS::DynamoDB::Table', {
-        TableName: 'WaveMuxWebhookConfig-test',
+        TableName: 'AgentMuxWebhookConfig-test',
         GlobalSecondaryIndexes: Match.arrayWith([
           Match.objectLike({
             IndexName: 'WorkspaceIndex',
@@ -73,7 +73,7 @@ describe('WaveMuxWebhookStack', () => {
 
     test('creates ConnectionTable with TTL enabled', () => {
       template.hasResourceProperties('AWS::DynamoDB::Table', {
-        TableName: 'WaveMuxConnections-test',
+        TableName: 'AgentMuxConnections-test',
         TimeToLiveSpecification: {
           AttributeName: 'ttl',
           Enabled: true,
@@ -83,7 +83,7 @@ describe('WaveMuxWebhookStack', () => {
 
     test('ConnectionTable has WorkspaceIndex GSI', () => {
       template.hasResourceProperties('AWS::DynamoDB::Table', {
-        TableName: 'WaveMuxConnections-test',
+        TableName: 'AgentMuxConnections-test',
         GlobalSecondaryIndexes: Match.arrayWith([
           Match.objectLike({
             IndexName: 'WorkspaceIndex',
@@ -94,7 +94,7 @@ describe('WaveMuxWebhookStack', () => {
 
     test('prod environment has PITR enabled', () => {
       const prodApp = new cdk.App();
-      const prodStack = new WaveMuxWebhookStack(prodApp, 'ProdStack', {
+      const prodStack = new AgentMuxWebhookStack(prodApp, 'ProdStack', {
         environment: 'prod',
         env: {
           account: '123456789012',
@@ -104,7 +104,7 @@ describe('WaveMuxWebhookStack', () => {
       const prodTemplate = Template.fromStack(prodStack);
 
       prodTemplate.hasResourceProperties('AWS::DynamoDB::Table', {
-        TableName: 'WaveMuxWebhookConfig-prod',
+        TableName: 'AgentMuxWebhookConfig-prod',
         PointInTimeRecoverySpecification: {
           PointInTimeRecoveryEnabled: true,
         },
@@ -115,7 +115,7 @@ describe('WaveMuxWebhookStack', () => {
   describe('Lambda Function', () => {
     test('creates webhook router function with correct configuration', () => {
       template.hasResourceProperties('AWS::Lambda::Function', {
-        FunctionName: 'wavemux-webhook-router-test',
+        FunctionName: 'agentmux-webhook-router-test',
         Runtime: 'python3.12',
         Handler: 'handler.lambda_handler',
         Timeout: 30,
@@ -210,7 +210,7 @@ describe('WaveMuxWebhookStack', () => {
   describe('HTTP API Gateway', () => {
     test('creates HTTP API', () => {
       template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
-        Name: 'wavemux-webhook-http-test',
+        Name: 'agentmux-webhook-http-test',
         ProtocolType: 'HTTP',
       });
     });
@@ -260,7 +260,7 @@ describe('WaveMuxWebhookStack', () => {
   describe('WebSocket API Gateway', () => {
     test('creates WebSocket API', () => {
       template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
-        Name: 'wavemux-webhook-ws-test',
+        Name: 'agentmux-webhook-ws-test',
         ProtocolType: 'WEBSOCKET',
       });
     });
@@ -288,8 +288,8 @@ describe('WaveMuxWebhookStack', () => {
   describe('Secrets Manager', () => {
     test('creates webhook secret', () => {
       template.hasResourceProperties('AWS::SecretsManager::Secret', {
-        Name: 'wavemux/webhook-secret-test',
-        Description: 'Webhook authentication secrets for WaveMux (GitHub, etc.)',
+        Name: 'agentmux/webhook-secret-test',
+        Description: 'Webhook authentication secrets for AgentMux (GitHub, etc.)',
       });
     });
 
@@ -341,7 +341,7 @@ describe('WaveMuxWebhookStack', () => {
 
     test('exports WebSocket API endpoint', () => {
       template.hasOutput('WebSocketApiEndpoint', {
-        Description: 'WebSocket API endpoint for WaveMux clients',
+        Description: 'WebSocket API endpoint for AgentMux clients',
         Export: {
           Name: 'TestStack-WebSocketApiEndpoint',
         },
@@ -367,7 +367,7 @@ describe('WaveMuxWebhookStack', () => {
 
       expect(lambdaFunction.Properties.Tags).toContainEqual({
         Key: 'Project',
-        Value: 'WaveMux',
+        Value: 'AgentMux',
       });
       expect(lambdaFunction.Properties.Tags).toContainEqual({
         Key: 'Component',

@@ -1,9 +1,9 @@
 {
-  "name": "wavemux-webhook-infra",
+  "name": "agentmux-webhook-infra",
   "version": "0.1.0",
-  "description": "WaveMux Webhook Router Infrastructure",
+  "description": "AgentMux Webhook Router Infrastructure",
   "bin": {
-    "wavemux-webhook-infra": "bin/cdk.js"
+    "agentmux-webhook-infra": "bin/cdk.js"
   },
   "scripts": {
     "build": "tsc",

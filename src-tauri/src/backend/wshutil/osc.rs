@@ -6,9 +6,9 @@
 
 use base64::Engine;
 
-/// OSC number for WaveMux client messages.
+/// OSC number for AgentMux client messages.
 pub const WAVE_OSC: &str = "23198";
-/// OSC number for WaveMux server responses.
+/// OSC number for AgentMux server responses.
 pub const WAVE_SERVER_OSC: &str = "23199";
 
 /// BEL character (OSC terminator).
@@ -35,7 +35,7 @@ pub fn make_osc_prefix(osc_num: &str) -> Vec<u8> {
     prefix
 }
 
-/// Encode bytes as a WaveMux OSC escape sequence.
+/// Encode bytes as a AgentMux OSC escape sequence.
 ///
 /// Format: ESC ] <oscnum> ; <payload> BEL
 ///
@@ -62,7 +62,7 @@ pub fn encode_wave_osc_bytes(osc_num: &str, data: &[u8]) -> Result<Vec<u8>, Stri
     Ok(result)
 }
 
-/// Decode a WaveMux OSC escape sequence, returning the payload bytes.
+/// Decode a AgentMux OSC escape sequence, returning the payload bytes.
 ///
 /// Strips the OSC prefix and terminator (BEL or ST).
 /// If payload starts with '{', it's JSON. Otherwise, base64 decode.
@@ -100,7 +100,7 @@ pub fn decode_wave_osc_bytes(data: &[u8]) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("base64 decode error: {}", e))
 }
 
-/// Check if bytes represent a WaveMux OSC message.
+/// Check if bytes represent a AgentMux OSC message.
 pub fn is_wave_osc(data: &[u8]) -> bool {
     if data.len() < 9 {
         return false;

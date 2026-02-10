@@ -2,13 +2,13 @@ param([int]$Runs = 5)
 
 Write-Host "`nMeasuring Startup Time (Backend Spawn)" -ForegroundColor Cyan
 $times = @()
-$exePath = "src-tauri/target/release/wavemux.exe"
+$exePath = "src-tauri/target/release/agentmux.exe"
 
 for ($i = 1; $i -le $Runs; $i++) {
     Write-Host "Run $i/$Runs... " -NoNewline
 
     # Clean
-    Get-Process wavemux* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process agentmux* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 500
 
     # Measure
@@ -24,7 +24,7 @@ for ($i = 1; $i -le $Runs; $i++) {
         Start-Sleep -Milliseconds 100
         $elapsed += 0.1
 
-        $backend = Get-Process wavemuxsrv -ErrorAction SilentlyContinue
+        $backend = Get-Process agentmuxsrv -ErrorAction SilentlyContinue
         if ($backend) {
             $started = $true
             break
@@ -42,7 +42,7 @@ for ($i = 1; $i -le $Runs; $i++) {
     }
 
     # Cleanup
-    Get-Process wavemux* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process agentmux* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 500
 }
 

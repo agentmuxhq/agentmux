@@ -8,9 +8,9 @@ pub struct BackendSpawnResult {
     pub web_endpoint: String,
 }
 
-/// Spawn the wavemuxsrv Go backend as a Tauri sidecar.
+/// Spawn the agentmuxsrv Go backend as a Tauri sidecar.
 ///
-/// Replaces emain/emain-wavemuxsrv.ts.
+/// Replaces emain/emain-agentmuxsrv.ts.
 ///
 /// The backend prints a line to stderr when ready:
 ///   WAVESRV-ESTART ws:<addr> web:<addr> version:<ver> buildtime:<time>
@@ -36,13 +36,13 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
 
     // Get auth key from app state
     let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
-    tracing::info!("Spawning wavemuxsrv with auth key: {}", &auth_key[..8]);
+    tracing::info!("Spawning agentmuxsrv with auth key: {}", &auth_key[..8]);
 
     let shell = app.shell();
 
     let sidecar_cmd = shell
-        .sidecar("wavemuxsrv")
-        .map_err(|e| format!("Failed to find wavemuxsrv sidecar: {}", e))?;
+        .sidecar("agentmuxsrv")
+        .map_err(|e| format!("Failed to find agentmuxsrv sidecar: {}", e))?;
 
     let (mut rx, child) = sidecar_cmd
         .args([
@@ -56,7 +56,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .env("WCLOUD_ENDPOINT", "https://api.waveterm.dev/central")
         .env("WCLOUD_WS_ENDPOINT", "wss://wsapi.waveterm.dev/")
         .spawn()
-        .map_err(|e| format!("Failed to spawn wavemuxsrv: {}", e))?;
+        .map_err(|e| format!("Failed to spawn agentmuxsrv: {}", e))?;
 
     // Store child handle for graceful shutdown
     {
@@ -95,19 +95,19 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                         } else if let Some(event_data) = l.strip_prefix("WAVESRV-EVENT:") {
                             handle_backend_event(&app_handle, event_data);
                         } else {
-                            tracing::info!("[wavemuxsrv] {}", l);
+                            tracing::info!("[agentmuxsrv] {}", l);
                         }
                     }
                 }
                 CommandEvent::Stdout(line) => {
                     let line = String::from_utf8_lossy(&line);
-                    tracing::info!("[wavemuxsrv stdout] {}", line.trim());
+                    tracing::info!("[agentmuxsrv stdout] {}", line.trim());
                 }
                 CommandEvent::Error(err) => {
-                    tracing::error!("[wavemuxsrv error] {}", err);
+                    tracing::error!("[agentmuxsrv error] {}", err);
                 }
                 CommandEvent::Terminated(status) => {
-                    tracing::warn!("[wavemuxsrv] terminated with status: {:?}", status);
+                    tracing::warn!("[agentmuxsrv] terminated with status: {:?}", status);
                     // Emit quit event to frontend
                     if let Some(window) = app_handle.get_webview_window("main") {
                         let _ = window.emit("backend-terminated", serde_json::json!({
@@ -128,8 +128,8 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         endpoint_rx.recv(),
     )
     .await
-    .map_err(|_| "Timeout waiting for wavemuxsrv to start (30s)".to_string())?
-    .ok_or_else(|| "wavemuxsrv channel closed before sending endpoints".to_string())?;
+    .map_err(|_| "Timeout waiting for agentmuxsrv to start (30s)".to_string())?
+    .ok_or_else(|| "agentmuxsrv channel closed before sending endpoints".to_string())?;
 
     Ok(BackendSpawnResult {
         ws_endpoint: timeout.0,

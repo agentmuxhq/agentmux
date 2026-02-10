@@ -7,7 +7,7 @@
 use tauri::menu::*;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-/// Build the application menu for WaveMux.
+/// Build the application menu for AgentMux.
 /// This creates the same menu structure as the Electron version:
 /// - App/File/Edit/View/Workspace/Window menus
 pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
@@ -41,7 +41,7 @@ pub fn build_app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> 
 }
 
 fn build_app_submenu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Submenu<R>> {
-    let submenu = Submenu::new(app, "WaveMux", true)?;
+    let submenu = Submenu::new(app, "AgentMux", true)?;
 
     let about = MenuItem::with_id(app, "about", "About Wave Terminal", true, None::<&str>)?;
     submenu.append(&about)?;

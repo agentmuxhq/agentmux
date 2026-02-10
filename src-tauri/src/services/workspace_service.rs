@@ -3,7 +3,7 @@
 
 //! Workspace service — business logic for workspace and tab management.
 
-use crate::domain::entities::{Tab, Workspace};
+use crate::domain::entities::{LayoutState, Tab, Workspace};
 use crate::domain::traits::{ObjectStore, RepoResult, RepositoryError};
 use crate::domain::value_objects::*;
 use std::sync::Arc;
@@ -29,6 +29,17 @@ impl WorkspaceService {
         let workspace_id = Uuid::new_v4().to_string();
         let tab_id = Uuid::new_v4().to_string();
         let layout_id = Uuid::new_v4().to_string();
+
+        // Create empty layout for the default tab
+        let layout = LayoutState {
+            oid: layout_id.clone(),
+            version: 1,
+            ..Default::default()
+        };
+        let layout_json = serde_json::to_value(&layout)
+            .map_err(|e| RepositoryError::Serialization(e.to_string()))?;
+        self.store
+            .set_object_json(OTYPE_LAYOUT, &layout.oid, &layout_json)?;
 
         // Create default tab
         let tab = Tab {
@@ -89,8 +100,16 @@ impl WorkspaceService {
     pub fn delete_workspace(&self, oid: &str) -> RepoResult<()> {
         let workspace = self.get_workspace(oid)?;
 
-        // Delete all tabs
+        // Delete all tabs and their layouts
         for tab_id in &workspace.tabids {
+            // Try to load tab to find its layout
+            if let Ok(tab_json) = self.store.get_object_json(OTYPE_TAB, tab_id) {
+                if let Ok(tab) = serde_json::from_value::<Tab>(tab_json) {
+                    if !tab.layoutstate.is_empty() {
+                        let _ = self.store.delete_object(OTYPE_LAYOUT, &tab.layoutstate);
+                    }
+                }
+            }
             let _ = self.store.delete_object(OTYPE_TAB, tab_id);
         }
 
@@ -167,6 +186,18 @@ mod tests {
         // Verify workspace is stored
         let loaded = service.get_workspace(&ws.oid).unwrap();
         assert_eq!(loaded.name, "My Workspace");
+
+        // Verify the default tab's layout was created in the store
+        let tab_json = store
+            .get_object_json(OTYPE_TAB, &ws.tabids[0])
+            .unwrap();
+        let tab: Tab = serde_json::from_value(tab_json).unwrap();
+        assert!(!tab.layoutstate.is_empty());
+        let layout_json = store
+            .get_object_json(OTYPE_LAYOUT, &tab.layoutstate)
+            .unwrap();
+        let layout: LayoutState = serde_json::from_value(layout_json).unwrap();
+        assert_eq!(layout.version, 1);
     }
 
     #[test]

@@ -3,7 +3,7 @@
 
 //! Tab service — business logic for tab and block management.
 
-use crate::domain::entities::{Block, LayoutState, Tab};
+use crate::domain::entities::{LayoutState, Tab};
 use crate::domain::traits::{ObjectStore, RepoResult, RepositoryError};
 use crate::domain::value_objects::*;
 use std::sync::Arc;

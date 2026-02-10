@@ -310,7 +310,7 @@ type Osc16162Command =
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} }
     | { command: "E"; data: { [key: string]: string } } // Environment variables update
-    | { command: "X"; data: { agentmux_url?: string; agentmux_token?: string } }; // AgentMux config
+    | { command: "X"; data: { agentbus_url?: string; agentbus_token?: string } }; // AgentBus config
 
 function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
     if (!loaded) {
@@ -404,15 +404,15 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             }
             break;
         case "X":
-            // AgentMux configuration - update poller config at runtime
+            // AgentBus configuration - update poller config at runtime
             fireAndForget(async () => {
                 try {
                     if (isRustBackend()) {
                         const data = await reactivePollerConfig(
-                            cmd.data.agentmux_url || "",
-                            cmd.data.agentmux_token || "",
+                            cmd.data.agentbus_url || "",
+                            cmd.data.agentbus_token || "",
                         );
-                        console.log("[reactive] agentmux configured:", data?.running ? "running" : "stopped");
+                        console.log("[reactive] agentbus configured:", data?.running ? "running" : "stopped");
                         return;
                     }
                     const url = getWebServerEndpoint() + "/wave/reactive/poller/config";
@@ -420,19 +420,19 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                            agentmux_url: cmd.data.agentmux_url || "",
-                            agentmux_token: cmd.data.agentmux_token || "",
+                            agentbus_url: cmd.data.agentbus_url || "",
+                            agentbus_token: cmd.data.agentbus_token || "",
                         }),
                     });
                     if (!response.ok) {
                         const data = await response.json();
-                        console.error("[reactive] failed to configure agentmux:", data.error || response.status);
+                        console.error("[reactive] failed to configure agentbus:", data.error || response.status);
                     } else {
                         const data = await response.json();
-                        console.log("[reactive] agentmux configured:", data.running ? "running" : "stopped");
+                        console.log("[reactive] agentbus configured:", data.running ? "running" : "stopped");
                     }
                 } catch (e) {
-                    console.error("[reactive] error configuring agentmux:", e);
+                    console.error("[reactive] error configuring agentbus:", e);
                 }
             });
             break;

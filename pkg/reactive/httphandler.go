@@ -269,13 +269,13 @@ func HandlePollerStats(w http.ResponseWriter, r *http.Request) {
 
 // PollerConfigRequest represents a request to configure the poller at runtime.
 type PollerConfigRequest struct {
-	AgentMuxURL   string `json:"agentmux_url"`
-	AgentMuxToken string `json:"agentmux_token"`
+	AgentBusURL   string `json:"agentbus_url"`
+	AgentBusToken string `json:"agentbus_token"`
 }
 
-// validateAgentMuxURL validates the agentmux URL to prevent SSRF attacks.
+// validateAgentBusURL validates the agentbus URL to prevent SSRF attacks.
 // Only allows https:// URLs (or http://localhost for development).
-func validateAgentMuxURL(urlStr string) error {
+func validateAgentBusURL(urlStr string) error {
 	parsed, err := url.Parse(urlStr)
 	if err != nil {
 		return fmt.Errorf("malformed URL: %w", err)
@@ -313,7 +313,7 @@ func validateAgentMuxURL(urlStr string) error {
 
 // HandlePollerConfig handles POST requests to configure the cross-host poller at runtime.
 // Endpoint: POST /wave/reactive/poller/config
-// This allows updating AGENTMUX_URL and AGENTMUX_TOKEN without restarting WaveMux.
+// This allows updating AGENTBUS_URL and AGENTBUS_TOKEN without restarting WaveMux.
 func HandlePollerConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -336,15 +336,15 @@ func HandlePollerConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate URL if provided (empty URL is allowed to disable polling)
-	if req.AgentMuxURL != "" {
-		if err := validateAgentMuxURL(req.AgentMuxURL); err != nil {
-			writeJSONError(w, "invalid agentmux_url: "+err.Error(), http.StatusBadRequest)
+	if req.AgentBusURL != "" {
+		if err := validateAgentBusURL(req.AgentBusURL); err != nil {
+			writeJSONError(w, "invalid agentbus_url: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 
 	// Reconfigure the poller
-	if err := ReconfigureGlobalPoller(req.AgentMuxURL, req.AgentMuxToken); err != nil {
+	if err := ReconfigureGlobalPoller(req.AgentBusURL, req.AgentBusToken); err != nil {
 		writeJSONError(w, "failed to reconfigure poller: "+err.Error(), http.StatusInternalServerError)
 		return
 	}

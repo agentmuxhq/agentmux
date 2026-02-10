@@ -21,7 +21,7 @@ import (
 	"github.com/a5af/wavemux/pkg/wavebase"
 )
 
-// PendingInjection represents an injection waiting for delivery from AgentMux.
+// PendingInjection represents an injection waiting for delivery from AgentBus.
 type PendingInjection struct {
 	ID          string `json:"id"`
 	Message     string `json:"message"`
@@ -40,13 +40,13 @@ type AckRequest struct {
 	InjectionIDs []string `json:"injection_ids"`
 }
 
-// Poller polls AgentMux for pending cross-host injections.
+// Poller polls AgentBus for pending cross-host injections.
 type Poller struct {
 	mu sync.RWMutex
 
 	// Configuration
-	agentmuxURL   string
-	agentmuxToken string
+	agentbusURL   string
+	agentbusToken string
 	pollInterval  time.Duration
 	httpClient    *http.Client
 
@@ -67,31 +67,31 @@ type Poller struct {
 
 // PollerConfig holds configuration for the cross-host poller.
 type PollerConfig struct {
-	AgentMuxURL   string        // e.g., "https://agentmux.asaf.cc"
-	AgentMuxToken string        // Bearer token for auth
+	AgentBusURL   string        // e.g., "https://agentmux.asaf.cc"
+	AgentBusToken string        // Bearer token for auth
 	PollInterval  time.Duration // How often to poll (default: 5s)
 }
 
-// AgentMuxConfigFile represents the agentmux.json config file format.
-type AgentMuxConfigFile struct {
+// AgentBusConfigFile represents the agentbus.json config file format.
+type AgentBusConfigFile struct {
 	URL   string `json:"url"`
 	Token string `json:"token"`
 }
 
-// AgentMuxConfigFileName is the name of the config file in the wave data directory.
-const AgentMuxConfigFileName = "agentmux.json"
+// AgentBusConfigFileName is the name of the config file in the wave data directory.
+const AgentBusConfigFileName = "agentbus.json"
 
-// LoadAgentMuxConfigFile loads the agentmux configuration from the config file.
+// LoadAgentBusConfigFile loads the agentbus configuration from the config file.
 // Returns empty config if file doesn't exist or is invalid.
-func LoadAgentMuxConfigFile() (AgentMuxConfigFile, error) {
-	var config AgentMuxConfigFile
+func LoadAgentBusConfigFile() (AgentBusConfigFile, error) {
+	var config AgentBusConfigFile
 
 	dataDir := wavebase.GetWaveDataDir()
 	if dataDir == "" {
 		return config, fmt.Errorf("wave data directory not set")
 	}
 
-	configPath := filepath.Join(dataDir, AgentMuxConfigFileName)
+	configPath := filepath.Join(dataDir, AgentBusConfigFileName)
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -107,14 +107,14 @@ func LoadAgentMuxConfigFile() (AgentMuxConfigFile, error) {
 	return config, nil
 }
 
-// SaveAgentMuxConfigFile saves the agentmux configuration to the config file.
-func SaveAgentMuxConfigFile(config AgentMuxConfigFile) error {
+// SaveAgentBusConfigFile saves the agentbus configuration to the config file.
+func SaveAgentBusConfigFile(config AgentBusConfigFile) error {
 	dataDir := wavebase.GetWaveDataDir()
 	if dataDir == "" {
 		return fmt.Errorf("wave data directory not set")
 	}
 
-	configPath := filepath.Join(dataDir, AgentMuxConfigFileName)
+	configPath := filepath.Join(dataDir, AgentBusConfigFileName)
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
@@ -135,8 +135,8 @@ func NewPoller(handler *Handler, config PollerConfig) *Poller {
 	}
 
 	return &Poller{
-		agentmuxURL:   config.AgentMuxURL,
-		agentmuxToken: config.AgentMuxToken,
+		agentbusURL:   config.AgentBusURL,
+		agentbusToken: config.AgentBusToken,
 		pollInterval:  config.PollInterval,
 		handler:       handler,
 		httpClient: &http.Client{
@@ -154,8 +154,8 @@ func (p *Poller) Start() error {
 		return fmt.Errorf("poller already started")
 	}
 
-	if p.agentmuxURL == "" {
-		return fmt.Errorf("agentmux URL not configured")
+	if p.agentbusURL == "" {
+		return fmt.Errorf("agentbus URL not configured")
 	}
 
 	p.ctx, p.cancel = context.WithCancel(context.Background())
@@ -163,7 +163,7 @@ func (p *Poller) Start() error {
 	p.wg.Add(1)
 	go p.pollLoop()
 
-	log.Printf("[reactive/poller] started polling %s every %v", p.agentmuxURL, p.pollInterval)
+	log.Printf("[reactive/poller] started polling %s every %v", p.agentbusURL, p.pollInterval)
 	return nil
 }
 
@@ -188,7 +188,7 @@ func (p *Poller) Stats() map[string]interface{} {
 		"poll_count":       p.pollCount,
 		"injections_count": p.injectionsCount,
 		"poll_interval_ms": p.pollInterval.Milliseconds(),
-		"agentmux_url":     p.agentmuxURL,
+		"agentbus_url":     p.agentbusURL,
 	}
 
 	if !p.lastPollTime.IsZero() {
@@ -246,11 +246,11 @@ func (p *Poller) pollAndInject() {
 
 // pollForAgent polls for pending injections for a specific agent.
 func (p *Poller) pollForAgent(agentID string) error {
-	// Normalize agent ID to lowercase (AgentMux stores all IDs lowercase)
+	// Normalize agent ID to lowercase (AgentBus stores all IDs lowercase)
 	agentID = strings.ToLower(agentID)
 
 	// Build request URL with proper escaping for defense in depth
-	reqURL := fmt.Sprintf("%s/reactive/pending/%s", p.agentmuxURL, url.PathEscape(agentID))
+	reqURL := fmt.Sprintf("%s/reactive/pending/%s", p.agentbusURL, url.PathEscape(agentID))
 
 	req, err := http.NewRequestWithContext(p.ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
@@ -258,8 +258,8 @@ func (p *Poller) pollForAgent(agentID string) error {
 	}
 
 	// Add auth headers
-	if p.agentmuxToken != "" {
-		req.Header.Set("Authorization", "Bearer "+p.agentmuxToken)
+	if p.agentbusToken != "" {
+		req.Header.Set("Authorization", "Bearer "+p.agentbusToken)
 	}
 	req.Header.Set("X-Agent-ID", agentID)
 
@@ -327,12 +327,12 @@ func (p *Poller) pollForAgent(agentID string) error {
 	return nil
 }
 
-// acknowledgeDelivery marks injections as delivered in AgentMux.
+// acknowledgeDelivery marks injections as delivered in AgentBus.
 func (p *Poller) acknowledgeDelivery(injectionIDs []string, agentID string) error {
-	// Normalize agent ID to lowercase (AgentMux stores all IDs lowercase)
+	// Normalize agent ID to lowercase (AgentBus stores all IDs lowercase)
 	agentID = strings.ToLower(agentID)
 
-	url := fmt.Sprintf("%s/reactive/ack", p.agentmuxURL)
+	url := fmt.Sprintf("%s/reactive/ack", p.agentbusURL)
 
 	ackReq := AckRequest{
 		InjectionIDs: injectionIDs,
@@ -349,8 +349,8 @@ func (p *Poller) acknowledgeDelivery(injectionIDs []string, agentID string) erro
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if p.agentmuxToken != "" {
-		req.Header.Set("Authorization", "Bearer "+p.agentmuxToken)
+	if p.agentbusToken != "" {
+		req.Header.Set("Authorization", "Bearer "+p.agentbusToken)
 	}
 	req.Header.Set("X-Agent-ID", agentID)
 
@@ -382,20 +382,20 @@ func GetGlobalPoller() *Poller {
 		config := PollerConfig{}
 
 		// Priority 1: Load from config file (auto-configuration)
-		if fileConfig, err := LoadAgentMuxConfigFile(); err != nil {
+		if fileConfig, err := LoadAgentBusConfigFile(); err != nil {
 			log.Printf("[reactive/poller] error loading config file: %v", err)
 		} else if fileConfig.URL != "" {
-			config.AgentMuxURL = fileConfig.URL
-			config.AgentMuxToken = fileConfig.Token
+			config.AgentBusURL = fileConfig.URL
+			config.AgentBusToken = fileConfig.Token
 			log.Printf("[reactive/poller] loaded config from file: URL=%s", fileConfig.URL)
 		}
 
 		// Priority 2: Environment variables override file config
-		if envURL := os.Getenv("AGENTMUX_URL"); envURL != "" {
-			config.AgentMuxURL = envURL
+		if envURL := os.Getenv("AGENTBUS_URL"); envURL != "" {
+			config.AgentBusURL = envURL
 		}
-		if envToken := os.Getenv("AGENTMUX_TOKEN"); envToken != "" {
-			config.AgentMuxToken = envToken
+		if envToken := os.Getenv("AGENTBUS_TOKEN"); envToken != "" {
+			config.AgentBusToken = envToken
 		}
 
 		// Parse poll interval from env
@@ -413,7 +413,7 @@ func GetGlobalPoller() *Poller {
 
 // StartGlobalPoller starts the global poller if configured.
 // Returns nil if cross-host polling is not configured.
-// Requires both AGENTMUX_URL and AGENTMUX_TOKEN to be set.
+// Requires both AGENTBUS_URL and AGENTBUS_TOKEN to be set.
 func StartGlobalPoller() error {
 	globalPollerMu.Lock()
 	defer globalPollerMu.Unlock()
@@ -421,12 +421,12 @@ func StartGlobalPoller() error {
 	poller := GetGlobalPoller()
 
 	// Require both URL and token to be explicitly configured
-	if poller.agentmuxURL == "" {
-		log.Printf("[reactive/poller] cross-host polling disabled (no AGENTMUX_URL)")
+	if poller.agentbusURL == "" {
+		log.Printf("[reactive/poller] cross-host polling disabled (no AGENTBUS_URL)")
 		return nil
 	}
-	if poller.agentmuxToken == "" {
-		log.Printf("[reactive/poller] cross-host polling disabled (no AGENTMUX_TOKEN)")
+	if poller.agentbusToken == "" {
+		log.Printf("[reactive/poller] cross-host polling disabled (no AGENTBUS_TOKEN)")
 		return nil
 	}
 
@@ -444,11 +444,11 @@ func StopGlobalPoller() {
 }
 
 // ReconfigureGlobalPoller updates the global poller configuration at runtime.
-// If agentmuxURL is empty, polling is stopped. If both URL and token are set,
+// If agentbusURL is empty, polling is stopped. If both URL and token are set,
 // polling is started/restarted with the new configuration.
 // This enables runtime configuration without restarting WaveMux.
 // The configuration is also persisted to the config file for future startups.
-func ReconfigureGlobalPoller(agentmuxURL, agentmuxToken string) error {
+func ReconfigureGlobalPoller(agentbusURL, agentbusToken string) error {
 	globalPollerMu.Lock()
 	defer globalPollerMu.Unlock()
 
@@ -473,33 +473,33 @@ func ReconfigureGlobalPoller(agentmuxURL, agentmuxToken string) error {
 
 	// Update configuration
 	poller.mu.Lock()
-	poller.agentmuxURL = agentmuxURL
-	poller.agentmuxToken = agentmuxToken
+	poller.agentbusURL = agentbusURL
+	poller.agentbusToken = agentbusToken
 	poller.mu.Unlock()
 
 	// Persist configuration to file for future startups
-	if err := SaveAgentMuxConfigFile(AgentMuxConfigFile{
-		URL:   agentmuxURL,
-		Token: agentmuxToken,
+	if err := SaveAgentBusConfigFile(AgentBusConfigFile{
+		URL:   agentbusURL,
+		Token: agentbusToken,
 	}); err != nil {
 		log.Printf("[reactive/poller] warning: failed to save config file: %v", err)
 		// Don't fail - runtime config still works
 	}
 
 	// If URL is empty, leave poller stopped
-	if agentmuxURL == "" {
+	if agentbusURL == "" {
 		log.Printf("[reactive/poller] cross-host polling disabled (URL cleared)")
 		return nil
 	}
 
 	// If token is empty, don't start (require both)
-	if agentmuxToken == "" {
+	if agentbusToken == "" {
 		log.Printf("[reactive/poller] cross-host polling disabled (no token)")
 		return nil
 	}
 
 	// Start the poller with new config
-	log.Printf("[reactive/poller] reconfigured: URL=%s", agentmuxURL)
+	log.Printf("[reactive/poller] reconfigured: URL=%s", agentbusURL)
 	return poller.Start()
 }
 
@@ -513,10 +513,10 @@ func GetPollerStatus() map[string]interface{} {
 	defer poller.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"configured": poller.agentmuxURL != "" && poller.agentmuxToken != "",
+		"configured": poller.agentbusURL != "" && poller.agentbusToken != "",
 		"running":    poller.ctx != nil,
-		"url":        poller.agentmuxURL,
-		"has_token":  poller.agentmuxToken != "",
+		"url":        poller.agentbusURL,
+		"has_token":  poller.agentbusToken != "",
 	}
 
 	if poller.ctx != nil {

@@ -696,28 +696,28 @@ pub async fn reactive_inject(
     }
 }
 
-/// Configure the AgentMux poller for cross-host reactive messaging.
+/// Configure the AgentBus poller for cross-host reactive messaging.
 /// Replaces HTTP POST /wave/reactive/poller/config.
 #[tauri::command(rename_all = "camelCase")]
 pub async fn reactive_poller_config(
-    agentmux_url: Option<String>,
-    agentmux_token: Option<String>,
+    agentbus_url: Option<String>,
+    agentbus_token: Option<String>,
     _state: tauri::State<'_, AppState>,
 ) -> Result<Value, String> {
     #[cfg(feature = "rust-backend")]
     {
         // Validate URL if provided
-        if let Some(ref url) = agentmux_url {
+        if let Some(ref url) = agentbus_url {
             if !url.is_empty() {
-                crate::backend::reactive::validate_agentmux_url(url)?;
+                crate::backend::reactive::validate_agentbus_url(url)?;
             }
         }
 
         let handler = crate::backend::reactive::get_global_handler();
         let poller = crate::backend::reactive::Poller::new(
             crate::backend::reactive::PollerConfig {
-                agentmux_url: agentmux_url.clone(),
-                agentmux_token: agentmux_token.clone(),
+                agentbus_url: agentbus_url.clone(),
+                agentbus_token: agentbus_token.clone(),
                 poll_interval_secs: crate::backend::reactive::DEFAULT_POLL_INTERVAL_SECS,
             },
             handler,
@@ -737,7 +737,7 @@ pub async fn reactive_poller_config(
 
     #[cfg(not(feature = "rust-backend"))]
     {
-        let _ = (agentmux_url, agentmux_token, _state);
+        let _ = (agentbus_url, agentbus_token, _state);
         Err("reactive_poller_config only available in rust-backend mode".to_string())
     }
 }

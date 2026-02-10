@@ -169,17 +169,17 @@ export async function reactiveUnregister(agentId: string): Promise<void> {
 }
 
 /**
- * Configure the AgentMux poller via Tauri IPC.
+ * Configure the AgentBus poller via Tauri IPC.
  * Replaces HTTP POST /wave/reactive/poller/config.
  */
 export async function reactivePollerConfig(
-    agentmuxUrl: string,
-    agentmuxToken: string
+    agentbusUrl: string,
+    agentbusToken: string
 ): Promise<any> {
     try {
         const response = await invoke<any>("reactive_poller_config", {
-            agentmuxUrl: agentmuxUrl || null,
-            agentmuxToken: agentmuxToken || null,
+            agentbusUrl: agentbusUrl || null,
+            agentbusToken: agentbusToken || null,
         });
         return response;
     } catch (e) {

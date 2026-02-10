@@ -443,6 +443,13 @@ fn handle_service_request(
     let store = &state.wave_store;
 
     match (service, method) {
+        ("client", "GetClientData") => {
+            let client = crate::backend::wcore::get_client(store)
+                .map_err(|e| format!("GetClientData: {}", e))?;
+            Ok(serde_json::to_value(&client)
+                .map_err(|e| format!("GetClientData serialize: {}", e))?)
+        }
+
         ("object", "GetObject") => {
             let oref = args.get(0)
                 .and_then(|v| v.as_str())

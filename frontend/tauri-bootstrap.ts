@@ -6,6 +6,10 @@
 
 import { setupTauriApi } from "./tauri-init";
 
+// Import CSS at entry point to ensure Vite bundles it
+import "./tailwindsetup.css";
+import "./app/app.scss";
+
 // Deep verbose logging
 const log = (level: string, ...args: any[]) => {
     const timestamp = new Date().toISOString();

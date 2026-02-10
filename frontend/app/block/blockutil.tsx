@@ -27,6 +27,9 @@ export function blockViewToIcon(view: string): string {
     if (view == "claudecode") {
         return "terminal";
     }
+    if (view == "unifiedai") {
+        return "sparkles";
+    }
     if (view == "help") {
         return "circle-question";
     }
@@ -54,6 +57,9 @@ export function blockViewToName(view: string): string {
     }
     if (view == "claudecode") {
         return "Claude Code";
+    }
+    if (view == "unifiedai") {
+        return "AI";
     }
     if (view == "help") {
         return "Help";

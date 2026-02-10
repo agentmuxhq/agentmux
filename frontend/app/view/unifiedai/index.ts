@@ -5,7 +5,8 @@
  * Unified AI Pane - merges Wave AI chat and agent code tools into one pane.
  *
  * Phase A-1: Types and interfaces (PR #228).
- * Phase A-2: Command bridge + state management (this PR).
+ * Phase A-2: Command bridge + state management (PR #234).
+ * Phase A-3: UI components (this PR).
  * Phase B: Agent controller + MCP server (future).
  * Phase C: Chat backends ported to Rust (future).
  * Phase D: Full sidecar elimination (future).
@@ -112,3 +113,7 @@ export {
     isStreamingAtom,
     useUnifiedAI,
 } from "./useUnifiedAI";
+
+// UI Components (Phase A-3)
+export { UnifiedAIViewModel } from "./unifiedai-model";
+export { UnifiedAIView } from "./unifiedai-view";

@@ -1,0 +1,525 @@
+// Copyright 2026, a5af.
+// SPDX-License-Identifier: Apache-2.0
+
+// Terminal-native UI for the Unified AI pane.
+// Follows claudecode.scss conventions — no bubbles, no avatars, monospace.
+
+.unifiedai-view {
+    background: var(--main-bg-color);
+    color: var(--main-text-color);
+    font-family: var(--termfontfamily, "JetBrains Mono", "Fira Code", "Consolas", monospace);
+    font-size: var(--termfontsize, 13px);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+
+    // === Main Content Area ===
+    .uai-main {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    // === Scrollable Message Log ===
+    .uai-log {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .uai-log-spacer {
+        flex: 1;
+    }
+
+    // === Empty State ===
+    .uai-empty {
+        color: var(--secondary-text-color);
+        padding: 20px 8px;
+        opacity: 0.5;
+
+        .uai-empty-icon {
+            font-size: 1.1em;
+        }
+
+        .uai-empty-header {
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .uai-empty-status {
+            opacity: 0.6;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+    }
+
+    .uai-backend-selector {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .uai-backend-btn {
+        background: none;
+        border: 1px solid var(--border-color);
+        color: var(--secondary-text-color);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 2px;
+
+        &:hover {
+            background: color-mix(in srgb, var(--main-text-color) 8%, transparent);
+            color: var(--main-text-color);
+        }
+
+        &.selected {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+    }
+
+    // === Conversation Turn / User Prompt ===
+    .uai-turn {
+        margin-bottom: 4px;
+    }
+
+    .uai-prompt {
+        display: flex;
+        gap: 8px;
+        padding: 6px 8px;
+        margin-bottom: 8px;
+        background: color-mix(in srgb, var(--main-text-color) 3%, transparent);
+        border-left: 2px solid var(--accent-color);
+
+        .uai-prompt-char {
+            color: var(--accent-color);
+            font-weight: bold;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .uai-prompt-text {
+            color: var(--main-text-color);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    }
+
+    // === Assistant Response ===
+    .uai-response {
+        margin-bottom: 12px;
+    }
+
+    // === Text Parts ===
+    .uai-text {
+        padding: 2px 8px 8px 8px;
+        color: var(--main-text-color);
+        opacity: 0.9;
+
+        p {
+            margin: 4px 0;
+        }
+
+        code {
+            background: color-mix(in srgb, var(--main-text-color) 8%, transparent);
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 0.95em;
+        }
+
+        pre {
+            background: color-mix(in srgb, var(--main-bg-color) 80%, black);
+            padding: 8px 12px;
+            border-radius: 3px;
+            border-left: 2px solid var(--border-color);
+            overflow-x: auto;
+            margin: 6px 0;
+
+            code {
+                background: none;
+                padding: 0;
+                color: inherit;
+            }
+        }
+
+        strong {
+            color: var(--main-text-color);
+        }
+
+        a {
+            color: var(--accent-color);
+            text-decoration: underline;
+        }
+
+        ul,
+        ol {
+            margin: 4px 0;
+            padding-left: 20px;
+        }
+    }
+
+    // === Reasoning (Thinking) ===
+    .uai-reasoning {
+        margin: 2px 0;
+        cursor: pointer;
+        user-select: none;
+
+        .uai-reasoning-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 8px;
+            color: var(--secondary-text-color);
+            opacity: 0.7;
+            font-style: italic;
+            font-size: 12px;
+
+            &:hover {
+                opacity: 1;
+            }
+        }
+
+        .uai-reasoning-chevron {
+            width: 12px;
+            font-size: 11px;
+            flex-shrink: 0;
+            font-style: normal;
+        }
+
+        .uai-reasoning-content {
+            margin: 4px 0 4px 20px;
+            padding: 6px 10px;
+            background: color-mix(in srgb, var(--main-bg-color) 80%, black);
+            border-left: 1px solid var(--border-color);
+            border-radius: 2px;
+            font-size: 12px;
+            color: var(--secondary-text-color);
+            opacity: 0.8;
+        }
+    }
+
+    // === Tool Use Blocks ===
+    .uai-tool {
+        margin: 2px 0;
+        cursor: pointer;
+        user-select: none;
+
+        &:hover .uai-tool-line {
+            background: color-mix(in srgb, var(--main-text-color) 5%, transparent);
+        }
+
+        .uai-tool-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 8px;
+            border-radius: 2px;
+            transition: background 0.1s;
+        }
+
+        .uai-tool-chevron {
+            color: var(--secondary-text-color);
+            width: 12px;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .uai-tool-name {
+            color: var(--success-color, #9ece6a);
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .uai-tool-summary {
+            color: var(--secondary-text-color);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            opacity: 0.7;
+        }
+
+        .uai-tool-pending {
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .uai-tool-detail {
+            margin: 4px 0 4px 20px;
+            padding: 6px 10px;
+            background: color-mix(in srgb, var(--main-bg-color) 80%, black);
+            border-left: 1px solid var(--border-color);
+            border-radius: 2px;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+
+            pre {
+                margin: 0;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+        }
+
+        .uai-tool-file-path {
+            color: var(--secondary-text-color);
+        }
+    }
+
+    // === Tool Results ===
+    .uai-tool-result {
+        margin: 2px 0 2px 20px;
+        padding: 4px 10px;
+        font-size: 12px;
+        border-left: 1px solid var(--border-color);
+
+        &.is-error {
+            border-left-color: var(--error-color);
+        }
+
+        .uai-tool-result-content {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--secondary-text-color);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    }
+
+    .uai-tool-show-more {
+        display: block;
+        margin-top: 6px;
+        background: none;
+        border: 1px solid var(--border-color);
+        color: var(--accent-color);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 2px;
+
+        &:hover {
+            background: color-mix(in srgb, var(--main-text-color) 5%, transparent);
+        }
+    }
+
+    // === Diff Rendering ===
+    .uai-diff {
+        margin: 4px 0 4px 20px;
+        padding: 6px 10px;
+        background: color-mix(in srgb, var(--main-bg-color) 80%, black);
+        border-left: 1px solid var(--border-color);
+        border-radius: 2px;
+        font-size: 12px;
+
+        .uai-diff-header {
+            color: var(--secondary-text-color);
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 4px;
+        }
+
+        .uai-diff-add {
+            color: var(--success-color, #9ece6a);
+            background: color-mix(in srgb, var(--success-color, #9ece6a) 8%, transparent);
+        }
+
+        .uai-diff-del {
+            color: var(--error-color);
+            background: color-mix(in srgb, var(--error-color) 8%, transparent);
+        }
+
+        .uai-diff-hunk {
+            color: var(--accent-color);
+        }
+
+        .uai-diff-ctx {
+            color: var(--secondary-text-color);
+        }
+    }
+
+    // === Bash Command Display ===
+    .uai-bash {
+        .uai-bash-cmd {
+            display: flex;
+            gap: 6px;
+            color: var(--main-text-color);
+
+            .uai-bash-dollar {
+                color: var(--success-color, #9ece6a);
+                user-select: none;
+            }
+        }
+    }
+
+    // === File Part ===
+    .uai-file {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        color: var(--secondary-text-color);
+        font-size: 12px;
+
+        .uai-file-name {
+            text-decoration: underline;
+            opacity: 0.8;
+        }
+    }
+
+    // === Error Display ===
+    .uai-error {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 12px;
+        margin: 4px 8px;
+        background: color-mix(in srgb, var(--error-color) 10%, transparent);
+        border-left: 2px solid var(--error-color);
+        border-radius: 2px;
+        color: var(--error-color);
+        font-size: 12px;
+
+        .uai-error-icon {
+            flex-shrink: 0;
+        }
+
+        .uai-error-text {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    }
+
+    // === Streaming Indicator ===
+    .uai-streaming {
+        padding: 4px 8px;
+
+        .uai-streaming-cursor {
+            color: var(--accent-color);
+            animation: uai-blink 1s step-end infinite;
+        }
+    }
+
+    // === Input Line ===
+    .uai-input {
+        display: flex;
+        align-items: flex-end;
+        gap: 0;
+        padding: 8px 16px 12px;
+        border-top: 1px solid var(--border-color);
+        background: color-mix(in srgb, var(--main-bg-color) 90%, black);
+
+        .uai-input-prompt {
+            color: var(--accent-color);
+            font-weight: bold;
+            padding: 6px 8px 6px 0;
+            user-select: none;
+        }
+
+        .uai-input-textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--main-text-color);
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            resize: none;
+            min-height: 22px;
+            max-height: 200px;
+            caret-color: var(--accent-color);
+
+            &::placeholder {
+                color: var(--secondary-text-color);
+                opacity: 0.3;
+            }
+
+            &:disabled {
+                opacity: 0.5;
+            }
+        }
+    }
+
+    // === Status Bar ===
+    .uai-statusbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 16px;
+        background: color-mix(in srgb, var(--main-bg-color) 85%, black);
+        border-top: 1px solid var(--border-color);
+        font-size: 11px;
+        color: var(--secondary-text-color);
+
+        .uai-status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .uai-status-spacer {
+            flex: 1;
+        }
+
+        .uai-status-error {
+            color: var(--error-color);
+        }
+
+        .uai-backend-select {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--secondary-text-color);
+            font-family: inherit;
+            font-size: inherit;
+            padding: 1px 4px;
+            border-radius: 2px;
+            cursor: pointer;
+
+            &:hover {
+                border-color: var(--accent-color);
+            }
+
+            option {
+                background: var(--main-bg-color);
+                color: var(--main-text-color);
+            }
+        }
+
+        .uai-status-btn {
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 2px 6px;
+            border-radius: 2px;
+
+            &:hover {
+                background: color-mix(in srgb, var(--main-text-color) 8%, transparent);
+            }
+
+            &:disabled {
+                color: var(--secondary-text-color);
+                opacity: 0.4;
+                cursor: default;
+            }
+        }
+    }
+}
+
+@keyframes uai-blink {
+    50% {
+        opacity: 0;
+    }
+}

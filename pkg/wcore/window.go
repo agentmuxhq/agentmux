@@ -42,7 +42,7 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 		if w.WorkspaceId == workspaceId {
 			log.Printf("workspace %s already has a window %s, focusing that window\n", workspaceId, w.OID)
 			client := wshclient.GetBareRpcClient()
-			err = wshclient.FocusWindowCommand(client, w.OID, &wshrpc.RpcOpts{Route: wshutil.ElectronRoute})
+			err = wshclient.FocusWindowCommand(client, w.OID, &wshrpc.RpcOpts{Route: wshutil.ClientRoute})
 			return nil, err
 		}
 	}

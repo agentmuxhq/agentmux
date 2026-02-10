@@ -46,7 +46,7 @@ func runVersionCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	updateChannel, err := wshclient.GetUpdateChannelCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000, Route: wshutil.ElectronRoute})
+	updateChannel, err := wshclient.GetUpdateChannelCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000, Route: wshutil.ClientRoute})
 	if err != nil {
 		return err
 	}

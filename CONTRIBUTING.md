@@ -56,28 +56,24 @@ Guidelines:
 
 ## Project Structure
 
-The project is broken into four main components: frontend, emain, wavemuxsrv, and wsh. This section is a work-in-progress as our codebase is constantly changing.
+The project is broken into three main components: frontend (Tauri + React), wavemuxsrv (Go backend sidecar), and wsh (shell integration CLI). This section is a work-in-progress as our codebase is constantly changing.
 
 ### Frontend
 
-Our frontend can be found in the [`/frontend`](./frontend/) directory. It is written in React Typescript. The main entrypoint is [`wave.ts`](./frontend/wave.ts) and the root for the React VDOM is [`app.tsx`](./frontend/app/app.tsx). If you are using `task dev` to run your dev instance of the app, the frontend will be loaded using Vite, which allows for Hot Module Reloading. This should work for most styling and simple component changes, but anything that affects the state of the app (the Jotai or layout code, for instance) may put the frontend into a bad state. If this happens, you can force reload the frontend using `Cmd:Shift:R` or `Ctrl:Shift:R`.
+Our frontend can be found in the [`/frontend`](./frontend/) directory. It is written in React TypeScript. The main entrypoint is [`wave.ts`](./frontend/wave.ts) and the root for the React VDOM is [`app.tsx`](./frontend/app/app.tsx). If you are using `task dev` to run your dev instance of the app, the frontend will be loaded using Vite, which allows for Hot Module Reloading. This should work for most styling and simple component changes, but anything that affects the state of the app (the Jotai or layout code, for instance) may put the frontend into a bad state. If this happens, you can force reload the frontend using `Cmd:Shift:R` or `Ctrl:Shift:R`.
 
-We also have a Storybook project configured for testing our component library. We're still working to fill out the test cases for this, but it is useful for testing components in isolation. You can run this using `task storybook`.
+### Tauri Shell (Rust)
 
-### emain
-
-emain can be found at [`/emain`](./emain/). It is the main NodeJS process and is first thing that is run when you start up the app and it forks off the process for the wavemuxsrv backend and manages all the Electron interfaces, such as window and view management, context menus, and native UI calls. Its main entrypoint is [`emain.ts`](./emain/emain.ts). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
-
-The frontend and emain communicate using the [Electron IPC mechanism](https://www.electronjs.org/docs/latest/tutorial/ipc). All exposed functions between the two are defined twice, once in [`preload.ts`](./emain/preload.ts) and once in [`custom.d.ts`](./frontend/types/custom.d.ts). On the frontend, you call the exposed function by calling `getApi().<function>()`.
+The Tauri native shell can be found at [`/src-tauri`](./src-tauri/). It handles native window management, system tray, menus, crash handling, logging, and Go sidecar lifecycle. The main entrypoint is [`lib.rs`](./src-tauri/src/lib.rs). IPC commands are registered in the `invoke_handler` and defined in [`src/commands/`](./src-tauri/src/commands/). Changes to Rust code require restarting `task dev`.
 
 ### wavemuxsrv
 
-wavemuxsrv can be found at [`/cmd/server`](./cmd/server), with most business logic located in [`/pkg`](./pkg/). It is the primary Go backend for our app and manages the database and all communications with remote hosts. Its main entrypoint is [`main-server.go`](./cmd/server/main-server.go). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
+wavemuxsrv can be found at [`/cmd/server`](./cmd/server), with most business logic located in [`/pkg`](./pkg/). It is the primary Go backend for the app and manages the database and all communications with remote hosts. Its main entrypoint is [`main-server.go`](./cmd/server/main-server.go). This process does not hot-reload — run `task build:backend` and restart `task dev` to apply changes.
 
-Communication between the wavemuxsrv and the frontend and emain is handled by both HTTP services (found at [`/pkg/service`](./pkg/service/)) and wshrpc via WebSocket (found at [`/pkg/wshrpc`](./pkg/wshrpc/)).
+Communication between the wavemuxsrv and the frontend is handled by both HTTP services (found at [`/pkg/service`](./pkg/service/)) and wshrpc via WebSocket (found at [`/pkg/wshrpc`](./pkg/wshrpc/)).
 
 ### wsh
 
-wsh can be found at [`/cmd/wsh`](./cmd/wsh/). It serves two purposes: it functions as a CLI tool for controlling Wave from the command line and it functions as a server on remote machines to facilitate multiplexing terminal sessions over a single connection and streaming files between the remote host and the local host. This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
+wsh can be found at [`/cmd/wsh`](./cmd/wsh/). It serves two purposes: it functions as a CLI tool for controlling the app from the command line and it functions as a server on remote machines to facilitate multiplexing terminal sessions over a single connection and streaming files between the remote host and the local host. This process does not hot-reload — run `task build:backend` to rebuild.
 
 Communication between wavemuxsrv and wsh is handled by wshrpc via either forwarded domain socket or WebSocket, depending on what the remote host supports.

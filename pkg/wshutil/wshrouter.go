@@ -23,7 +23,7 @@ const (
 	DefaultRoute  = "wavemuxsrv"
 	UpstreamRoute = "upstream"
 	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
-	ElectronRoute = "electron"
+	ClientRoute   = "electron" // route ID for frontend client (kept as "electron" for wire compat)
 
 	RoutePrefix_Conn       = "conn:"
 	RoutePrefix_Controller = "controller:"

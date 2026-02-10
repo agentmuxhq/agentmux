@@ -288,8 +288,8 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
 	var routeId string
-	if tabId == wshutil.ElectronRoute {
-		routeId = wshutil.ElectronRoute
+	if tabId == wshutil.ClientRoute {
+		routeId = wshutil.ClientRoute
 	} else {
 		routeId = wshutil.MakeTabRouteId(tabId)
 	}

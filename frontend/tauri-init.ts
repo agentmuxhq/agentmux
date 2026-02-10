@@ -4,8 +4,7 @@
 // Tauri initialization module.
 // This must run BEFORE any code that accesses window.api (getApi()).
 //
-// In Electron, window.api is populated by the preload script (contextBridge).
-// In Tauri, we populate it ourselves using invoke/listen.
+// Populates window.api using Tauri's invoke/listen bridge.
 
 import { buildTauriApi, initTauriApi, isTauri } from "@/util/tauri-api";
 
@@ -18,7 +17,7 @@ import { buildTauriApi, initTauriApi, isTauri } from "@/util/tauri-api";
  */
 export async function setupTauriApi(): Promise<void> {
     if (!isTauri()) {
-        return; // Running in Electron, preload.ts handles window.api
+        return;
     }
 
     // Pre-fetch all cached values from Rust backend

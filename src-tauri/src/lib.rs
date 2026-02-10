@@ -45,7 +45,9 @@ pub fn run() {
                 }
             }),
         )
-        .plugin(tauri_plugin_updater::Builder::new().build());
+        // TODO: enable once first GitHub Release with latest.json is published
+        // .plugin(tauri_plugin_updater::Builder::new().build())
+        ;
 
     // Register wavefile:// custom protocol for file streaming (rust-backend mode)
     #[cfg(feature = "rust-backend")]
@@ -206,11 +208,11 @@ pub fn run() {
                 }
             }
 
-            // Spawn background update check (runs after 5s delay)
-            let check_handle = app.handle().clone();
-            tauri::async_runtime::spawn(
-                commands::updater::check_for_updates_background(check_handle),
-            );
+            // TODO: enable once first GitHub Release with latest.json is published
+            // let check_handle = app.handle().clone();
+            // tauri::async_runtime::spawn(
+            //     commands::updater::check_for_updates_background(check_handle),
+            // );
 
             Ok(())
         })

@@ -71,6 +71,26 @@ impl AgentProcessStore {
             .map_err(|e| format!("failed to write stdin: {e}"))
     }
 
+    /// Send structured input to a Claude Code process (--input-format stream-json).
+    ///
+    /// This method is used for multi-turn conversations when a session_id is available.
+    /// It formats the input as NDJSON with the proper structure for Claude Code.
+    pub async fn send_structured_input(
+        &self,
+        pane_id: &str,
+        session_id: &str,
+        text: &str,
+    ) -> Result<(), String> {
+        let mut processes = self.processes.lock().await;
+        let process = processes
+            .get_mut(pane_id)
+            .ok_or_else(|| format!("no agent process for pane {pane_id}"))?;
+        process
+            .send_user_message(session_id, text)
+            .await
+            .map_err(|e| format!("failed to send structured input: {e}"))
+    }
+
     /// Send interrupt signal to a process by pane_id.
     pub async fn interrupt(&self, pane_id: &str) -> Result<(), String> {
         let mut processes = self.processes.lock().await;
@@ -175,6 +195,25 @@ pub async fn spawn_agent(
         while let Some(event) = rx.recv().await {
             match &event {
                 AgentOutputEvent::AdapterEvents { events } => {
+                    // Extract session metadata from SessionStart events
+                    for ev in events {
+                        if let crate::backend::ai::adapters::AdapterEvent::SessionStart {
+                            session_id,
+                            model,
+                            ..
+                        } = ev
+                        {
+                            reg.update(&pane_id, |s| {
+                                s.session_meta
+                                    .insert("session_id".to_string(), session_id.clone());
+                                if let Some(m) = model {
+                                    s.session_meta.insert("model".to_string(), m.clone());
+                                }
+                            })
+                            .ok();
+                        }
+                    }
+
                     // Forward adapter events to frontend
                     let _ = win.emit(
                         &format!("agent-output:{pane_id}"),
@@ -306,6 +345,17 @@ pub async fn send_agent_input(
             })
             .ok();
 
+        // Check if we should use structured input (Claude Code with session_id)
+        if state.config.id == "claudecode" {
+            if let Some(session_id) = state.session_meta.get("session_id") {
+                // Use structured NDJSON format for follow-up messages
+                return process_store
+                    .send_structured_input(&request.pane_id, session_id, text)
+                    .await;
+            }
+        }
+
+        // Fallback: raw stdin write (for other backends or initial prompt)
         process_store.write_stdin(&request.pane_id, text).await
     } else {
         Err("either text or signal must be provided".into())

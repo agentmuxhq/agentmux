@@ -1,8 +1,8 @@
-# Building WaveMux
+# Building AgentMux
 
-These instructions are for setting up dependencies and building WaveMux from source on Windows, macOS, and Linux.
+These instructions are for setting up dependencies and building AgentMux from source on Windows, macOS, and Linux.
 
-**Architecture:** WaveMux is built on **Tauri v2** (not Electron), with a Go backend sidecar.
+**Architecture:** AgentMux is built on **Tauri v2** (not Electron), with a Go backend sidecar.
 
 ---
 
@@ -13,7 +13,7 @@ These instructions are for setting up dependencies and building WaveMux from sou
 | Tool | Version | Purpose |
 |------|---------|---------|
 | **Node.js** | v22 LTS | Frontend build (React/Vite) |
-| **Go** | 1.23+ | Backend (wavemuxsrv, wsh) |
+| **Go** | 1.23+ | Backend (agentmuxsrv, wsh) |
 | **Rust** | 1.77+ | Tauri frontend (Rust) |
 | **Task** | Latest | Build orchestration |
 | **Zig** | 0.13+ | CGO cross-compilation (Windows/Linux) |
@@ -115,7 +115,7 @@ If you have build issues later, run `task init` again to refresh dependencies.
 
 ### Development (Hot Reload)
 
-**This is the recommended way to run WaveMux during development:**
+**This is the recommended way to run AgentMux during development:**
 
 ```bash
 task dev
@@ -144,7 +144,7 @@ task dev
 ```
 
 This rebuilds:
-- `dist/bin/wavemuxsrv.x64.exe` (or platform-specific)
+- `dist/bin/agentmuxsrv.x64.exe` (or platform-specific)
 - `dist/bin/wsh-{version}-{platform}.{arch}.exe`
 
 ---
@@ -158,9 +158,9 @@ task build
 ```
 
 Output locations:
-- **Windows:** `src-tauri/target/release/bundle/nsis/WaveMux_{version}_x64-setup.exe`
-- **macOS:** `src-tauri/target/release/bundle/dmg/WaveMux_{version}_x64.dmg`
-- **Linux:** `src-tauri/target/release/bundle/deb/wavemux_{version}_amd64.deb`
+- **Windows:** `src-tauri/target/release/bundle/nsis/AgentMux_{version}_x64-setup.exe`
+- **macOS:** `src-tauri/target/release/bundle/dmg/AgentMux_{version}_x64.dmg`
+- **Linux:** `src-tauri/target/release/bundle/deb/agentmux_{version}_amd64.deb`
 
 **Note:** This creates final installers for distribution, not for development.
 
@@ -229,23 +229,23 @@ After building, you'll have:
 ```
 dist/
 ├── bin/
-│   ├── wavemuxsrv.x64.exe       # Go backend (33MB)
+│   ├── agentmuxsrv.x64.exe       # Go backend (33MB)
 │   └── wsh-{version}-windows.x64.exe # Shell integration (11MB)
 └── frontend/                     # Vite output (embedded in Tauri)
 
 src-tauri/target/release/
-├── wavemux.exe                   # Tauri app (14MB)
+├── agentmux.exe                   # Tauri app (14MB)
 └── bundle/
     └── nsis/
-        └── WaveMux_{version}_x64-setup.exe  # Installer (29MB)
+        └── AgentMux_{version}_x64-setup.exe  # Installer (29MB)
 ```
 
 ### Component Sizes
 
 | Component | Size | Purpose |
 |-----------|------|---------|
-| `wavemux.exe` | ~14MB | Tauri frontend (Rust + webview) |
-| `wavemuxsrv.exe` | ~33MB | Go backend server |
+| `agentmux.exe` | ~14MB | Tauri frontend (Rust + webview) |
+| `agentmuxsrv.exe` | ~33MB | Go backend server |
 | `wsh.exe` | ~11MB | Shell integration |
 | **Total runtime** | ~58MB | All components |
 | **Installer (NSIS)** | ~29MB | Compressed with binaries |
@@ -266,7 +266,7 @@ Logs appear in the Console tab.
 
 ### Backend Logs
 
-Go backend logs (wavemuxsrv):
+Go backend logs (agentmuxsrv):
 - **Development:** `~/.waveterm-dev/waveapp.log`
 - **Production:** `~/.waveterm/waveapp.log`
 
@@ -288,7 +288,7 @@ Rust logs appear in the terminal where you ran `task dev`.
 
 ## Troubleshooting
 
-### Issue: "wavemuxsrv.x64.exe ENOENT"
+### Issue: "agentmuxsrv.x64.exe ENOENT"
 
 **Cause:** Backend binary not found or wrong version.
 
@@ -439,7 +439,7 @@ npm run tauri build
 
 - **Tauri Documentation:** https://tauri.app/v2/
 - **Task Configuration:** [Taskfile.yml](Taskfile.yml)
-- **Architecture Docs:** [docs/architecture/wavemux-components.md](docs/architecture/wavemux-components.md)
+- **Architecture Docs:** [docs/architecture/agentmux-components.md](docs/architecture/agentmux-components.md)
 - **Version Management:** [README.md](README.md)
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 

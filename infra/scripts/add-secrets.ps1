@@ -1,4 +1,4 @@
-# Add WaveMux secrets to services/prod
+# Add AgentMux secrets to services/prod
 # PowerShell script for Windows
 
 $GITHUB_SECRET = "4c9409e245302f804fcab3a849186cde1612a1277a8f130d2e468f25a24197a1"
@@ -16,14 +16,14 @@ $currentSecretJson = aws secretsmanager get-secret-value `
 # Parse the current secret
 $currentSecret = $currentSecretJson | ConvertFrom-Json
 
-# Add wavemux key
-$wavemuxSecret = @{
+# Add agentmux key
+$agentmuxSecret = @{
     GITHUB_WEBHOOK_SECRET = $GITHUB_SECRET
     CUSTOM_WEBHOOK_SECRET = $CUSTOM_SECRET
     DEFAULT_AUTH_SECRET = $DEFAULT_SECRET
 }
 
-$currentSecret | Add-Member -NotePropertyName "wavemux" -NotePropertyValue $wavemuxSecret -Force
+$currentSecret | Add-Member -NotePropertyName "agentmux" -NotePropertyValue $agentmuxSecret -Force
 
 # Convert back to JSON
 $updatedSecretJson = $currentSecret | ConvertTo-Json -Depth 10 -Compress
@@ -50,5 +50,5 @@ $verifyJson = aws secretsmanager get-secret-value `
     --output text
 
 $verifySecret = $verifyJson | ConvertFrom-Json
-Write-Host "`nWaveMux secrets:"
-$verifySecret.wavemux | ConvertTo-Json -Depth 3
+Write-Host "`nAgentMux secrets:"
+$verifySecret.agentmux | ConvertTo-Json -Depth 3

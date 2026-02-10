@@ -11,9 +11,9 @@ let window: Page;
 
 test.beforeAll(async () => {
     // Launch the Electron app from the production build
-    const appPath = path.join(__dirname, "..", "make", "win-unpacked", "WaveMux.exe");
+    const appPath = path.join(__dirname, "..", "make", "win-unpacked", "AgentMux.exe");
 
-    console.log("Launching WaveMux from:", appPath);
+    console.log("Launching AgentMux from:", appPath);
 
     electronApp = await electron.launch({
         executablePath: appPath,

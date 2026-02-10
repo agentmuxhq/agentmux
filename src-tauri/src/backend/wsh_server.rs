@@ -34,11 +34,11 @@ mod imp {
 
     /// Get the platform-specific socket path/name.
     ///
-    /// - Windows: named pipe `\\.\pipe\wavemux-{pid}`
+    /// - Windows: named pipe `\\.\pipe\agentmux-{pid}`
     /// - macOS/Linux: Unix domain socket at `{data_dir}/wave.sock`
     pub fn get_socket_path(data_dir: &std::path::Path) -> String {
         if cfg!(windows) {
-            format!("wavemux-{}", std::process::id())
+            format!("agentmux-{}", std::process::id())
         } else {
             data_dir
                 .join("wave.sock")

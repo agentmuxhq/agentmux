@@ -1,7 +1,7 @@
 // Copyright 2026, a5af.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Crash handling for WaveMux Tauri.
+// Crash handling for AgentMux Tauri.
 // Replaces emain/crash-handlers.ts and emain/crash-reporter.ts
 
 use std::panic;
@@ -29,14 +29,14 @@ pub fn init_crash_handler(log_dir: PathBuf) {
         ));
 
         let crash_report = format!(
-            "WaveMux Crash Report\n\
+            "AgentMux Crash Report\n\
              ===================\n\
              Time: {}\n\
              Panic: {}\n\
              \n\
              Location: {}\n\
              \n\
-             Please report this at: https://github.com/a5af/wavemux/issues\n",
+             Please report this at: https://github.com/a5af/agentmux/issues\n",
             chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
             panic_info,
             panic_info.location().map_or("unknown".to_string(), |loc| {

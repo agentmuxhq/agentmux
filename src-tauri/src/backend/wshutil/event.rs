@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Event listener system for WaveMux RPC.
+//! Event listener system for AgentMux RPC.
 //! Port of Go's `pkg/wshutil/wshevent.go`.
 //!
 //! Provides a pub/sub event system that converts WaveEvents into

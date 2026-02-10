@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Rust-native backend initialization.
-//! Replaces the Go sidecar (wavemuxsrv) with in-process Rust services.
+//! Replaces the Go sidecar (agentmuxsrv) with in-process Rust services.
 //!
 //! Initializes: WaveStore (SQLite), WPS Broker, RPC Engine, RPC Router.
 //! The frontend communicates via Tauri IPC instead of WebSocket.

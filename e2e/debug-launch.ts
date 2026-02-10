@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function main() {
-    const appPath = path.join(__dirname, "..", "make", "win-unpacked", "WaveMux.exe");
+    const appPath = path.join(__dirname, "..", "make", "win-unpacked", "AgentMux.exe");
     console.log("Launching:", appPath);
 
     const electronApp = await electron.launch({

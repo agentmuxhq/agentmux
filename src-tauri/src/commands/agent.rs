@@ -59,17 +59,27 @@ impl AgentProcessStore {
         self.processes.lock().await.contains_key(pane_id)
     }
 
-    /// Execute an async operation on a process by pane_id.
-    pub async fn with_process<F, Fut, R>(&self, pane_id: &str, f: F) -> Result<R, String>
-    where
-        F: FnOnce(&mut AgentProcess) -> Fut,
-        Fut: std::future::Future<Output = Result<R, String>>,
-    {
+    /// Write to stdin of a process by pane_id.
+    pub async fn write_stdin(&self, pane_id: &str, text: &str) -> Result<(), String> {
         let mut processes = self.processes.lock().await;
         let process = processes
             .get_mut(pane_id)
             .ok_or_else(|| format!("no agent process for pane {pane_id}"))?;
-        f(process).await
+        process
+            .write_stdin(text)
+            .await
+            .map_err(|e| format!("failed to write stdin: {e}"))
+    }
+
+    /// Send interrupt signal to a process by pane_id.
+    pub async fn interrupt(&self, pane_id: &str) -> Result<(), String> {
+        let mut processes = self.processes.lock().await;
+        let process = processes
+            .get_mut(pane_id)
+            .ok_or_else(|| format!("no agent process for pane {pane_id}"))?;
+        process
+            .interrupt()
+            .map_err(|e| format!("failed to interrupt: {e}"))
     }
 }
 
@@ -237,14 +247,7 @@ pub async fn spawn_agent(
             // Small delay to let the agent finish starting up
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             let _ = process_store
-                .with_process(&request.pane_id, |proc| {
-                    let p = prompt.clone();
-                    async move {
-                        proc.write_stdin(&p)
-                            .await
-                            .map_err(|e| format!("failed to send initial prompt: {e}"))
-                    }
-                })
+                .write_stdin(&request.pane_id, prompt)
                 .await;
         }
     }
@@ -289,12 +292,7 @@ pub async fn send_agent_input(
     // Handle signal request
     if let Some(signal) = &request.signal {
         if signal == "SIGINT" {
-            return process_store
-                .with_process(&request.pane_id, |proc| async move {
-                    proc.interrupt()
-                        .map_err(|e| format!("failed to send SIGINT: {e}"))
-                })
-                .await;
+            return process_store.interrupt(&request.pane_id).await;
         }
         return Err(format!("unsupported signal: {signal}"));
     }
@@ -308,16 +306,7 @@ pub async fn send_agent_input(
             })
             .ok();
 
-        process_store
-            .with_process(&request.pane_id, |proc| {
-                let t = text.clone();
-                async move {
-                    proc.write_stdin(&t)
-                        .await
-                        .map_err(|e| format!("failed to write stdin: {e}"))
-                }
-            })
-            .await
+        process_store.write_stdin(&request.pane_id, text).await
     } else {
         Err("either text or signal must be provided".into())
     }
@@ -329,12 +318,7 @@ pub async fn interrupt_agent(
     pane_id: String,
     process_store: tauri::State<'_, Arc<AgentProcessStore>>,
 ) -> Result<(), String> {
-    process_store
-        .with_process(&pane_id, |proc| async move {
-            proc.interrupt()
-                .map_err(|e| format!("failed to interrupt: {e}"))
-        })
-        .await
+    process_store.interrupt(&pane_id).await
 }
 
 /// Force-kill an agent subprocess.

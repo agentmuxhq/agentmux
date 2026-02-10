@@ -1,6 +1,6 @@
-# Native Notifications in WaveMux
+# Native Notifications in AgentMux
 
-WaveMux supports OS-level native notifications via `tauri-plugin-notification`, integrated with the existing in-app notification system.
+AgentMux supports OS-level native notifications via `tauri-plugin-notification`, integrated with the existing in-app notification system.
 
 ## Features
 
@@ -60,7 +60,7 @@ await notifyError("Connection Failed", "Could not connect to backend server");
 ```typescript
 import { notifyUpdate } from "@/util/notification";
 
-await notifyUpdate("0.19.0", "A new version of WaveMux is available!");
+await notifyUpdate("0.19.0", "A new version of AgentMux is available!");
 ```
 
 ## API Reference
@@ -222,8 +222,8 @@ Notification behavior can be configured in `tauri.conf.json`:
 {
   "plugins": {
     "notification": {
-      "identifier": "com.wavemux.app",
-      "appName": "WaveMux"
+      "identifier": "com.a5af.agentmux",
+      "appName": "AgentMux"
     }
   }
 }
@@ -261,5 +261,5 @@ Check logs in DevTools Console or `~/.waveterm-dev/waveapp.log`.
 ## See Also
 
 - [Tauri Notification Plugin Docs](https://v2.tauri.app/plugin/notification/)
-- [In-App Notifications](../frontend/app/store/global.ts) - WaveMux's internal notification system
+- [In-App Notifications](../frontend/app/store/global.ts) - AgentMux's internal notification system
 - [Custom.d.ts](../frontend/types/custom.d.ts) - NotificationType definition

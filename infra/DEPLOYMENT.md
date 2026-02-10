@@ -1,6 +1,6 @@
-# WaveMux Webhook Infrastructure - Deployment Guide
+# AgentMux Webhook Infrastructure - Deployment Guide
 
-Complete guide for deploying the WaveMux webhook router infrastructure.
+Complete guide for deploying the AgentMux webhook router infrastructure.
 
 ## Quick Start
 
@@ -98,15 +98,15 @@ cdk deploy --require-approval never
 
 **Expected output:**
 ```
-✅  wavemux-webhook-prod
+✅  agentmux-webhook-prod
 
 Outputs:
-wavemux-webhook-prod.HttpApiEndpoint = https://abc123.execute-api.us-east-1.amazonaws.com
-wavemux-webhook-prod.WebSocketApiEndpoint = wss://xyz789.execute-api.us-east-1.amazonaws.com/prod
-wavemux-webhook-prod.WebhookSecretArn = arn:aws:secretsmanager:us-east-1:050544946291:secret:wavemux/webhook-secret-prod-xxxxx
+agentmux-webhook-prod.HttpApiEndpoint = https://abc123.execute-api.us-east-1.amazonaws.com
+agentmux-webhook-prod.WebSocketApiEndpoint = wss://xyz789.execute-api.us-east-1.amazonaws.com/prod
+agentmux-webhook-prod.WebhookSecretArn = arn:aws:secretsmanager:us-east-1:050544946291:secret:agentmux/webhook-secret-prod-xxxxx
 
 Stack ARN:
-arn:aws:cloudformation:us-east-1:050544946291:stack/wavemux-webhook-prod/...
+arn:aws:cloudformation:us-east-1:050544946291:stack/agentmux-webhook-prod/...
 ```
 
 ### 6. Configure Secrets
@@ -114,7 +114,7 @@ arn:aws:cloudformation:us-east-1:050544946291:stack/wavemux-webhook-prod/...
 ```bash
 # Get secret ARN from stack output
 SECRET_ARN=$(aws cloudformation describe-stacks \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --query 'Stacks[0].Outputs[?OutputKey==`WebhookSecretArn`].OutputValue' \
   --output text \
   --profile Agent2)
@@ -141,7 +141,7 @@ openssl rand -hex 32
 ```bash
 # Get HTTP API endpoint
 HTTP_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --query 'Stacks[0].Outputs[?OutputKey==`HttpApiEndpoint`].OutputValue' \
   --output text \
   --profile Agent2)
@@ -152,7 +152,7 @@ curl "$HTTP_ENDPOINT/health"
 # Expected response:
 # {
 #   "status": "healthy",
-#   "service": "wavemux-webhook-router",
+#   "service": "agentmux-webhook-router",
 #   "environment": "prod",
 #   "timestamp": 1730188800
 # }
@@ -176,14 +176,14 @@ echo "$HTTP_ENDPOINT/webhook/github"
 6. **Active:** ✓
 7. Click **Add webhook**
 
-### 9. Configure WaveMux Client
+### 9. Configure AgentMux Client
 
-Create `~/.wavemux/webhook-config.json`:
+Create `~/.agentmux/webhook-config.json`:
 
 ```bash
 # Get WebSocket endpoint
 WS_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --query 'Stacks[0].Outputs[?OutputKey==`WebSocketApiEndpoint`].OutputValue' \
   --output text \
   --profile Agent2)
@@ -194,7 +194,7 @@ SHARED_SECRET="shared-secret-for-auth"  # Same as in Secrets Manager
 AUTH_TOKEN=$(echo -n "$WORKSPACE_ID" | openssl dgst -sha256 -hmac "$SHARED_SECRET" | sed 's/^.* //')
 
 # Create config file
-cat > ~/.wavemux/webhook-config.json <<EOF
+cat > ~/.agentmux/webhook-config.json <<EOF
 {
   "version": "1.0",
   "workspaceId": "$WORKSPACE_ID",
@@ -204,7 +204,7 @@ cat > ~/.wavemux/webhook-config.json <<EOF
 }
 EOF
 
-echo "Config created at ~/.wavemux/webhook-config.json"
+echo "Config created at ~/.agentmux/webhook-config.json"
 ```
 
 ## Verification
@@ -214,7 +214,7 @@ echo "Config created at ~/.wavemux/webhook-config.json"
 ```bash
 # List all resources in stack
 aws cloudformation list-stack-resources \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2
 ```
 
@@ -222,16 +222,16 @@ aws cloudformation list-stack-resources \
 
 ```bash
 # List tables
-aws dynamodb list-tables --profile Agent2 | grep WaveMux
+aws dynamodb list-tables --profile Agent2 | grep AgentMux
 
 # Check webhook config table
 aws dynamodb describe-table \
-  --table-name WaveMuxWebhookConfig-prod \
+  --table-name AgentMuxWebhookConfig-prod \
   --profile Agent2
 
 # Check connections table
 aws dynamodb describe-table \
-  --table-name WaveMuxConnections-prod \
+  --table-name AgentMuxConnections-prod \
   --profile Agent2
 ```
 
@@ -240,11 +240,11 @@ aws dynamodb describe-table \
 ```bash
 # Get function info
 aws lambda get-function \
-  --function-name wavemux-webhook-router-prod \
+  --function-name agentmux-webhook-router-prod \
   --profile Agent2
 
 # View recent logs
-aws logs tail /aws/lambda/wavemux-webhook-router-prod \
+aws logs tail /aws/lambda/agentmux-webhook-router-prod \
   --follow \
   --profile Agent2
 ```
@@ -288,11 +288,11 @@ curl -X POST \
 
 ```bash
 # Tail Lambda logs
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow --profile Agent2
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow --profile Agent2
 
 # Search for errors
 aws logs filter-log-events \
-  --log-group-name /aws/lambda/wavemux-webhook-router-prod \
+  --log-group-name /aws/lambda/agentmux-webhook-router-prod \
   --filter-pattern "ERROR" \
   --profile Agent2
 ```
@@ -300,9 +300,9 @@ aws logs filter-log-events \
 ### CloudWatch Metrics
 
 Monitor in AWS Console:
-- Lambda → Functions → wavemux-webhook-router-prod → Monitoring
-- API Gateway → APIs → wavemux-webhook-http-prod → Dashboard
-- DynamoDB → Tables → WaveMuxWebhookConfig-prod → Metrics
+- Lambda → Functions → agentmux-webhook-router-prod → Monitoring
+- API Gateway → APIs → agentmux-webhook-http-prod → Dashboard
+- DynamoDB → Tables → AgentMuxWebhookConfig-prod → Metrics
 
 ### Cost Monitoring
 
@@ -316,7 +316,7 @@ aws ce get-cost-and-usage \
   --filter file://<(echo '{
     "Tags": {
       "Key": "Project",
-      "Values": ["WaveMux"]
+      "Values": ["AgentMux"]
     }
   }') \
   --profile Agent2
@@ -349,7 +349,7 @@ aws secretsmanager put-secret-value \
 ```bash
 # Check if resources have drifted from template
 aws cloudformation detect-stack-drift \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2
 ```
 
@@ -360,12 +360,12 @@ aws cloudformation detect-stack-drift \
 ```bash
 # List stack events
 aws cloudformation describe-stack-events \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2
 
 # Rollback if needed
 aws cloudformation cancel-update-stack \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2
 ```
 
@@ -377,12 +377,12 @@ npm run destroy
 
 # Or manually:
 aws cloudformation delete-stack \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2
 
 # Wait for deletion
 aws cloudformation wait stack-delete-complete \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2
 ```
 
@@ -408,13 +408,13 @@ aws iam list-attached-user-policies --user-name Agent2 --profile Agent2
 
 **Check logs:**
 ```bash
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --profile Agent2
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --profile Agent2
 ```
 
 **Test Lambda directly:**
 ```bash
 aws lambda invoke \
-  --function-name wavemux-webhook-router-prod \
+  --function-name agentmux-webhook-router-prod \
   --payload '{"requestContext":{"http":{"method":"GET","path":"/health"}}}' \
   response.json \
   --profile Agent2
@@ -427,7 +427,7 @@ cat response.json
 **Check connections table:**
 ```bash
 aws dynamodb scan \
-  --table-name WaveMuxConnections-prod \
+  --table-name AgentMuxConnections-prod \
   --profile Agent2
 ```
 
@@ -467,7 +467,7 @@ wscat -c "$WS_ENDPOINT?workspaceId=agent2-workspace&token=$AUTH_TOKEN"
 
 ## Next Steps
 
-1. **Implement WaveMux backend integration:**
+1. **Implement AgentMux backend integration:**
    - WebSocket client in Go (`pkg/webhookinjector/`)
    - Terminal registration logic
    - Command injection handler
@@ -490,6 +490,6 @@ wscat -c "$WS_ENDPOINT?workspaceId=agent2-workspace&token=$AUTH_TOKEN"
 ## Support
 
 For issues or questions:
-- Check Lambda logs: `aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow`
+- Check Lambda logs: `aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow`
 - Review spec: `SPEC_REACTIVE_AGENT_COMMUNICATION.md`
-- GitHub issues: https://github.com/a5af/wavemux/issues
+- GitHub issues: https://github.com/a5af/agentmux/issues

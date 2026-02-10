@@ -1,7 +1,7 @@
 // Copyright 2026, a5af.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Heartbeat monitoring for WaveMux Tauri.
+// Heartbeat monitoring for AgentMux Tauri.
 // Replaces emain/heartbeat.ts
 
 use std::path::PathBuf;
@@ -9,10 +9,10 @@ use tokio::time::{interval, Duration};
 
 /// Start the heartbeat monitoring loop.
 ///
-/// Writes a timestamp to wavemux.heartbeat every 5 seconds.
+/// Writes a timestamp to agentmux.heartbeat every 5 seconds.
 /// This allows external tools to detect if the app is still running.
 pub async fn start_heartbeat(data_dir: PathBuf) {
-    let heartbeat_file = data_dir.join("wavemux.heartbeat");
+    let heartbeat_file = data_dir.join("agentmux.heartbeat");
     let mut ticker = interval(Duration::from_secs(5));
 
     tracing::info!("Starting heartbeat monitor: {}", heartbeat_file.display());
@@ -33,7 +33,7 @@ pub async fn start_heartbeat(data_dir: PathBuf) {
 
 /// Clean up heartbeat file on shutdown.
 pub fn cleanup_heartbeat(data_dir: &PathBuf) {
-    let heartbeat_file = data_dir.join("wavemux.heartbeat");
+    let heartbeat_file = data_dir.join("agentmux.heartbeat");
     if let Err(e) = std::fs::remove_file(&heartbeat_file) {
         if e.kind() != std::io::ErrorKind::NotFound {
             tracing::warn!("Failed to remove heartbeat file: {}", e);

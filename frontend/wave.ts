@@ -63,7 +63,7 @@ function updateZoomFactor(zoomFactor: number) {
 }
 
 /**
- * Initialize WaveMux in Tauri mode by fetching client/window/workspace/tab data
+ * Initialize AgentMux in Tauri mode by fetching client/window/workspace/tab data
  * from backend, verifying objects exist, and creating missing ones if needed.
  * This mirrors Electron's relaunchBrowserWindows() pattern.
  */
@@ -128,7 +128,7 @@ async function initTauriWave(): Promise<void> {
 
     } catch (error) {
         console.error("[initTauriWave] Initialization failed:", error);
-        pushFlashError("Failed to initialize WaveMux: " + String(error));
+        pushFlashError("Failed to initialize AgentMux: " + String(error));
         // Show error UI instead of grey screen
         document.body.style.visibility = "visible";
         document.body.style.opacity = "1";

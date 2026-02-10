@@ -1,89 +1,70 @@
 <p align="center">
-  <img src="./assets/wave-logo_icon-solid.svg" alt="WaveMux Logo" width="120">
+  <img src="./landing/logo.svg" alt="AgentMux Logo" width="120">
 </p>
 
-# WaveMux
+<h1 align="center">AgentMux</h1>
 
-**AI-Native Terminal Multiplexer** - Fork of Wave Terminal
+<p align="center">
+  <b>AI-Native Agent Orchestrator</b> &mdash; Terminal multiplexer with reactive agent-to-agent messaging
+</p>
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+<p align="center">
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+</p>
+
+---
+
+## What is AgentMux?
+
+AgentMux is a Tauri v2 terminal multiplexer built for AI agent workflows:
+
+- **Multi-pane terminal layouts** with per-pane agent identification
+- **Reactive agent messaging** &mdash; inject messages directly into running Claude Code instances
+- **Cross-host communication** via AgentMux cloud relay
+- **Built-in AI chat** integration with OpenAI, Anthropic, and Google
+- File previews, code editors, and embeddable widgets
+
+Originally forked from [Wave Terminal](https://github.com/wavetermdev/waveterm).
 
 ## Quick Start
 
-```powershell
+```bash
 # Install dependencies
 npm install --legacy-peer-deps
 
-# Build and package (one command)
-.\scripts\build-release.ps1 -Clean
+# Development (hot reload)
+task dev
+
+# Production build
+task build
 ```
-
-Output: `make\win-unpacked\WaveMux.exe`
-
-## Build Commands
-
-| Command | Purpose |
-|---------|---------|
-| `.\scripts\build-release.ps1 -Clean` | Full clean build with verification |
-| `task build:backend` | Rebuild Go binaries only |
-| `npm run build:prod` | Rebuild frontend only |
-| `task dev` | Development mode (hot reload) |
-
-## Build Script Options
-
-```powershell
-.\scripts\build-release.ps1 [-Clean] [-SkipBackend] [-SkipFrontend] [-SkipPackage]
-```
-
-- `-Clean` - Kill processes, remove stale artifacts
-- `-SkipBackend` - Skip Go build (use existing binaries)
-- `-SkipFrontend` - Skip TypeScript build
-- `-SkipPackage` - Skip electron-builder packaging
-
-## Version Verification
-
-The build script automatically verifies:
-- `package.json` version matches built binaries
-- All 8 wsh platform variants exist
-- `wsh version` reports correct version
-- Frontend and main process builds exist
 
 ## Architecture
 
 ```
-WaveMux.exe (Electron)
-    └── wavemuxsrv.x64.exe (Go backend - spawned automatically)
-        └── wsh (shell integration - deployed to remotes)
+agentmux.exe (Tauri v2 - Rust + webview)
+    └── agentmuxsrv (Go backend sidecar)
+        └── wsh (shell integration CLI)
 ```
+
+| Component | Size | Purpose |
+|-----------|------|---------|
+| `agentmux.exe` | ~14MB | Tauri frontend (Rust + native webview) |
+| `agentmuxsrv` | ~33MB | Go backend (terminals, DB, AI, SSH) |
+| `wsh` | ~11MB | Shell integration + remote RPC |
+| **Total** | ~58MB | Compare: Electron version was ~135MB |
 
 ## Development
 
-```powershell
-# Hot reload mode
-task dev
+| Command | When to Use |
+|---------|-------------|
+| `task dev` | Normal development (hot reload) |
+| `task build:backend` | After Go backend changes |
+| `task build` | Production build with installer |
+| `./bump-version.sh patch` | Version bump before release |
 
-# After Go changes
-task build:backend
-# Then restart task dev
-
-# Run tests
-npm test
-```
-
-## Deploy to Desktop
-
-```powershell
-$Version = (Get-Content package.json | ConvertFrom-Json).version
-xcopy /E /Y /I make\win-unpacked "C:\Users\asafe\Desktop\WaveMux-$Version\"
-```
-
-## Prerequisites
-
-- Node.js 18+ with npm
-- Go 1.21+
-- Task (taskfile.dev)
-- Windows with zig (for cross-compilation)
+See [BUILD.md](BUILD.md) for full build instructions.
 
 ## License
 
-Apache-2.0 - Originally forked from [Wave Terminal](https://github.com/wavetermdev/waveterm)
+Apache-2.0

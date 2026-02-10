@@ -70,7 +70,7 @@ async function bootstrap() {
         errorDiv.style.cssText = "padding: 20px; font-family: monospace; color: red;";
 
         const title = document.createElement("h1");
-        title.textContent = "WaveMux Failed to Start";
+        title.textContent = "AgentMux Failed to Start";
         errorDiv.appendChild(title);
 
         const errorPre = document.createElement("pre");

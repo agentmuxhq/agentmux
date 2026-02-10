@@ -56,7 +56,7 @@ Guidelines:
 
 ## Project Structure
 
-The project is broken into three main components: frontend (Tauri + React), wavemuxsrv (Go backend sidecar), and wsh (shell integration CLI). This section is a work-in-progress as our codebase is constantly changing.
+The project is broken into three main components: frontend (Tauri + React), agentmuxsrv (Go backend sidecar), and wsh (shell integration CLI). This section is a work-in-progress as our codebase is constantly changing.
 
 ### Frontend
 
@@ -66,14 +66,14 @@ Our frontend can be found in the [`/frontend`](./frontend/) directory. It is wri
 
 The Tauri native shell can be found at [`/src-tauri`](./src-tauri/). It handles native window management, system tray, menus, crash handling, logging, and Go sidecar lifecycle. The main entrypoint is [`lib.rs`](./src-tauri/src/lib.rs). IPC commands are registered in the `invoke_handler` and defined in [`src/commands/`](./src-tauri/src/commands/). Changes to Rust code require restarting `task dev`.
 
-### wavemuxsrv
+### agentmuxsrv
 
-wavemuxsrv can be found at [`/cmd/server`](./cmd/server), with most business logic located in [`/pkg`](./pkg/). It is the primary Go backend for the app and manages the database and all communications with remote hosts. Its main entrypoint is [`main-server.go`](./cmd/server/main-server.go). This process does not hot-reload — run `task build:backend` and restart `task dev` to apply changes.
+agentmuxsrv can be found at [`/cmd/server`](./cmd/server), with most business logic located in [`/pkg`](./pkg/). It is the primary Go backend for the app and manages the database and all communications with remote hosts. Its main entrypoint is [`main-server.go`](./cmd/server/main-server.go). This process does not hot-reload — run `task build:backend` and restart `task dev` to apply changes.
 
-Communication between the wavemuxsrv and the frontend is handled by both HTTP services (found at [`/pkg/service`](./pkg/service/)) and wshrpc via WebSocket (found at [`/pkg/wshrpc`](./pkg/wshrpc/)).
+Communication between the agentmuxsrv and the frontend is handled by both HTTP services (found at [`/pkg/service`](./pkg/service/)) and wshrpc via WebSocket (found at [`/pkg/wshrpc`](./pkg/wshrpc/)).
 
 ### wsh
 
 wsh can be found at [`/cmd/wsh`](./cmd/wsh/). It serves two purposes: it functions as a CLI tool for controlling the app from the command line and it functions as a server on remote machines to facilitate multiplexing terminal sessions over a single connection and streaming files between the remote host and the local host. This process does not hot-reload — run `task build:backend` to rebuild.
 
-Communication between wavemuxsrv and wsh is handled by wshrpc via either forwarded domain socket or WebSocket, depending on what the remote host supports.
+Communication between agentmuxsrv and wsh is handled by wshrpc via either forwarded domain socket or WebSocket, depending on what the remote host supports.

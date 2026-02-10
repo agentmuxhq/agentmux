@@ -13,10 +13,10 @@ mod tray;
 use tauri::Emitter;
 use tauri::Manager;
 
-/// Initialize and run the WaveMux Tauri application.
+/// Initialize and run the AgentMux Tauri application.
 ///
 /// Supports two backend modes (controlled by Cargo features):
-/// - `go-sidecar` (default): Spawns wavemuxsrv Go binary as sidecar
+/// - `go-sidecar` (default): Spawns agentmuxsrv Go binary as sidecar
 /// - `rust-backend`: Uses in-process Rust backend (no external process)
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -162,7 +162,7 @@ pub fn run() {
             // Set window title with version
             if let Some(window) = handle.get_webview_window("main") {
                 let version = env!("CARGO_PKG_VERSION");
-                let title = format!("WaveMux {}", version);
+                let title = format!("AgentMux {}", version);
                 if let Err(e) = window.set_title(&title) {
                     tracing::error!("Failed to set window title: {}", e);
                 }
@@ -307,7 +307,7 @@ pub fn run() {
 
     builder
         .run(tauri::generate_context!())
-        .expect("error while running WaveMux");
+        .expect("error while running AgentMux");
 }
 
 fn init_logging(handle: &tauri::AppHandle) -> std::path::PathBuf {
@@ -320,7 +320,7 @@ fn init_logging(handle: &tauri::AppHandle) -> std::path::PathBuf {
 
     let _ = std::fs::create_dir_all(&log_dir);
 
-    let file_appender = tracing_appender::rolling::daily(&log_dir, "wavemux.log");
+    let file_appender = tracing_appender::rolling::daily(&log_dir, "agentmux.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     // Keep the guard alive for the lifetime of the app
@@ -330,13 +330,13 @@ fn init_logging(handle: &tauri::AppHandle) -> std::path::PathBuf {
     let subscriber = tracing_subscriber::registry()
         .with(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("wavemux=info,warn")),
+                .unwrap_or_else(|_| EnvFilter::new("agentmux=info,warn")),
         )
         .with(fmt::layer().with_writer(non_blocking))
         .with(fmt::layer().with_writer(std::io::stderr));
 
     tracing::subscriber::set_global_default(subscriber).ok();
-    tracing::info!("WaveMux starting");
+    tracing::info!("AgentMux starting");
 
     log_dir
 }

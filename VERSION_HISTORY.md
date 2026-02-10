@@ -1,4 +1,4 @@
-# WaveMux Version History
+# AgentMux Version History
 
 This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
 
@@ -261,7 +261,7 @@ Agents work on feature branches from `main`:
 3. **Claude activity display** - Shows Claude Code activity summaries in title bar
 4. **Environment-based agent detection** - WAVEMUX_AGENT_ID env var
 5. **OSC 16162 shell integration** - Shell can send agent identity via escape sequences
-6. **Multi-instance support** - Multiple WaveMux instances can run simultaneously
+6. **Multi-instance support** - Multiple AgentMux instances can run simultaneously
 7. **Portable mode** - Persistent settings across instances
 8. **High-contrast borders** - Visual improvements for terminal blocks
 9. **Version management** - Automated version bump scripts

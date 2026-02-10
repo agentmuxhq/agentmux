@@ -131,8 +131,8 @@ mod tests {
 
     #[test]
     fn test_get_schema_dir() {
-        let app_path = Path::new("/opt/wavemux");
-        assert_eq!(get_schema_dir(app_path), PathBuf::from("/opt/wavemux/schema"));
+        let app_path = Path::new("/opt/agentmux");
+        assert_eq!(get_schema_dir(app_path), PathBuf::from("/opt/agentmux/schema"));
     }
 
     #[test]

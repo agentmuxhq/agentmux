@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! WCloud client: telemetry submission to the WaveMux cloud API.
+//! WCloud client: telemetry submission to the AgentMux cloud API.
 //! Port of Go's pkg/wcloud/.
 
 use crate::backend::telemetry::{ActivityType, TEvent};
@@ -250,7 +250,7 @@ mod tests {
         let input = TelemetryInputType {
             userid: "user-1".to_string(),
             clientid: "client-1".to_string(),
-            app_type: Some("wavemux".to_string()),
+            app_type: Some("agentmux".to_string()),
             auto_update_enabled: Some(true),
             auto_update_channel: Some("stable".to_string()),
             curday: "2024-03-15".to_string(),
@@ -259,7 +259,7 @@ mod tests {
         let json = serde_json::to_string(&input).unwrap();
         assert!(json.contains(r#""userid":"user-1""#));
         assert!(json.contains(r#""clientid":"client-1""#));
-        assert!(json.contains(r#""apptype":"wavemux""#));
+        assert!(json.contains(r#""apptype":"agentmux""#));
         assert!(json.contains(r#""autoupdateenabled":true"#));
         assert!(json.contains(r#""curday":"2024-03-15""#));
     }

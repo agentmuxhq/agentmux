@@ -1,5 +1,5 @@
 #!/bin/bash
-# Add WaveMux secrets to services/prod
+# Add AgentMux secrets to services/prod
 
 set -e
 
@@ -15,12 +15,12 @@ CURRENT=$(aws secretsmanager get-secret-value \
   --query SecretString \
   --output text)
 
-echo "Adding wavemux secrets..."
+echo "Adding agentmux secrets..."
 UPDATED=$(echo "$CURRENT" | jq --arg github "$GITHUB_SECRET" \
   --arg custom "$CUSTOM_SECRET" \
   --arg default "$DEFAULT_SECRET" \
   '. + {
-    "wavemux": {
+    "agentmux": {
       "GITHUB_WEBHOOK_SECRET": $github,
       "CUSTOM_WEBHOOK_SECRET": $custom,
       "DEFAULT_AUTH_SECRET": $default
@@ -40,4 +40,4 @@ aws secretsmanager get-secret-value \
   --profile Agent2 \
   --region us-east-1 \
   --query SecretString \
-  --output text | jq '.wavemux'
+  --output text | jq '.agentmux'

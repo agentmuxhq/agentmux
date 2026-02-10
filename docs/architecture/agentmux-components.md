@@ -1,4 +1,4 @@
-# WaveMux Component Architecture
+# AgentMux Component Architecture
 
 ## High-Level Block Diagram
 

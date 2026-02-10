@@ -1,4 +1,4 @@
-# Claude Agent Development Guide - WaveMux
+# Claude Agent Development Guide - AgentMux
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## Repository
 
-- **Name:** WaveMux
+- **Name:** AgentMux
 - **GitHub:** https://github.com/a5af/wavemux
 - **Type:** Tauri v2 terminal application
 - **Version:** 0.19.0
@@ -42,7 +42,7 @@
 | `task start` | Standalone testing (rare) | ❌ No |
 | `task package` | **Final release builds ONLY** | ❌ No |
 
-**CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "wavemuxsrv.x64.exe ENOENT"
+**CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "agentmuxsrv.x64.exe ENOENT"
 
 ### After Code Changes
 
@@ -52,10 +52,10 @@
 
 ### Architecture
 
-WaveMux is built on **Tauri v2** (NOT Electron):
+AgentMux is built on **Tauri v2** (NOT Electron):
 
-- **wavemux.exe** = Tauri app (Rust + single webview)
-- **wavemuxsrv** = Go backend sidecar (auto-spawned, don't run manually)
+- **agentmux.exe** = Tauri app (Rust + single webview)
+- **agentmuxsrv** = Go backend sidecar (auto-spawned, don't run manually)
 - **wsh** = Shell integration binary (must be versioned correctly)
 
 **Important:** All Electron code has been removed (Phase 14). Only Tauri is supported.
@@ -140,7 +140,7 @@ npm run coverage
 ### Backend (Go)
 
 ```bash
-# Build all binaries (wavemuxsrv, wsh for all platforms)
+# Build all binaries (agentmuxsrv, wsh for all platforms)
 task build:backend
 
 # Build specific platform
@@ -222,16 +222,16 @@ Context for ReAgent (automated PR review system).
 
 ## Architecture Overview
 
-WaveMux is an AI-native terminal application built on a **three-tier architecture**:
+AgentMux is an AI-native terminal application built on a **three-tier architecture**:
 
 ### Tier 1: Tauri Shell (Rust)
 - **Location:** `src-tauri/src/`
 - **Role:** Native window management, system tray, menus, crash handling, logging, heartbeat monitoring, and Go sidecar lifecycle management.
 - **Key files:** `lib.rs` (app setup, plugin registration, IPC handler registration), `sidecar.rs` (Go backend spawn/communication), `commands/` (Tauri IPC command handlers for platform, auth, window, backend, devtools, RPC bridge), `state.rs` (shared app state), `menu.rs`, `tray.rs`, `crash.rs`, `heartbeat.rs`.
-- **Backend modes:** Feature-gated via Cargo -- `go-sidecar` (default, spawns wavemuxsrv) or `rust-backend` (in-process, experimental). See `rust_backend.rs` and `backend/` directory.
+- **Backend modes:** Feature-gated via Cargo -- `go-sidecar` (default, spawns agentmuxsrv) or `rust-backend` (in-process, experimental). See `rust_backend.rs` and `backend/` directory.
 - **Tauri plugins:** shell, dialog, notification, clipboard, global-shortcut, fs, opener, process, store, window-state, websocket, single-instance.
 
-### Tier 2: Go Backend Sidecar (`wavemuxsrv`)
+### Tier 2: Go Backend Sidecar (`agentmuxsrv`)
 - **Location:** `cmd/server/`, `pkg/`
 - **Role:** Core business logic, terminal session management, WebSocket/HTTP API, database (SQLite via sqlx), remote connections (SSH), AI integrations (OpenAI, Google Generative AI), file storage, event bus, config management, telemetry, cloud sync.
 - **Key packages:** `pkg/wcore/` (core logic), `pkg/waveobj/` (object model), `pkg/wconfig/` (configuration), `pkg/shellexec/` (terminal shell execution), `pkg/remote/` (SSH connections), `pkg/waveai/` (AI chat), `pkg/wshrpc/` (RPC protocol), `pkg/web/` (HTTP handlers), `pkg/wps/` (pub/sub), `pkg/eventbus/`, `pkg/blockcontroller/`, `pkg/service/`.
@@ -288,7 +288,7 @@ WaveMux is an AI-native terminal application built on a **three-tier architectur
 - [ ] Database migrations are additive-only (no destructive changes to existing migrations in `db/migrations-*`).
 - [ ] RPC methods registered and have corresponding TypeScript bindings (generated via `cmd/generatets/`).
 - [ ] CGO dependencies accounted for (SQLite requires CGO_ENABLED=1 with `sqlite_omit_load_extension` tag).
-- [ ] Cross-compilation considered: `wsh` builds for 8 platform/arch targets, `wavemuxsrv` builds per-platform.
+- [ ] Cross-compilation considered: `wsh` builds for 8 platform/arch targets, `agentmuxsrv` builds per-platform.
 - [ ] No breaking changes to the `WAVESRV-ESTART` or `WAVESRV-EVENT:` stderr protocol (Rust sidecar.rs parses these).
 - [ ] `go.mod` `replace` directives preserved for forked dependencies (ssh_config, pty, tsunami).
 - [ ] AI provider integrations (OpenAI, Google) handle API errors gracefully and respect rate limits.

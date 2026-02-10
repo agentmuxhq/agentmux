@@ -1,13 +1,13 @@
 [package]
-name = "wavemux"
+name = "agentmux"
 version = "0.20.17"
-description = "WaveMux - AI-Native Terminal"
+description = "AgentMux - AI-Native Terminal"
 authors = ["a5af"]
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "wavemux_lib"
+name = "agentmux_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

@@ -1,4 +1,9 @@
 import { _electron as electron } from "playwright";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -6,7 +11,7 @@ async function main() {
     console.log("Starting test...");
     
     const app = await electron.launch({
-        executablePath: "C:/Systems/wavemux/make/win-unpacked/WaveMux.exe",
+        executablePath: path.join(__dirname, "..", "make", "win-unpacked", "AgentMux.exe"),
         timeout: 60000,
     });
     

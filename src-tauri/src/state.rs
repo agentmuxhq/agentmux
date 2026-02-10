@@ -10,7 +10,7 @@ pub struct AppState {
     /// Can be updated after querying database for existing client
     pub auth_key: Mutex<String>,
 
-    /// Backend (wavemuxsrv) connection endpoints (Go sidecar mode only)
+    /// Backend (agentmuxsrv) connection endpoints (Go sidecar mode only)
     #[cfg(feature = "go-sidecar")]
     pub backend_endpoints: Mutex<BackendEndpoints>,
 

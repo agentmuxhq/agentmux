@@ -429,4 +429,278 @@ mod tests {
         let parsed: LayoutState = wave_obj_from_json(&json).unwrap();
         assert_eq!(parsed.magnifiednodeid, "node-1");
     }
+
+    // ---- WaveObj trait method tests ----
+
+    #[test]
+    fn test_wave_obj_trait_otype() {
+        assert_eq!(Client::get_otype(), "client");
+        assert_eq!(Window::get_otype(), "window");
+        assert_eq!(Workspace::get_otype(), "workspace");
+        assert_eq!(Tab::get_otype(), "tab");
+        assert_eq!(LayoutState::get_otype(), "layout");
+        assert_eq!(Block::get_otype(), "block");
+    }
+
+    #[test]
+    fn test_wave_obj_trait_oid_accessors() {
+        let mut client = Client {
+            oid: "original".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(client.get_oid(), "original");
+
+        client.set_oid("updated".to_string());
+        assert_eq!(client.get_oid(), "updated");
+    }
+
+    #[test]
+    fn test_wave_obj_trait_version_accessors() {
+        let mut tab = Tab {
+            version: 5,
+            ..Default::default()
+        };
+        assert_eq!(tab.get_version(), 5);
+
+        tab.set_version(10);
+        assert_eq!(tab.get_version(), 10);
+    }
+
+    #[test]
+    fn test_wave_obj_trait_meta_accessors() {
+        let mut block = Block::default();
+        assert!(block.get_meta().is_empty());
+
+        let mut meta = MetaMapType::new();
+        meta.insert("view".into(), serde_json::json!("term"));
+        block.set_meta(meta);
+        assert_eq!(block.get_meta().get("view").unwrap(), "term");
+    }
+
+    #[test]
+    fn test_wave_obj_oref() {
+        let ws = Workspace {
+            oid: "ws-123".to_string(),
+            ..Default::default()
+        };
+        let oref = ws.oref();
+        assert_eq!(oref.otype, "workspace");
+        assert_eq!(oref.oid, "ws-123");
+        assert_eq!(oref.to_string(), "workspace:ws-123");
+    }
+
+    #[test]
+    fn test_layout_state_meta_none_returns_empty() {
+        let layout = LayoutState {
+            meta: None,
+            ..Default::default()
+        };
+        assert!(layout.get_meta().is_empty());
+    }
+
+    #[test]
+    fn test_layout_state_set_meta() {
+        let mut layout = LayoutState::default();
+        let mut meta = MetaMapType::new();
+        meta.insert("key".into(), serde_json::json!("value"));
+        layout.set_meta(meta);
+        assert!(layout.meta.is_some());
+        assert_eq!(layout.get_meta().get("key").unwrap(), "value");
+    }
+
+    // ---- Default trait tests ----
+
+    #[test]
+    fn test_entity_defaults() {
+        let client = Client::default();
+        assert!(client.oid.is_empty());
+        assert_eq!(client.version, 0);
+        assert!(client.windowids.is_empty());
+        assert!(!client.hasoldhistory);
+        assert_eq!(client.tosagreed, 0);
+
+        let window = Window::default();
+        assert!(window.oid.is_empty());
+        assert!(!window.isnew);
+        assert_eq!(window.pos.x, 0);
+        assert_eq!(window.winsize.width, 0);
+
+        let tab = Tab::default();
+        assert!(tab.blockids.is_empty());
+        assert!(tab.layoutstate.is_empty());
+
+        let block = Block::default();
+        assert!(block.runtimeopts.is_none());
+        assert!(block.stickers.is_none());
+        assert!(block.subblockids.is_none());
+    }
+
+    // ---- Supporting types serde tests ----
+
+    #[test]
+    fn test_file_def_serde() {
+        let fd = FileDef {
+            content: "hello".into(),
+            meta: Some({
+                let mut m = HashMap::new();
+                m.insert("type".into(), serde_json::json!("text"));
+                m
+            }),
+        };
+        let json = serde_json::to_string(&fd).unwrap();
+        let parsed: FileDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.content, "hello");
+        assert!(parsed.meta.is_some());
+    }
+
+    #[test]
+    fn test_file_def_empty_skips_fields() {
+        let fd = FileDef::default();
+        let json = serde_json::to_string(&fd).unwrap();
+        assert!(!json.contains("content"));
+        assert!(!json.contains("meta"));
+    }
+
+    #[test]
+    fn test_block_def_serde() {
+        let bd = BlockDef {
+            files: Some({
+                let mut m = HashMap::new();
+                m.insert("main.py".into(), FileDef { content: "print(1)".into(), meta: None });
+                m
+            }),
+            meta: MetaMapType::new(),
+        };
+        let json = serde_json::to_string(&bd).unwrap();
+        let parsed: BlockDef = serde_json::from_str(&json).unwrap();
+        assert!(parsed.files.is_some());
+        assert!(parsed.files.unwrap().contains_key("main.py"));
+    }
+
+    #[test]
+    fn test_leaf_order_entry_serde() {
+        let entry = LeafOrderEntry {
+            nodeid: "n1".into(),
+            blockid: "b1".into(),
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let parsed: LeafOrderEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.nodeid, "n1");
+        assert_eq!(parsed.blockid, "b1");
+    }
+
+    #[test]
+    fn test_layout_action_data_serde() {
+        let action = LayoutActionData {
+            actiontype: "insert".into(),
+            actionid: "a1".into(),
+            blockid: "b1".into(),
+            nodesize: Some(50),
+            indexarr: Some(vec![0, 1]),
+            focused: true,
+            magnified: false,
+            ephemeral: false,
+            targetblockid: String::new(),
+            position: "right".into(),
+        };
+        let json = serde_json::to_string(&action).unwrap();
+        let parsed: LayoutActionData = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.actiontype, "insert");
+        assert_eq!(parsed.nodesize, Some(50));
+        assert!(parsed.focused);
+    }
+
+    #[test]
+    fn test_layout_state_with_leaforder() {
+        let ls = LayoutState {
+            oid: "ls-1".to_string(),
+            version: 1,
+            leaforder: Some(vec![
+                LeafOrderEntry { nodeid: "n1".into(), blockid: "b1".into() },
+                LeafOrderEntry { nodeid: "n2".into(), blockid: "b2".into() },
+            ]),
+            ..Default::default()
+        };
+        let json = wave_obj_to_json(&ls).unwrap();
+        let parsed: LayoutState = wave_obj_from_json(&json).unwrap();
+        assert_eq!(parsed.leaforder.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_block_with_stickers_and_runtimeopts() {
+        use crate::domain::value_objects::{RuntimeOpts, TermSize, WinSize};
+
+        let block = Block {
+            oid: "blk-1".to_string(),
+            version: 1,
+            runtimeopts: Some(RuntimeOpts {
+                termsize: TermSize { rows: 24, cols: 80 },
+                winsize: WinSize { width: 800, height: 600 },
+            }),
+            stickers: Some(vec![StickerType {
+                stickertype: "icon".into(),
+                style: HashMap::new(),
+                clickopts: None,
+                display: StickerDisplayOpts {
+                    icon: "terminal".into(),
+                    imgsrc: String::new(),
+                    svgblob: String::new(),
+                },
+            }]),
+            ..Default::default()
+        };
+        let json = wave_obj_to_json(&block).unwrap();
+        let parsed: Block = wave_obj_from_json(&json).unwrap();
+        assert!(parsed.runtimeopts.is_some());
+        assert_eq!(parsed.stickers.unwrap().len(), 1);
+    }
+
+    // ---- Serde skip_serializing_if tests ----
+
+    #[test]
+    fn test_client_skips_zero_tosagreed() {
+        let client = Client {
+            oid: "c1".into(),
+            version: 1,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&client).unwrap();
+        assert!(!json.contains("tosagreed"));
+    }
+
+    #[test]
+    fn test_client_includes_nonzero_tosagreed() {
+        let client = Client {
+            oid: "c1".into(),
+            version: 1,
+            tosagreed: 123456,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&client).unwrap();
+        assert!(json.contains("tosagreed"));
+    }
+
+    #[test]
+    fn test_window_skips_false_isnew() {
+        let window = Window {
+            oid: "w1".into(),
+            version: 1,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&window).unwrap();
+        assert!(!json.contains("isnew"));
+    }
+
+    #[test]
+    fn test_wave_obj_from_json_invalid_data() {
+        let result = wave_obj_from_json::<Client>(b"not valid json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_is_zero_i64_helper() {
+        assert!(is_zero_i64(&0));
+        assert!(!is_zero_i64(&1));
+        assert!(!is_zero_i64(&-1));
+    }
 }

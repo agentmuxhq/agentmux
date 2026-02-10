@@ -81,4 +81,69 @@ mod tests {
         assert!(!json.contains("termsize"));
         assert!(!json.contains("winsize"));
     }
+
+    #[test]
+    fn test_runtime_opts_includes_nondefault() {
+        let opts = RuntimeOpts {
+            termsize: TermSize { rows: 24, cols: 80 },
+            winsize: WinSize { width: 800, height: 600 },
+        };
+        let json = serde_json::to_string(&opts).unwrap();
+        assert!(json.contains("termsize"));
+        assert!(json.contains("winsize"));
+        let parsed: RuntimeOpts = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.termsize.rows, 24);
+        assert_eq!(parsed.winsize.width, 800);
+    }
+
+    #[test]
+    fn test_point_serde_roundtrip() {
+        let p = Point { x: -100, y: 200 };
+        let json = serde_json::to_string(&p).unwrap();
+        let parsed: Point = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, p);
+    }
+
+    #[test]
+    fn test_point_equality() {
+        assert_eq!(Point { x: 1, y: 2 }, Point { x: 1, y: 2 });
+        assert_ne!(Point { x: 1, y: 2 }, Point { x: 1, y: 3 });
+    }
+
+    #[test]
+    fn test_termsize_equality() {
+        assert_eq!(TermSize { rows: 24, cols: 80 }, TermSize { rows: 24, cols: 80 });
+        assert_ne!(TermSize { rows: 24, cols: 80 }, TermSize { rows: 25, cols: 80 });
+    }
+
+    #[test]
+    fn test_ui_context_serde() {
+        let ctx = UIContext {
+            window_id: "win-1".into(),
+            active_tab_id: "tab-1".into(),
+        };
+        let json = serde_json::to_string(&ctx).unwrap();
+        // Verify rename fields
+        assert!(json.contains("windowid"));
+        assert!(json.contains("activetabid"));
+        assert!(!json.contains("window_id"));
+
+        let parsed: UIContext = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.window_id, "win-1");
+        assert_eq!(parsed.active_tab_id, "tab-1");
+    }
+
+    #[test]
+    fn test_winsize_default() {
+        let ws = WinSize::default();
+        assert_eq!(ws.width, 0);
+        assert_eq!(ws.height, 0);
+    }
+
+    #[test]
+    fn test_termsize_default() {
+        let ts = TermSize::default();
+        assert_eq!(ts.rows, 0);
+        assert_eq!(ts.cols, 0);
+    }
 }

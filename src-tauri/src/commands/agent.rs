@@ -123,7 +123,15 @@ pub async fn spawn_agent(
     window: tauri::WebviewWindow,
 ) -> Result<SpawnAgentResponse, String> {
     // Resolve backend config
-    let config = resolve_backend_config(&request.backend_id)?;
+    let mut config = resolve_backend_config(&request.backend_id)?;
+
+    // If resuming a Claude Code session, add --resume flag
+    if let Some(session_id) = &request.resume_session_id {
+        if config.id == "claudecode" {
+            config.args.push("--resume".to_string());
+            config.args.push(session_id.clone());
+        }
+    }
 
     // Check if there's already an agent for this pane
     if let Some(existing) = registry.get(&request.pane_id) {
@@ -200,6 +208,7 @@ pub async fn spawn_agent(
                         if let crate::backend::ai::adapters::AdapterEvent::SessionStart {
                             session_id,
                             model,
+                            cwd,
                             ..
                         } = ev
                         {
@@ -208,6 +217,9 @@ pub async fn spawn_agent(
                                     .insert("session_id".to_string(), session_id.clone());
                                 if let Some(m) = model {
                                     s.session_meta.insert("model".to_string(), m.clone());
+                                }
+                                if !cwd.is_empty() {
+                                    s.session_meta.insert("cwd".to_string(), cwd.clone());
                                 }
                             })
                             .ok();

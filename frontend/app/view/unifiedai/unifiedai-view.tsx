@@ -453,9 +453,13 @@ const StatusBar = memo(({ model }: { model: UnifiedAIViewModel }) => {
     const cost = useAtomValue(model.totalCostAtom);
     const selectedBackend = useAtomValue(model.selectedBackendAtom);
     const backends = useAtomValue(model.availableBackendsAtom);
+    const sessionId = useAtomValue(model.sessionIdAtom);
 
     const cfg = backends.find((b) => b.id === selectedBackend);
     const totalTokens = usage.input_tokens + usage.output_tokens;
+
+    // Show resume button if session exists and agent is not running
+    const canResume = sessionId && (status === "done" || status === "error") && selectedBackend === "claudecode";
 
     const statusText =
         status === "done"
@@ -505,6 +509,11 @@ const StatusBar = memo(({ model }: { model: UnifiedAIViewModel }) => {
             >
                 [^C]
             </button>
+            {canResume && (
+                <button className="uai-status-btn" onClick={() => model.resumeSession()}>
+                    [resume]
+                </button>
+            )}
             <button className="uai-status-btn" onClick={() => model.resetSession()}>
                 [reset]
             </button>

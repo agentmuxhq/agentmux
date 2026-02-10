@@ -81,8 +81,30 @@ type AgentBusConfigFile struct {
 // AgentBusConfigFileName is the name of the config file in the wave data directory.
 const AgentBusConfigFileName = "agentbus.json"
 
+// legacyConfigFileName is the old config file name, kept for migration.
+const legacyConfigFileName = "agentmux.json"
+
+// migrateConfigFile renames agentmux.json → agentbus.json if the old file
+// exists but the new one doesn't. Called once during LoadAgentBusConfigFile.
+func migrateConfigFile(dataDir string) {
+	oldPath := filepath.Join(dataDir, legacyConfigFileName)
+	newPath := filepath.Join(dataDir, AgentBusConfigFileName)
+	if _, err := os.Stat(newPath); err == nil {
+		return // new file already exists
+	}
+	if _, err := os.Stat(oldPath); err != nil {
+		return // old file doesn't exist either
+	}
+	if err := os.Rename(oldPath, newPath); err != nil {
+		log.Printf("[reactive/poller] warning: failed to migrate %s → %s: %v", legacyConfigFileName, AgentBusConfigFileName, err)
+	} else {
+		log.Printf("[reactive/poller] migrated config %s → %s", legacyConfigFileName, AgentBusConfigFileName)
+	}
+}
+
 // LoadAgentBusConfigFile loads the agentbus configuration from the config file.
 // Returns empty config if file doesn't exist or is invalid.
+// Automatically migrates from legacy agentmux.json if needed.
 func LoadAgentBusConfigFile() (AgentBusConfigFile, error) {
 	var config AgentBusConfigFile
 
@@ -90,6 +112,9 @@ func LoadAgentBusConfigFile() (AgentBusConfigFile, error) {
 	if dataDir == "" {
 		return config, fmt.Errorf("wave data directory not set")
 	}
+
+	// Migrate legacy config file if needed
+	migrateConfigFile(dataDir)
 
 	configPath := filepath.Join(dataDir, AgentBusConfigFileName)
 	data, err := os.ReadFile(configPath)

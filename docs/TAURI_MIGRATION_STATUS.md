@@ -1,7 +1,7 @@
 # AgentMux Tauri v2 Migration - Status & Progress
 
-**Version:** 0.18.2
-**Last Updated:** 2026-02-08 (Post-Sprint 2)
+**Version:** 0.21.0
+**Last Updated:** 2026-02-10 (Post-Modularization)
 **Original Spec:** Agent3 (2026-02-07)
 **Current Lead:** AgentA
 **Original Spec Location:** `claudius:C:\Users\asafe\.claw\workspaces\agent3\wavemux-tauri\specs\wavemux-tauri-migration.md`
@@ -15,7 +15,7 @@ AgentMux is migrating from Electron to Tauri v2 to achieve significant performan
 - **Idle memory:** 150-300MB → 30-50MB (5x reduction)
 - **Startup time:** 1-2s → <0.5s (3x faster)
 
-**Current Status:** 🚀 **Migration complete** - All core phases (0-10) merged + multi-window, system tray, CI/CD, DevTools, Rust backend port, and Go sidecar removal. **100% acceptance criteria complete.** The Go backend sidecar (`agentmuxsrv`) has been fully replaced by an in-process Rust backend. Only `wsh` (shell integration CLI) remains as a Go sidecar.
+**Current Status:** 🚀 **Migration complete + Modularization in progress** - All core phases (0-12) merged + multi-window, system tray, CI/CD, DevTools, Rust backend port, and Go sidecar removal. **100% acceptance criteria complete.** The Go backend sidecar (`agentmuxsrv`) has been fully replaced by an in-process Rust backend. Only `wsh` (shell integration CLI) remains as a Go sidecar. **Phase 13 (codebase modularization)** is actively restructuring the Rust backend into clean domain/service/infrastructure layers.
 
 ---
 
@@ -375,6 +375,58 @@ task package:tauri    # Release packaging
 
 ---
 
+### 🔄 Phase 13: Codebase Modularization (0.21.0)
+
+**Status:** In Progress
+**Lead:** AgentA
+**Date:** 2026-02-09 to 2026-02-10
+**Version:** 0.21.0
+**Spec:** `docs/specs/MODULARIZATION_PLAN.md`
+
+**Objective:** Restructure the Rust backend into clean architectural layers with proper separation of concerns, following Domain-Driven Design principles.
+
+**Sub-phases:**
+
+| Phase | Description | Status | PR |
+|-------|-------------|--------|-----|
+| 1. Domain Layer | Extract entities, value objects, traits, events | ✅ Complete | #247 |
+| 2. Service Layer | Object, workspace, tab services with mock tests | ✅ Complete | #248 |
+| 3. Thin IPC Adapters | Split 801-line rpc.rs into 8 focused modules | ✅ Complete | #249 |
+| 4. Infrastructure | WaveStoreAdapter + FileStoreAdapter implementing domain traits | ✅ Complete | #250 |
+| 5. Frontend Services | Typed service classes + React hooks | ⏳ Pending | — |
+| 6. Testing | Comprehensive test coverage (45 → 132 tests across layers) | ✅ Complete | #251 |
+| 7. Documentation | Cleanup, consolidate test mocks, update docs | ✅ Complete | #252 |
+
+**Architecture:**
+```
+src-tauri/src/
+├── domain/           ← Pure models, zero external deps
+│   ├── entities/     (WaveObj types: Client, Window, Workspace, Tab, Block, Layout)
+│   ├── value_objects/ (ORef, MetaMap, Point, WinSize, TermSize)
+│   ├── traits/       (Repository contracts: ObjectStore, ClientRepo, etc.)
+│   └── events/       (DomainEvent enum)
+├── services/         ← Business logic, depends only on domain
+│   ├── object_service.rs
+│   ├── workspace_service.rs
+│   └── tab_service.rs
+├── infrastructure/   ← Adapters implementing domain traits
+│   ├── storage.rs    (WaveStoreAdapter → SQLite)
+│   └── file_storage.rs (FileStoreAdapter → SQLite)
+├── commands/         ← Thin Tauri IPC adapters
+│   └── rpc/          (8 sub-modules: object, block, events, config, schema, file, reactive)
+└── backend/          ← Concrete implementations (WaveStore, PTY, WPS, etc.)
+```
+
+**Key Deliverables:**
+- [x] Domain layer: 6 entity types, 7 repository traits, value objects (ORef, MetaMap)
+- [x] Service layer: 3 stateless services with dependency injection
+- [x] Infrastructure: Adapter pattern bridging domain traits → SQLite storage
+- [x] Shared test mock: `MockObjectStore` in `domain::traits::mock`
+- [x] 132 tests across modularized layers (90%+ domain coverage)
+- [x] Monolithic rpc.rs (801 lines) → 8 focused modules (24-246 lines each)
+
+---
+
 ## What Changed Since Original Spec
 
 **Updated after Rust backend port (Phases 2-17, A-I, sidecar removal):**
@@ -709,6 +761,7 @@ Agent3's original spec was excellent but initialization timing required a new ph
 
 ---
 
-**Last Updated:** 2026-02-08
-**Status:** Phase 8 Complete ✅
-**Next Phase:** Multi-Window Support (Phase 4 completion)
+**Last Updated:** 2026-02-10
+**Status:** Phase 13 (Modularization) in progress ✅
+**Current Version:** 0.21.0
+**Next:** Phase 5 (Frontend modularization) — typed service classes + React hooks

@@ -81,57 +81,7 @@ impl ObjectService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    struct MockObjectStore {
-        objects: Mutex<HashMap<String, serde_json::Value>>,
-    }
-
-    impl MockObjectStore {
-        fn new() -> Self {
-            Self {
-                objects: Mutex::new(HashMap::new()),
-            }
-        }
-
-        fn key(otype: &str, oid: &str) -> String {
-            format!("{otype}:{oid}")
-        }
-    }
-
-    impl ObjectStore for MockObjectStore {
-        fn get_object_json(&self, otype: &str, oid: &str) -> RepoResult<serde_json::Value> {
-            let key = Self::key(otype, oid);
-            self.objects
-                .lock()
-                .unwrap()
-                .get(&key)
-                .cloned()
-                .ok_or_else(|| RepositoryError::NotFound(key))
-        }
-
-        fn set_object_json(
-            &self,
-            otype: &str,
-            oid: &str,
-            data: &serde_json::Value,
-        ) -> RepoResult<()> {
-            let key = Self::key(otype, oid);
-            self.objects.lock().unwrap().insert(key, data.clone());
-            Ok(())
-        }
-
-        fn delete_object(&self, otype: &str, oid: &str) -> RepoResult<()> {
-            let key = Self::key(otype, oid);
-            self.objects
-                .lock()
-                .unwrap()
-                .remove(&key)
-                .ok_or_else(|| RepositoryError::NotFound(key))?;
-            Ok(())
-        }
-    }
+    use crate::domain::traits::mock::MockObjectStore;
 
     #[test]
     fn test_save_and_get_client() {

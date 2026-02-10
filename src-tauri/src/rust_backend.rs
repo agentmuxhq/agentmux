@@ -103,9 +103,8 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
     let broker = Arc::new(Broker::new());
     broker.set_client(Box::new(TauriWpsClient::new(handle.clone())));
 
-    // Initialize RPC engine and router
+    // Initialize RPC engine (router will be created async)
     let (rpc_engine, _rpc_output) = WshRpcEngine::new();
-    let router = WshRouter::new();
 
     // Load config from disk (embedded defaults + user overrides)
     let config_dir = crate::backend::wavebase::get_wave_config_dir();
@@ -138,39 +137,55 @@ pub fn initialize(app: &mut tauri::App) -> Result<(), String> {
         tracing::warn!("Could not set auth key: {}", e);
     }
 
-    // Start wsh IPC server (local socket for wsh CLI connections)
-    let wsh_socket_path = wsh_server::start_wsh_server(
-        Arc::clone(&router),
-        auth_key.clone(),
-        &data_dir,
-    )
-    .unwrap_or_else(|e| {
-        tracing::warn!("Failed to start wsh IPC server: {}", e);
-        String::new()
-    });
+    // Router and wsh server will be initialized async (after Tokio runtime is ready)
 
-    if !wsh_socket_path.is_empty() {
-        tracing::info!("wsh IPC socket: {}", wsh_socket_path);
-    }
-
-    // Create and manage AppState
+    // Create and manage AppState (router and wsh_socket_path are None initially)
     let app_state = AppState {
-        auth_key: std::sync::Mutex::new(auth_key),
+        auth_key: std::sync::Mutex::new(auth_key.clone()),
         zoom_factor: std::sync::Mutex::new(1.0),
         client_id: std::sync::Mutex::new(Some(client.oid.clone())),
         window_id: std::sync::Mutex::new(Some(window_id.clone())),
         active_tab_id: std::sync::Mutex::new(Some(active_tab_id.clone())),
         window_init_status: std::sync::Mutex::new(String::new()),
-        wave_store: store,
-        broker,
+        wave_store: Arc::clone(&store),
+        broker: Arc::clone(&broker),
         rpc_engine,
-        router,
+        router: std::sync::Mutex::new(None),
         file_store,
-        wsh_socket_path: std::sync::Mutex::new(wsh_socket_path),
+        wsh_socket_path: std::sync::Mutex::new(None),
         config_watcher,
         config_dir,
     };
     app.manage(app_state);
+
+    // Spawn async initialization of router + wsh server
+    // (These require an active Tokio runtime, so defer to Tauri's async runtime)
+    let app_handle_clone = handle.clone();
+    let auth_key_clone = auth_key.clone();
+    let data_dir_clone = data_dir.clone();
+    tauri::async_runtime::spawn(async move {
+        // Create router (spawns background task)
+        let router = WshRouter::new();
+
+        // Start wsh IPC server
+        match wsh_server::start_wsh_server(
+            Arc::clone(&router),
+            auth_key_clone,
+            &data_dir_clone,
+        ) {
+            Ok(socket_path) => {
+                tracing::info!("wsh IPC socket: {}", socket_path);
+                // Update AppState with router and socket path
+                if let Some(state) = app_handle_clone.try_state::<AppState>() {
+                    *state.router.lock().unwrap() = Some(router);
+                    *state.wsh_socket_path.lock().unwrap() = Some(socket_path);
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to start wsh IPC server: {}", e);
+            }
+        }
+    });
 
     tracing::info!(
         "Rust backend initialized: client={}, window={}, tab={}",

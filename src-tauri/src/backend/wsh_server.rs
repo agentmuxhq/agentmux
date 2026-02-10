@@ -86,14 +86,14 @@ mod imp {
 
         let auth_key = Arc::new(auth_key);
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             loop {
                 match listener.accept().await {
                     Ok(stream) => {
                         let conn_id = CONN_COUNTER.fetch_add(1, Ordering::Relaxed);
                         let router = Arc::clone(&router);
                         let auth_key = Arc::clone(&auth_key);
-                        tokio::spawn(async move {
+                        tauri::async_runtime::spawn(async move {
                             if let Err(e) =
                                 handle_wsh_connection(stream, conn_id, router, auth_key).await
                             {

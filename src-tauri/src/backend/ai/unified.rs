@@ -145,6 +145,20 @@ pub fn gemini_cli_config() -> AgentBackendConfig {
     }
 }
 
+/// Pre-configured agent backend for Codex CLI.
+pub fn codex_cli_config() -> AgentBackendConfig {
+    AgentBackendConfig {
+        id: AGENT_CODEX_CLI.to_string(),
+        display_name: "Codex CLI".to_string(),
+        executable: "codex".to_string(),
+        args: vec!["--output-format".to_string(), "json".to_string()],
+        stream_protocol: "ndjson".to_string(),
+        supports_mcp: false,
+        supports_pane_awareness: false,
+        ..Default::default()
+    }
+}
+
 // ---- Unified message types ----
 
 /// A unified message in the AI conversation.

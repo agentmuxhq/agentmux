@@ -15,6 +15,7 @@ pub mod agent;
 pub mod anthropic;
 pub mod chatstore;
 pub mod openai;
+pub mod process;
 pub mod tools;
 pub mod unified;
 

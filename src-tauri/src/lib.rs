@@ -107,6 +107,13 @@ pub fn run() {
             commands::stubs::set_window_init_status,
             commands::stubs::set_waveai_open,
             commands::updater::install_update,
+            // Agent backend commands (unified AI pane)
+            commands::agent::spawn_agent,
+            commands::agent::send_agent_input,
+            commands::agent::interrupt_agent,
+            commands::agent::kill_agent,
+            commands::agent::get_agent_status,
+            commands::agent::list_agent_backends,
             // RPC bridge commands (rust-backend mode)
             commands::rpc::rpc_request,
             commands::rpc::service_request,
@@ -235,6 +242,31 @@ pub fn run() {
                         }
                     }
 
+                    // Kill any running agent subprocesses
+                    {
+                        let registry = window
+                            .app_handle()
+                            .state::<std::sync::Arc<backend::ai::agent::AgentRegistry>>();
+                        let process_store = window
+                            .app_handle()
+                            .state::<std::sync::Arc<commands::agent::AgentProcessStore>>();
+                        let pane_ids = registry.active_pane_ids();
+                        if !pane_ids.is_empty() {
+                            tracing::info!(
+                                "Shutting down {} active agent(s)",
+                                pane_ids.len()
+                            );
+                            let ps = std::sync::Arc::clone(&process_store);
+                            tauri::async_runtime::spawn(async move {
+                                for pane_id in pane_ids {
+                                    if let Some(mut proc) = ps.remove(&pane_id).await {
+                                        let _ = proc.kill().await;
+                                    }
+                                }
+                            });
+                        }
+                    }
+
                     // Clean up heartbeat file
                     if let Ok(data_dir) = window.app_handle().path().app_data_dir() {
                         heartbeat::cleanup_heartbeat(&data_dir);
@@ -263,6 +295,15 @@ pub fn run() {
     let builder = builder.manage(app_state);
 
     let builder = builder.manage(commands::updater::PendingUpdate(std::sync::Mutex::new(None)));
+
+    // Agent backend state (unified AI pane — available in all modes)
+    let builder = builder
+        .manage(std::sync::Arc::new(
+            backend::ai::agent::AgentRegistry::new(),
+        ))
+        .manage(std::sync::Arc::new(
+            commands::agent::AgentProcessStore::new(),
+        ));
 
     builder
         .run(tauri::generate_context!())

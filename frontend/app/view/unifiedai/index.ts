@@ -4,7 +4,8 @@
 /**
  * Unified AI Pane - merges Wave AI chat and agent code tools into one pane.
  *
- * Phase A: Types and interfaces (this PR).
+ * Phase A-1: Types and interfaces (PR #228).
+ * Phase A-2: Command bridge + state management (this PR).
  * Phase B: Agent controller + MCP server (future).
  * Phase C: Chat backends ported to Rust (future).
  * Phase D: Full sidecar elimination (future).
@@ -83,3 +84,31 @@ export type {
     AgentBackendAdapter,
     AdapterRegistry,
 } from "./adapter";
+
+// Agent API (Tauri command bridge)
+export {
+    spawnAgent,
+    sendAgentInput,
+    sendAgentText,
+    interruptAgent,
+    killAgent,
+    getAgentStatus,
+    listAgentBackends,
+    onAgentOutput,
+    onAgentRawLine,
+    onAgentStatus,
+} from "./agent-api";
+
+export type { AgentStatusResponse, AgentOutputPayload, AgentRawLinePayload } from "./agent-api";
+
+// State management (Jotai atoms + React hook)
+export {
+    availableBackendsAtom,
+    backendsLoadedAtom,
+    selectedBackendAtom,
+    agentStatusAtom,
+    agentInstanceIdAtom,
+    messagesAtom,
+    isStreamingAtom,
+    useUnifiedAI,
+} from "./useUnifiedAI";

@@ -1,8 +1,8 @@
 # AgentMux — Project Status
 
 **Date:** 2026-02-10
-**Version:** 0.20.17
-**Branch:** main @ `d4a94c9`
+**Version:** 0.20.18
+**Branch:** main @ `54349ca`
 
 ---
 
@@ -70,15 +70,35 @@ React view components rendering UnifiedMessage[] with all part types.
 **Totals:** ~5,200 lines Rust (AI module) + ~2,400 lines TypeScript/SCSS = **~7,600 lines**
 **Tests:** 133 passing (AI module)
 
-### Next: Claude Code Wrapper
+#### Phase W-1: Enhanced NDJSON Adapter (PR #242)
 
-The unified pane currently spawns Claude Code as a raw subprocess. The next step is making it a **polished wrapper** — users interact with a skinned experience while Claude Code runs underneath. See `CLAUDE_CODE_WRAPPER_SPEC.md` for full technical spec.
+Claude Code wrapper foundation — comprehensive spec written and first implementation phase complete.
 
-Key decisions:
-- Use Claude Code's `-p --output-format stream-json --verbose --include-partial-messages` for NDJSON streaming
-- Implement tool approval UI (approve/deny/edit for destructive operations)
-- Add MCP server for pane awareness (Claude Code can see terminal scrollback, editor content)
-- Pin Claude Code version, disable autoupdater/telemetry in subprocess
+| File | Lines | Purpose |
+|------|-------|---------|
+| `CLAUDE_CODE_WRAPPER_SPEC.md` | 818 | Complete technical spec covering 6 phases (W-1 through W-6) |
+| `backend/ai/adapters.rs` | +246 | ClaudeCodeEvent outer wrapper, SessionStart/SessionEnd events |
+| `backend/ai/process.rs` | +65 | parse_ndjson_line() tries outer event first, send_user_message() for multi-turn |
+| `backend/ai/unified.rs` | +28 | Full wrapper config with -p mode, env vars (disable telemetry, OOM protection) |
+| `unifiedai/unified-types.ts` | +26 | AdapterSessionStart, AdapterSessionEnd types |
+| `unifiedai/unifiedai-model.ts` | +48 | sessionIdAtom, totalCostAtom, handleSessionEvent() |
+| `unifiedai/unifiedai-view.tsx` | +4 | StatusBar cost display |
+
+**Key implementation:**
+- Expanded adapter to parse all 6 Claude Code `stream-json` event types (`system`, `stream_event`, `assistant`, `user`, `result`) instead of only inner stream events
+- Added session tracking (`session_id` from system init, `total_cost_usd` from result event)
+- Multi-turn stdin support via `--input-format stream-json` for follow-up messages within same subprocess
+- Wrapper configuration: `-p --output-format stream-json --include-partial-messages --input-format stream-json`
+- Environment variables: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, `NODE_OPTIONS=--max-old-space-size=4096`
+
+### Next: Claude Code Wrapper Phase W-2
+
+Multi-turn conversation refinement — seamless follow-up prompts without subprocess restart. See `CLAUDE_CODE_WRAPPER_SPEC.md` for remaining phases (W-2 through W-6):
+- **W-2:** Multi-turn stdin (structured messages, graceful error handling)
+- **W-3:** Tool approval UI (approve/deny/edit for destructive operations)
+- **W-4:** Session management (reconnect, history persistence)
+- **W-5:** MCP pane awareness (Claude Code can see terminal scrollback, editor content)
+- **W-6:** UI polish (streaming indicators, syntax highlighting)
 
 ### Future Phases
 
@@ -145,6 +165,7 @@ Port AI chat orchestration to Rust. Currently using Vercel AI SDK; migrate to di
 
 | PR | Description | Author | Status |
 |----|-------------|--------|--------|
+| #242 | Claude Code wrapper adapter and spec (Phase W-1) | Agent3 | Merged |
 | #240 | go mod tidy after sidecar removal | AgentA | Merged |
 | #239 | Rebrand WaveMux → AgentMux | AgentA | Merged |
 | #238 | Remove Go sidecar — single Rust backend | AgentA | Merged |

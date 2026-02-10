@@ -110,57 +110,11 @@ impl TabService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    struct MockStore {
-        data: Mutex<HashMap<String, serde_json::Value>>,
-    }
-
-    impl MockStore {
-        fn new() -> Self {
-            Self {
-                data: Mutex::new(HashMap::new()),
-            }
-        }
-    }
-
-    impl ObjectStore for MockStore {
-        fn get_object_json(&self, otype: &str, oid: &str) -> RepoResult<serde_json::Value> {
-            let key = format!("{otype}:{oid}");
-            self.data
-                .lock()
-                .unwrap()
-                .get(&key)
-                .cloned()
-                .ok_or_else(|| RepositoryError::NotFound(key))
-        }
-
-        fn set_object_json(
-            &self,
-            otype: &str,
-            oid: &str,
-            data: &serde_json::Value,
-        ) -> RepoResult<()> {
-            let key = format!("{otype}:{oid}");
-            self.data.lock().unwrap().insert(key, data.clone());
-            Ok(())
-        }
-
-        fn delete_object(&self, otype: &str, oid: &str) -> RepoResult<()> {
-            let key = format!("{otype}:{oid}");
-            self.data
-                .lock()
-                .unwrap()
-                .remove(&key)
-                .ok_or_else(|| RepositoryError::NotFound(key))?;
-            Ok(())
-        }
-    }
+    use crate::domain::traits::mock::MockObjectStore;
 
     #[test]
     fn test_create_tab() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let tab = service.create_tab("My Tab").unwrap();
@@ -175,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_add_and_remove_block() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let tab = service.create_tab("Test").unwrap();
@@ -200,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_delete_tab() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let tab = service.create_tab("ToDelete").unwrap();
@@ -212,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_delete_tab_cascades_layout() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store.clone());
 
         let tab = service.create_tab("CascadeTest").unwrap();
@@ -230,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_add_multiple_blocks() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let tab = service.create_tab("Multi").unwrap();
@@ -245,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_remove_nonexistent_block() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let tab = service.create_tab("Test").unwrap();
@@ -255,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_create_tab_with_empty_name() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let tab = service.create_tab("").unwrap();
@@ -266,7 +220,7 @@ mod tests {
 
     #[test]
     fn test_get_nonexistent_tab() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let result = service.get_tab("nonexistent");
@@ -275,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_add_block_to_nonexistent_tab() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let result = service.add_block("nonexistent", "block-1");
@@ -284,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_remove_block_from_nonexistent_tab() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = TabService::new(store);
 
         let result = service.remove_block("nonexistent", "block-1");

@@ -120,57 +120,11 @@ impl WorkspaceService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    struct MockStore {
-        data: Mutex<HashMap<String, serde_json::Value>>,
-    }
-
-    impl MockStore {
-        fn new() -> Self {
-            Self {
-                data: Mutex::new(HashMap::new()),
-            }
-        }
-    }
-
-    impl ObjectStore for MockStore {
-        fn get_object_json(&self, otype: &str, oid: &str) -> RepoResult<serde_json::Value> {
-            let key = format!("{otype}:{oid}");
-            self.data
-                .lock()
-                .unwrap()
-                .get(&key)
-                .cloned()
-                .ok_or_else(|| RepositoryError::NotFound(key))
-        }
-
-        fn set_object_json(
-            &self,
-            otype: &str,
-            oid: &str,
-            data: &serde_json::Value,
-        ) -> RepoResult<()> {
-            let key = format!("{otype}:{oid}");
-            self.data.lock().unwrap().insert(key, data.clone());
-            Ok(())
-        }
-
-        fn delete_object(&self, otype: &str, oid: &str) -> RepoResult<()> {
-            let key = format!("{otype}:{oid}");
-            self.data
-                .lock()
-                .unwrap()
-                .remove(&key)
-                .ok_or_else(|| RepositoryError::NotFound(key))?;
-            Ok(())
-        }
-    }
+    use crate::domain::traits::mock::MockObjectStore;
 
     #[test]
     fn test_create_workspace() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store.clone());
 
         let ws = service
@@ -202,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_set_active_tab() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store);
 
         let ws = service
@@ -220,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_delete_workspace() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store);
 
         let ws = service
@@ -236,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_delete_workspace_cascades_tabs_and_layouts() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store.clone());
 
         let ws = service
@@ -264,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_set_active_tab_updates_stored() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store);
 
         let ws = service
@@ -281,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_create_multiple_workspaces() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store);
 
         let ws1 = service.create_workspace("WS1", "terminal", "#111").unwrap();
@@ -298,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_delete_nonexistent_workspace() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store);
 
         let result = service.delete_workspace("nonexistent");
@@ -307,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_get_nonexistent_workspace() {
-        let store = Arc::new(MockStore::new());
+        let store = Arc::new(MockObjectStore::new());
         let service = WorkspaceService::new(store);
 
         let result = service.get_workspace("nonexistent");

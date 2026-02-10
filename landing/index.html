@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AgentMux - AI Agent Orchestrator</title>
-  <meta name="description" content="Orchestrate AI agents in one workspace. Run Claude, GPT, Ollama side by side. Route tasks, compare outputs, coordinate workflows.">
+  <meta name="description" content="Monitor and coordinate autonomous AI agents building complex work. Research, code, reports, and analysis - all in one workspace.">
   <meta name="theme-color" content="#58C142">
   <meta property="og:title" content="AgentMux - AI Agent Orchestrator">
-  <meta property="og:description" content="Orchestrate AI agents in one workspace. Run Claude, GPT, Ollama side by side. Route tasks, compare outputs, coordinate workflows.">
+  <meta property="og:description" content="Monitor and coordinate autonomous AI agents building complex work. Research, code, reports, and analysis - all in one workspace.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://agentmux.dev">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script>
+    (function(){var t=localStorage.getItem('agentmux-theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme:light)').matches)?'light':'dark');document.documentElement.setAttribute('data-theme',t)})();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -34,6 +37,30 @@
       --radius: 12px;
       --radius-lg: 20px;
       --radius-xl: 28px;
+      --nav-bg: rgba(9, 9, 11, 0.75);
+      --shadow-heavy: rgba(0, 0, 0, 0.6);
+      --shadow-medium: rgba(0, 0, 0, 0.3);
+      --logo-bg: #000;
+      --cta-glow: rgba(88, 193, 66, 0.15);
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #ffffff;
+      --bg-surface: #f8f9fa;
+      --bg-surface-2: #f0f1f3;
+      --bg-surface-3: #e8e9eb;
+      --text-primary: #111113;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --border: #d4d4d8;
+      --border-light: #e4e4e7;
+      --green-light: #2d8a2e;
+      --green-pale: #4caf50;
+      --nav-bg: rgba(255, 255, 255, 0.8);
+      --shadow-heavy: rgba(0, 0, 0, 0.1);
+      --shadow-medium: rgba(0, 0, 0, 0.06);
+      --logo-bg: #1a1a1a;
+      --cta-glow: rgba(45, 138, 46, 0.1);
     }
 
     html { scroll-behavior: smooth; }
@@ -59,8 +86,8 @@
       align-items: center;
       justify-content: space-between;
       backdrop-filter: blur(20px) saturate(1.5);
-      background: rgba(9, 9, 11, 0.75);
-      border-bottom: 1px solid rgba(88, 193, 66, 0.08);
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
     }
 
     .nav-logo {
@@ -252,7 +279,7 @@
       overflow: hidden;
       box-shadow:
         0 0 0 1px rgba(88, 193, 66, 0.05),
-        0 20px 80px rgba(0, 0, 0, 0.6),
+        0 20px 80px var(--shadow-heavy),
         0 0 120px rgba(88, 193, 66, 0.06);
     }
 
@@ -393,7 +420,7 @@
     .feature-card:hover {
       border-color: rgba(88, 193, 66, 0.2);
       transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 12px 40px var(--shadow-medium);
     }
 
     .feature-icon {
@@ -835,6 +862,57 @@
     }
 
     /* ─── RESPONSIVE ───────────────────────────────────── */
+    /* ─── THEME TOGGLE ──────────────────────────────── */
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 8px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .theme-toggle:hover {
+      color: var(--green-light);
+      border-color: var(--green-light);
+    }
+
+    .theme-toggle .icon-sun,
+    .theme-toggle .icon-moon { display: none; }
+
+    [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+    [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+    [data-theme="light"] .theme-toggle .icon-sun { display: none; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+    /* ─── LIGHT THEME OVERRIDES ──────────────────────── */
+    [data-theme="light"] .hero-screenshot {
+      box-shadow:
+        0 0 0 1px var(--border),
+        0 20px 80px var(--shadow-heavy),
+        0 0 120px rgba(45, 138, 46, 0.04);
+    }
+
+    [data-theme="light"] .hero {
+      background: radial-gradient(ellipse at top, rgba(45, 138, 46, 0.06) 0%, transparent 60%);
+    }
+
+    [data-theme="light"] .cta-section {
+      background: var(--bg-surface);
+    }
+
+    [data-theme="light"] .cta-glow {
+      background: radial-gradient(ellipse at center, rgba(45, 138, 46, 0.06) 0%, transparent 70%);
+    }
+
+    [data-theme="light"] footer {
+      background: var(--bg-surface);
+    }
+
     @media (max-width: 768px) {
       .nav-links { display: none; }
       .features-grid { grid-template-columns: 1fr; }
@@ -895,6 +973,12 @@
     <li><a href="#pricing">Pricing</a></li>
     <li><a href="https://docs.agentmux.dev">Docs</a></li>
     <li><a href="https://github.com/a5af/wavemux" class="btn btn-ghost">GitHub</a></li>
+    <li>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </li>
     <li><a href="#download" class="btn btn-primary">Download</a></li>
   </ul>
 </nav>
@@ -924,7 +1008,7 @@
 
   <h1>Your AI agents,<br><span class="gradient">multiplexed.</span></h1>
 
-  <p>Run multiple AI agents side by side. Route tasks between Claude, GPT, and Ollama. Compare outputs, coordinate workflows, and ship faster with agents working in parallel.</p>
+  <p><strong>Monitor and coordinate autonomous AI agents</strong> building complex work - code, research, reports, analysis. Run Claude, GPT, and Ollama side by side. See every agent's progress in real time.</p>
 
   <div class="hero-cta">
     <a href="#download" class="btn btn-primary btn-lg">
@@ -944,34 +1028,34 @@
         <div class="screenshot-dot"></div>
         <div class="screenshot-dot"></div>
         <div style="flex:1;display:flex;gap:2px;margin-left:12px;">
-          <div style="padding:4px 14px;background:var(--bg-surface-3);border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--green-light);font-weight:600;">Agent 1: Backend</div>
-          <div style="padding:4px 14px;border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--text-muted);">Agent 2: Frontend</div>
-          <div style="padding:4px 14px;border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--text-muted);">Agent 3: Infra</div>
+          <div style="padding:4px 14px;background:var(--bg-surface-3);border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--green-light);font-weight:600;">Agent 1: Research</div>
+          <div style="padding:4px 14px;border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--text-muted);">Agent 2: Code</div>
+          <div style="padding:4px 14px;border-radius:6px 6px 0 0;font-family:Inter,sans-serif;font-size:10px;color:var(--text-muted);">Agent 3: Report</div>
         </div>
       </div>
       <div class="screenshot-body">
         <div class="screenshot-pane">
           <div class="pane-label">Agent 1 &middot; Claude Opus</div>
-          <span class="pane-prompt">agent1 $</span> <span class="pane-cmd">Implementing auth middleware...</span><br>
-          <span class="pane-output">Created src/middleware/auth.ts<br>
-          Added JWT validation with Ed25519<br>
-          Added rate limiting (100 req/min)<br>
-          Running tests... 14/14 passed<br>
-          <span style="color:var(--green-light);">PR #247 created: feat: auth middleware</span></span>
+          <span class="pane-prompt">agent1 $</span> <span class="pane-cmd">Researching competitor pricing models...</span><br>
+          <span class="pane-output">Analyzed 12 SaaS pricing pages<br>
+          Extracted tier structures and feature gates<br>
+          Cross-referenced with G2 reviews<br>
+          Identified 3 underserved segments<br>
+          <span style="color:var(--green-light);">Research report saved: pricing-analysis.md</span></span>
         </div>
         <div class="screenshot-pane ai-pane">
           <div class="pane-label">Orchestrator</div>
-          <span class="pane-ai-user">Route: Agent1 handles backend auth, Agent2 handles login UI, Agent3 deploys staging</span><br><br>
-          <span class="pane-ai-reply"><strong>Agent 1</strong> (Claude Opus) - auth middleware PR ready, tests passing<br><br><strong>Agent 2</strong> (GPT-5) - login form 80% complete, waiting on Agent 1's auth types<br><br><strong>Agent 3</strong> (Claude Sonnet) - staging env provisioned, waiting for PRs to merge</span><br><br>
-          <span class="pane-ai-user">Compare Agent 1 and Agent 2 approaches to token refresh</span>
+          <span class="pane-ai-user">Route: Agent1 researches pricing, Agent2 builds the API, Agent3 writes the report</span><br><br>
+          <span class="pane-ai-reply"><strong>Agent 1</strong> (Claude Opus) - research complete, 12 competitors analyzed<br><br><strong>Agent 2</strong> (GPT-5) - API implementation 80%, waiting on Agent 1's data schema<br><br><strong>Agent 3</strong> (Claude Sonnet) - report template ready, waiting for research data</span><br><br>
+          <span class="pane-ai-user">Compare Agent 1 and Agent 3 summaries of the freemium conversion data</span>
         </div>
         <div class="screenshot-pane">
           <div class="pane-label">Agent 2 &middot; GPT-5</div>
-          <span class="pane-prompt">agent2 $</span> <span class="pane-cmd">Building login component...</span><br>
-          <span class="pane-output">Created components/LoginForm.tsx<br>
-          Added OAuth2 PKCE flow<br>
-          Waiting for auth types from Agent 1...<br>
-          <span style="color:#ffbd2e;">Blocked: needs AuthToken type export</span></span>
+          <span class="pane-prompt">agent2 $</span> <span class="pane-cmd">Building pricing API endpoints...</span><br>
+          <span class="pane-output">Created routes/pricing.ts<br>
+          Added Stripe integration for 3 tiers<br>
+          Waiting for data schema from Agent 1...<br>
+          <span style="color:#ffbd2e;">Blocked: needs CompetitorData type from research</span></span>
         </div>
       </div>
     </div>
@@ -984,7 +1068,7 @@
     <div class="section-header center">
       <div class="section-label">Core Features</div>
       <h2 class="section-title">Everything you need to orchestrate agents</h2>
-      <p class="section-desc">A visual workspace for running, routing, and coordinating AI agents. Free to start.</p>
+      <p class="section-desc">A visual workspace for <strong>monitoring autonomous agents</strong> as they build complex work - code, research, reports, and more.</p>
     </div>
 
     <div class="features-grid">
@@ -993,7 +1077,7 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
         </div>
         <h3>Multi-Agent Workspace</h3>
-        <p>Run multiple AI agents in split panes. Each agent gets its own context, model, and task. See all your agents working at once. Up to 4 panes free.</p>
+        <p>Watch a <strong>team of agents</strong> work in split panes. Each agent gets its own context, model, and task. Monitor progress across research, code, reports, and analysis simultaneously.</p>
         <span class="feature-tag tag-free">Community</span>
       </div>
 
@@ -1020,7 +1104,7 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
         </div>
         <h3>Remote Agents</h3>
-        <p>Run agents on remote machines via SSH. Manage cloud instances, connect to dev servers, and orchestrate agents across your entire infrastructure.</p>
+        <p>Run agents on remote machines via SSH. Manage cloud instances, connect to servers, and orchestrate agents across your entire infrastructure.</p>
         <span class="feature-tag tag-free">Community</span>
       </div>
 
@@ -1029,7 +1113,7 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C142" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
         <h3>Context & File Aware</h3>
-        <p>Agents see your files, terminals, and web views. Preview code, images, markdown, and dashboards inline. Every agent has the context it needs.</p>
+        <p>Agents see your files, terminals, and web views. Preview documents, data, images, and dashboards inline. Every agent has the context it needs.</p>
         <span class="feature-tag tag-free">Community</span>
       </div>
 
@@ -1051,7 +1135,7 @@
     <div class="section-header center">
       <div class="section-label">Pro Features</div>
       <h2 class="section-title">Scale your agent fleet</h2>
-      <p class="section-desc">Advanced orchestration, workflow automation, and team features for professionals running agents in production.</p>
+      <p class="section-desc">Advanced orchestration, workflow automation, and team features for professionals monitoring agents in production.</p>
     </div>
   </div>
 </section>
@@ -1062,10 +1146,10 @@
     <div class="showcase-grid">
       <div class="showcase-visual">
         <div style="display:flex;gap:2px;margin-bottom:16px;">
-          <div style="padding:8px 20px;background:var(--bg-surface-2);border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;font-size:13px;color:var(--green-light);font-weight:600;">Backend</div>
-          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Frontend</div>
-          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Infra</div>
-          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Monitoring</div>
+          <div style="padding:8px 20px;background:var(--bg-surface-2);border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;font-size:13px;color:var(--green-light);font-weight:600;">Research</div>
+          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Engineering</div>
+          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Reports</div>
+          <div style="padding:8px 20px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">Analysis</div>
           <div style="padding:8px 12px;background:var(--bg-primary);border-radius:8px 8px 0 0;font-size:13px;color:var(--text-muted);">+</div>
         </div>
         <div style="border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:16px;background:var(--bg-surface-2);">
@@ -1076,7 +1160,7 @@
       </div>
       <div class="showcase-content">
         <h3>Agent Teams</h3>
-        <p>Organize agents into <strong>teams</strong> by project. Keep your backend agents, frontend agents, and infra agents in separate teams, each with their own workspace, context, and layout.</p>
+        <p>Organize agents into <strong>teams</strong> by project. Keep your research agents, engineering agents, and reporting agents in separate teams, each with their own workspace, context, and layout.</p>
         <ul class="showcase-list">
           <li>Unlimited agent teams with drag-and-drop reorder</li>
           <li>Named workspaces with custom icons and colors</li>
@@ -1553,7 +1637,7 @@
         </svg>
         <span style="font-size:18px;">AgentMux</span>
       </a>
-      <p>AI agent orchestrator. Cross-platform and built for developers who run agents in production.</p>
+      <p>AI agent orchestrator. Monitor autonomous agents building complex work - code, research, reports, and more.</p>
     </div>
 
     <div class="footer-col">
@@ -1606,6 +1690,20 @@
 </footer>
 
 <script>
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('agentmux-theme', next);
+}
+
+// Respond to system theme changes (if no manual override)
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(e) {
+  if (!localStorage.getItem('agentmux-theme')) {
+    document.documentElement.setAttribute('data-theme', e.matches ? 'light' : 'dark');
+  }
+});
+
 function toggleBilling() {
   const toggle = document.getElementById('billing-toggle');
   const knob = document.getElementById('toggle-knob');

@@ -161,6 +161,20 @@ pub fn run() {
                 if let Err(e) = window.set_title(&title) {
                     tracing::error!("Failed to set window title: {}", e);
                 }
+
+                // In dev mode, navigate to Vite dev server.
+                // generate_context!() embeds frontendDist, but in dev we want
+                // to load from the Vite dev server for hot reload.
+                #[cfg(debug_assertions)]
+                {
+                    let dev_url = std::env::var("TAURI_DEV_URL")
+                        .or_else(|_| std::env::var("VITE_DEV_SERVER_URL"))
+                        .unwrap_or_else(|_| "http://localhost:5173".to_string());
+                    tracing::info!("dev mode: navigating webview to {}", dev_url);
+                    if let Ok(url) = dev_url.parse::<tauri::Url>() {
+                        let _ = window.navigate(url);
+                    }
+                }
             }
 
             // ---- Backend initialization ----

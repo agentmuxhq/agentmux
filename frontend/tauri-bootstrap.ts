@@ -27,6 +27,14 @@ const log = (level: string, ...args: any[]) => {
 
 (window as any).debugLog = log;
 
+// Catch unhandled errors and forward to backend log
+window.addEventListener("error", (event) => {
+    log("ERROR", "Uncaught:", event.message, "at", event.filename + ":" + event.lineno);
+});
+window.addEventListener("unhandledrejection", (event) => {
+    log("ERROR", "Unhandled rejection:", String(event.reason));
+});
+
 async function bootstrap() {
     try {
         log("INFO", "=== Tauri Bootstrap Starting ===");

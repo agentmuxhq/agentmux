@@ -3,6 +3,9 @@
   "identifier": "default",
   "description": "Default capabilities for AgentMux",
   "windows": ["*"],
+  "remote": {
+    "urls": ["http://localhost:*"]
+  },
   "permissions": [
     "core:default",
     "core:window:default",
@@ -24,7 +27,6 @@
     {
       "identifier": "shell:allow-spawn",
       "allow": [
-        { "name": "binaries/agentmuxsrv", "sidecar": true },
         { "name": "binaries/wsh", "sidecar": true }
       ]
     },

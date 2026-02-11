@@ -144,6 +144,18 @@ fi
 
 success "New version: $NEW_VERSION"
 
+# Update Cargo.toml version
+if [[ -f "src-tauri/Cargo.toml" ]]; then
+    sed -i "s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
+    success "Updated src-tauri/Cargo.toml"
+fi
+
+# Update tauri.conf.json version
+if [[ -f "src-tauri/tauri.conf.json" ]]; then
+    sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$NEW_VERSION\"/" src-tauri/tauri.conf.json
+    success "Updated src-tauri/tauri.conf.json"
+fi
+
 # Determine agent name
 if [[ -z "$AGENT" ]]; then
     BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
@@ -183,7 +195,7 @@ fi
 if [[ "$NO_COMMIT" != true ]]; then
     info "Committing version bump..."
 
-    git add package.json package-lock.json VERSION_HISTORY.md
+    git add package.json package-lock.json VERSION_HISTORY.md src-tauri/Cargo.toml src-tauri/tauri.conf.json
 
     if [[ -n "$MESSAGE" ]]; then
         COMMIT_MSG="chore: bump version to $NEW_VERSION
@@ -215,7 +227,7 @@ info "Running version verification..."
 if bash scripts/verify-version.sh; then
     success "Version verification passed"
 else
-    warn "Version verification found issues (see above)"
+    echo -e "${RED}⚠ Version verification found issues (see above)${NC}"
 fi
 
 echo ""

@@ -153,6 +153,10 @@ pub fn handle_client_service(
                 .map_err(|e| format!("GetClientData serialize: {}", e))?;
             Ok(serde_json::json!({ "data": client_json, "updates": [] }))
         }
+        "GetAllConnStatus" => {
+            // No SSH/WSL connection management in Rust backend yet — return empty array
+            Ok(serde_json::json!({ "data": [], "updates": [] }))
+        }
         _ => Err(format!("unknown client method: {}", method)),
     }
 }

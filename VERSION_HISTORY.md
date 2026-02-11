@@ -2,13 +2,20 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/wavemux, a5af/waveterm).
 
-## Latest Version: 0.22.1
+## Latest Version: 0.22.2
 
 **Base:** Tauri v2 + Rust backend (upstream Electron removed)
 
 ---
 
 ## Version History (Latest First)
+
+### v0.22.2 (2026-02-11)
+- **Agent:** AgentA
+- **Changes:**
+  - Chore: Auto-fix 14 unused import warnings (Phase 1 cleanup)
+  - Automated via `cargo fix --allow-dirty --lib`
+  - Result: 886 → 872 warnings (-1.6%)
 
 ### v0.22.1 (2026-02-11)
 - **Agent:** AgentA

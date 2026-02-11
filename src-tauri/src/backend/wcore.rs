@@ -99,7 +99,23 @@ pub fn ensure_initial_data(store: &WaveStore) -> Result<bool, StoreError> {
     store.update(&mut client)?;
 
     // Create initial tab in workspace
-    create_tab(store, &ws.oid)?;
+    let tab = create_tab(store, &ws.oid)?;
+
+    // Create initial terminal block in the tab (prevents grey screen)
+    let mut meta = MetaMapType::new();
+    meta.insert("view".to_string(), serde_json::Value::String("term".to_string()));
+    let block = create_block(store, &tab.oid, meta)?;
+
+    // Update layout rootnode to reference the block (fixes grey screen)
+    let mut layout = store.must_get::<LayoutState>(&tab.layoutstate)?;
+    layout.rootnode = Some(serde_json::json!({
+        "id": block.oid,
+        "data": {"blockId": block.oid},
+        "flexDirection": "row",
+        "size": 10
+    }));
+    layout.focusednodeid = block.oid.clone();
+    store.update(&mut layout)?;
 
     Ok(first_launch)
 }

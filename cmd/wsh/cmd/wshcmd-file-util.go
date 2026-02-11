@@ -111,7 +111,7 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 
 			fileData := wshrpc.FileData{
 				Info: &wshrpc.FileInfo{
-					Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, path)},
+					Path: fmt.Sprintf(wavefileutil.MuxFilePathPattern, zoneId, path)},
 			}
 
 			info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
@@ -140,7 +140,7 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 
 		for {
 			listData := wshrpc.FileListData{
-				Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, prefix),
+				Path: fmt.Sprintf(wavefileutil.MuxFilePathPattern, zoneId, prefix),
 				Opts: &wshrpc.FileListOpts{
 					All:    recursive,
 					Offset: offset,

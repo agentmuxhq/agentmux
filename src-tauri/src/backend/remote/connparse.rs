@@ -8,7 +8,7 @@
 //! - `wsh://user@host/path`
 //! - `ssh://host:port/path`
 //! - `s3://bucket/key`
-//! - `wavefile:///path`
+//! - `muxfile:///path`
 //! - Shorthand: `host:/path` or just `/path`
 
 use serde::{Deserialize, Serialize};
@@ -21,8 +21,8 @@ pub const SCHEME_WSH: &str = "wsh";
 /// S3 file system scheme.
 pub const SCHEME_S3: &str = "s3";
 
-/// Wave internal file system scheme.
-pub const SCHEME_WAVE: &str = "wavefile";
+/// AgentMux internal file system scheme.
+pub const SCHEME_MUX: &str = "muxfile";
 
 /// SSH scheme (for explicit SSH URIs).
 pub const SCHEME_SSH: &str = "ssh";
@@ -48,7 +48,7 @@ pub const CONN_HOST_WAVE_SRV: &str = "agentmuxsrv";
 /// - `/local/path` → scheme="", host="", path="/local/path"
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Connection {
-    /// URI scheme (e.g., "wsh", "ssh", "s3", "wavefile").
+    /// URI scheme (e.g., "wsh", "ssh", "s3", "muxfile").
     pub scheme: String,
     /// Host component (may include user@ prefix).
     pub host: String,
@@ -348,8 +348,8 @@ mod tests {
 
     #[test]
     fn test_connection_get_full_uri_no_host() {
-        let conn = Connection::new("wavefile", "", "/local/path");
-        assert_eq!(conn.get_full_uri(), "wavefile:///local/path");
+        let conn = Connection::new("muxfile", "", "/local/path");
+        assert_eq!(conn.get_full_uri(), "muxfile:///local/path");
     }
 
     #[test]
@@ -423,9 +423,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_uri_wavefile() {
-        let conn = parse_uri("wavefile:///block/file.txt");
-        assert_eq!(conn.scheme, "wavefile");
+    fn test_parse_uri_muxfile() {
+        let conn = parse_uri("muxfile:///block/file.txt");
+        assert_eq!(conn.scheme, "muxfile");
         assert_eq!(conn.host, "");
         assert_eq!(conn.path, "/block/file.txt");
     }

@@ -8,7 +8,7 @@ import { generate as generateCSS, parse as parseCSS, walk as walkCSS } from "css
 
 /**
  * Get a streaming URL for a remote (or local) file.
- * In rust-backend mode, uses the `wavefile://` custom protocol.
+ * In rust-backend mode, uses the `muxfile://` custom protocol.
  * In go-sidecar mode, uses the Go HTTP server endpoint.
  */
 export function getStreamFileUrl(remotePath: string, connection?: string): string {
@@ -19,7 +19,7 @@ export function getStreamFileUrl(remotePath: string, connection?: string): strin
         if (connection != null) {
             usp.set("connection", connection);
         }
-        return `wavefile://localhost/stream?${usp.toString()}`;
+        return `muxfile://localhost/stream?${usp.toString()}`;
     }
     const usp = new URLSearchParams();
     usp.set("path", remoteUri);
@@ -31,7 +31,7 @@ export function getStreamFileUrl(remotePath: string, connection?: string): strin
 
 /**
  * Get a streaming URL for a local file (no remote connection).
- * In rust-backend mode, uses the `wavefile://` custom protocol.
+ * In rust-backend mode, uses the `muxfile://` custom protocol.
  * In go-sidecar mode, uses the Go HTTP server endpoint.
  */
 export function getStreamLocalFileUrl(path: string, no404?: boolean): string {
@@ -41,7 +41,7 @@ export function getStreamLocalFileUrl(path: string, no404?: boolean): string {
         if (no404) {
             usp.set("no404", "1");
         }
-        return `wavefile://localhost/stream-local-file?${usp.toString()}`;
+        return `muxfile://localhost/stream-local-file?${usp.toString()}`;
     }
     const usp = new URLSearchParams();
     usp.set("path", path);
@@ -57,7 +57,7 @@ function encodeFileURL(file: string) {
         const usp = new URLSearchParams();
         usp.set("path", remoteUri);
         usp.set("no404", "1");
-        return `wavefile://localhost/stream?${usp.toString()}`;
+        return `muxfile://localhost/stream?${usp.toString()}`;
     }
     const remoteUri = formatRemoteUri(file, "local");
     return `${getWebServerEndpoint()}/wave/stream-file?path=${encodeURIComponent(remoteUri)}&no404=1`;

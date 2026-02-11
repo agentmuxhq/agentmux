@@ -11,14 +11,14 @@ use serde::{Deserialize, Serialize};
 
 use super::storage::filestore::{FileMeta, FileOpts, WaveFile};
 
-/// URL pattern for wave file paths.
-pub const WAVE_FILE_PATH_PATTERN: &str = "wavefile://";
+/// URL pattern for AgentMux file paths.
+pub const MUX_FILE_PATH_PATTERN: &str = "muxfile://";
 
 /// File information as exposed over the RPC wire.
 /// Matches Go's `wshrpc.FileInfo`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileInfo {
-    /// Full path (e.g., `wavefile://zone-id/filename`).
+    /// Full path (e.g., `muxfile://zone-id/filename`).
     pub path: String,
 
     /// File name (last component of path).
@@ -60,7 +60,7 @@ fn is_zero(v: &i64) -> bool {
 pub fn wave_file_to_file_info(file: &WaveFile) -> FileInfo {
     let path = format!(
         "{}{}/{}",
-        WAVE_FILE_PATH_PATTERN, file.zoneid, file.name
+        MUX_FILE_PATH_PATTERN, file.zoneid, file.name
     );
     FileInfo {
         path,
@@ -85,9 +85,9 @@ pub fn wave_file_list_to_file_info_list(files: &[WaveFile]) -> Vec<FileInfo> {
 }
 
 /// Parse a wave file path into (zone_id, file_name).
-/// Expects format: `wavefile://zone-id/filename`
+/// Expects format: `muxfile://zone-id/filename`
 pub fn parse_wave_file_path(path: &str) -> Option<(String, String)> {
-    let rest = path.strip_prefix(WAVE_FILE_PATH_PATTERN)?;
+    let rest = path.strip_prefix(MUX_FILE_PATH_PATTERN)?;
     let slash_pos = rest.find('/')?;
     let zone_id = &rest[..slash_pos];
     let name = &rest[slash_pos + 1..];
@@ -118,7 +118,7 @@ mod tests {
     fn test_wave_file_to_file_info() {
         let file = make_test_file();
         let info = wave_file_to_file_info(&file);
-        assert_eq!(info.path, "wavefile://zone-abc/test.txt");
+        assert_eq!(info.path, "muxfile://zone-abc/test.txt");
         assert_eq!(info.name, "test.txt");
         assert_eq!(info.size, 1024);
         assert_eq!(info.modts, 1700000001000);
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn test_file_info_serialization() {
         let info = FileInfo {
-            path: "wavefile://z1/f1".to_string(),
+            path: "muxfile://z1/f1".to_string(),
             name: "f1".to_string(),
             size: 100,
             modts: 0,
@@ -188,22 +188,22 @@ mod tests {
 
     #[test]
     fn test_file_info_deserialization() {
-        let json = r#"{"path":"wavefile://z/f","name":"f","size":50,"modts":123,"isdir":false}"#;
+        let json = r#"{"path":"muxfile://z/f","name":"f","size":50,"modts":123,"isdir":false}"#;
         let info: FileInfo = serde_json::from_str(json).unwrap();
-        assert_eq!(info.path, "wavefile://z/f");
+        assert_eq!(info.path, "muxfile://z/f");
         assert_eq!(info.size, 50);
         assert_eq!(info.modts, 123);
     }
 
     #[test]
     fn test_parse_wave_file_path() {
-        let result = parse_wave_file_path("wavefile://zone-abc/test.txt");
+        let result = parse_wave_file_path("muxfile://zone-abc/test.txt");
         assert_eq!(result, Some(("zone-abc".to_string(), "test.txt".to_string())));
     }
 
     #[test]
     fn test_parse_wave_file_path_nested() {
-        let result = parse_wave_file_path("wavefile://zone/dir/file.txt");
+        let result = parse_wave_file_path("muxfile://zone/dir/file.txt");
         assert_eq!(
             result,
             Some(("zone".to_string(), "dir/file.txt".to_string()))
@@ -214,8 +214,8 @@ mod tests {
     fn test_parse_wave_file_path_invalid() {
         assert!(parse_wave_file_path("").is_none());
         assert!(parse_wave_file_path("file:///tmp/foo").is_none());
-        assert!(parse_wave_file_path("wavefile://").is_none());
-        assert!(parse_wave_file_path("wavefile://zone/").is_none());
-        assert!(parse_wave_file_path("wavefile:///file").is_none());
+        assert!(parse_wave_file_path("muxfile://").is_none());
+        assert!(parse_wave_file_path("muxfile://zone/").is_none());
+        assert!(parse_wave_file_path("muxfile:///file").is_none());
     }
 }

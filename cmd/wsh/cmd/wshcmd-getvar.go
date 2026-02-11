@@ -115,7 +115,7 @@ func getVarRun(cmd *cobra.Command, args []string) error {
 func getAllVariables(zoneId string) error {
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, getVarFileName)}}
+			Path: fmt.Sprintf(wavefileutil.MuxFilePathPattern, zoneId, getVarFileName)}}
 
 	data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
 	err = convertNotFoundErr(err)

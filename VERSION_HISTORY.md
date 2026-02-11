@@ -2,13 +2,23 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/wavemux, a5af/waveterm).
 
-## Latest Version: 0.22.2
+## Latest Version: 0.22.3
 
 **Base:** Tauri v2 + Rust backend (upstream Electron removed)
 
 ---
 
 ## Version History (Latest First)
+
+### v0.22.3 (2026-02-11)
+- **Agent:** AgentA
+- **Changes:**
+  - Feat: Comprehensive verbose logging framework for debugging grey screen
+  - Backend: Enhanced logging module with performance timers
+  - Frontend: Structured logger with categories and log levels
+  - Integration: 18+ instrumentation points in startup sequence
+  - Logs saved to ~/.agentmux/logs/ with daily rotation
+  - Debug mode: ?debug=1 or localStorage override
 
 ### v0.22.2 (2026-02-11)
 - **Agent:** AgentA

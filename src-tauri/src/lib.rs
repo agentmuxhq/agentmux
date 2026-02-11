@@ -125,8 +125,26 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
-            // Initialize logging
-            let log_dir = init_logging(&handle);
+            // Initialize enhanced logging
+            let log_dir = handle
+                .path()
+                .app_log_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+            let log_config = backend::logging::LogConfig {
+                file_level: tracing::Level::DEBUG,
+                console_level: tracing::Level::INFO,
+                enable_structured: true,
+            };
+
+            match backend::logging::init_logging_enhanced(log_config, log_dir.clone()) {
+                Ok(()) => {
+                    tracing::info!("🚀 Enhanced logging initialized at {:?}", log_dir);
+                }
+                Err(e) => {
+                    eprintln!("❌ Failed to initialize enhanced logging: {}", e);
+                }
+            }
 
             // Initialize crash handler
             crash::init_crash_handler(log_dir.clone());
@@ -271,33 +289,3 @@ pub fn run() {
         .expect("error while running AgentMux");
 }
 
-fn init_logging(handle: &tauri::AppHandle) -> std::path::PathBuf {
-    use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
-
-    let log_dir = handle
-        .path()
-        .app_log_dir()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."));
-
-    let _ = std::fs::create_dir_all(&log_dir);
-
-    let file_appender = tracing_appender::rolling::daily(&log_dir, "agentmux.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-
-    // Keep the guard alive for the lifetime of the app
-    // by leaking it (acceptable for a long-running app)
-    std::mem::forget(_guard);
-
-    let subscriber = tracing_subscriber::registry()
-        .with(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("agentmux=info,warn")),
-        )
-        .with(fmt::layer().with_writer(non_blocking))
-        .with(fmt::layer().with_writer(std::io::stderr));
-
-    tracing::subscriber::set_global_default(subscriber).ok();
-    tracing::info!("AgentMux starting");
-
-    log_dir
-}

@@ -33,8 +33,7 @@ impl Default for LogConfig {
 }
 
 /// Initialize enhanced logging system
-pub fn init_logging_enhanced(config: LogConfig) -> Result<(), String> {
-    let log_dir = get_log_dir()?;
+pub fn init_logging_enhanced(config: LogConfig, log_dir: std::path::PathBuf) -> Result<(), String> {
     std::fs::create_dir_all(&log_dir).map_err(|e| format!("Failed to create log dir: {}", e))?;
 
     // File appender with daily rotation
@@ -71,11 +70,6 @@ pub fn init_logging_enhanced(config: LogConfig) -> Result<(), String> {
     Ok(())
 }
 
-/// Get log directory path
-fn get_log_dir() -> Result<PathBuf, String> {
-    let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
-    Ok(home_dir.join(".agentmux").join("logs"))
-}
 
 /// Runtime log level control
 pub fn set_log_level(level: Level) {

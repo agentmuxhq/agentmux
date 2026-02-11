@@ -316,11 +316,12 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
         getApi().sendLog("Error in initWave " + e.message + "\n" + e.stack);
         console.error("Error in initWave", e);
     } finally {
-        logger.info("init", "🎬 Showing window - removing visibility:hidden");
-        document.body.style.visibility = null;
-        document.body.style.opacity = null;
+        logger.info("init", "🎬 Showing window - forcing visibility");
+        document.body.style.visibility = "visible";
+        document.body.style.opacity = "1";
+        document.body.style.display = "flex";
         document.body.classList.remove("is-transparent");
-        logger.windowEvent("Body visible", "visibility: null, opacity: null");
+        logger.windowEvent("Body visible", "visibility: visible, opacity: 1, display: flex");
 
         const finalTime = performance.now() - startupTimer;
         logger.startupMilestone(`🏁 WINDOW VISIBLE - Total startup: ${finalTime.toFixed(0)}ms`);

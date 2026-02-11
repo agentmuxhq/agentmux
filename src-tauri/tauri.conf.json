@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' tauri: ipc: http://ipc.localhost; connect-src 'self' tauri: ipc: http://ipc.localhost http://tauri.localhost; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: muxfile:; media-src 'self' muxfile:; frame-src 'self' muxfile:; font-src 'self' data:;"
+      "csp": "default-src 'self' tauri: ipc: http://ipc.localhost http://tauri.localhost; connect-src 'self' tauri: ipc: http://ipc.localhost http://tauri.localhost; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: muxfile:; media-src 'self' muxfile:; frame-src 'self' muxfile:; font-src 'self' data:;"
     },
     "trayIcon": {
       "iconPath": "icons/icon.png",

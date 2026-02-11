@@ -1,14 +1,36 @@
 # AgentMux Version History
 
-This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
+This document tracks the version history of the a5af/agentmux fork (formerly a5af/wavemux, a5af/waveterm).
 
-## Latest Version: 0.16.7
+## Latest Version: 0.22.1
 
-**Base:** Upstream waveterm v0.12.0 + extensive custom features
+**Base:** Tauri v2 + Rust backend (upstream Electron removed)
 
 ---
 
 ## Version History (Latest First)
+
+### v0.22.1 (2026-02-11)
+- **Agent:** AgentA
+- **Changes:**
+  - Chore: Remove dead code modules (wcloud, webhookdelivery, wshutil submodules)
+  - Reduced compilation warnings: 973 → 885 (-9%)
+  - Removed 1,968 lines of unused code
+  - Fix: Add http://tauri.localhost to CSP for asset loading
+  - Ensures Tauri v2 asset compatibility
+
+### v0.22.0 (2026-02-11)
+- **Agent:** AgentA
+- **Changes:**
+  - Breaking: URI scheme renamed from wavefile:// to muxfile://
+  - Updated all references across Rust, Go, TypeScript, docs
+  - Bumped version for breaking change
+
+### v0.21.2 (2026-02-10)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix: Dev mode white screen issue (webview URL navigation)
+  - Added remote capabilities for dev mode IPC
 
 ### v0.16.7 (2026-01-16)
 - **Agent:** AgentA

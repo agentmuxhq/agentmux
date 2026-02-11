@@ -81,8 +81,8 @@ See full instructions: https://taskfile.dev/installation/
 ## Clone the Repository
 
 ```bash
-git clone https://github.com/a5af/wavemux.git
-cd wavemux
+git clone https://github.com/a5af/agentmux.git
+cd agentmux
 ```
 
 ---

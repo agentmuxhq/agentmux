@@ -20,14 +20,14 @@
 ## Repository
 
 - **Name:** AgentMux
-- **GitHub:** https://github.com/a5af/wavemux
+- **GitHub:** https://github.com/a5af/agentmux
 - **Type:** Tauri v2 terminal application
-- **Version:** 0.19.0
+- **Version:** 0.21.2
 
 ## Git & Pull Requests
 
-- Push branches to https://github.com/a5af/wavemux
-- Open PRs against a5af/wavemux main branch
+- Push branches to https://github.com/a5af/agentmux
+- Open PRs against a5af/agentmux main branch
 - Branch naming: `agent[X]/feature-name` (e.g., `agentx/fix-version`)
 
 ---
@@ -89,13 +89,13 @@ git push origin <branch> --tags
 
 ### Bare Repository
 
-- **Location:** `D:\Code\projects\wavemux.git`
+- **Location:** `D:\Code\projects\agentmux.git`
 - **Type:** Git bare repository (no working directory)
-- **Remote:** https://github.com/a5af/wavemux
+- **Remote:** https://github.com/a5af/agentmux
 
 ### Agent Worktrees
 
-- **Location:** `D:\Code\agent-workspaces\agent[X]\wavemux\`
+- **Location:** `D:\Code\agent-workspaces\agent[X]\agentmux\`
 - **Branch:** `agent[X]/feature-name`
 - **Setup:** Created on-demand via `git worktree add`
 

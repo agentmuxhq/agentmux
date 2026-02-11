@@ -480,7 +480,7 @@ This allows setting various options in the `config/settings.json` file. It will 
 
 ## file
 
-The `file` command provides a set of subcommands for managing files across different storage systems, such as `wavefile`, `wsh` remote servers, and S3.
+The `file` command provides a set of subcommands for managing files across different storage systems, such as `muxfile`, `wsh` remote servers, and S3.
 
 :::note
 
@@ -516,11 +516,11 @@ Supported URI schemes:
   - `aws:[profile]:s3://[bucket]/[path]`
   - `[profile]:s3://[bucket]/[path]`
 
-- `wavefile` - Used to retrieve blockfiles from the internal Wave filesystem.
+- `muxfile` - Used to retrieve blockfiles from the internal AgentMux filesystem.
 
   Format: `muxfile://[zoneid]/[path]`
 
-  Wave file locations can be:
+  AgentMux file locations can be:
 
   - `muxfile://block/...` - stored in the current block ("this" is also an alias for "block")
   - `muxfile://tab/...` - stored in the current tab

@@ -18,6 +18,7 @@ pub mod filestream;
 pub mod fileutil;
 pub mod ijson;
 pub mod iochan;
+pub mod logging;
 pub mod logview;
 pub mod migrateutil;
 pub mod oref;

@@ -34,7 +34,11 @@ import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
+import { logger, initLogger } from "@/util/logger";
 
+// Initialize logger immediately
+initLogger();
+const startupTimer = performance.now();
 
 const platform = getApi().getPlatform();
 
@@ -208,22 +212,38 @@ async function initTauriNewWindow(): Promise<void> {
 }
 
 async function initBare() {
+    const elapsed = performance.now() - startupTimer;
+    logger.startupMilestone("initBare START", elapsed);
+    logger.time("initBare");
+
     getApi().sendLog("Init Bare");
+
+    // Hide body immediately to prevent flash
+    logger.debug("init", "Hiding body to prevent flash");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
+    logger.windowEvent("Body hidden", "visibility: hidden, opacity: 0");
 
     // Check if we're in Tauri mode
     const isTauri = typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
+    logger.info("init", `Tauri mode: ${isTauri}`);
     getApi().sendLog(`Init Bare - Tauri mode: ${isTauri}`);
 
     // Electron uses onWaveInit callback (backend emits wave-init event)
     // Tauri handles initialization in frontend after backend is ready
     if (!isTauri) {
+        logger.debug("init", "Setting up onWaveInit callback (Electron mode)");
         getApi().onWaveInit(initWaveWrap);
     }
+
+    logger.lap("initBare", "Platform setup");
     setKeyUtilPlatform(platform);
+
+    logger.lap("initBare", "Loading fonts");
     loadFonts();
+
+    logger.lap("initBare", "Setting zoom factor");
     updateZoomFactor(getApi().getZoomFactor());
     getApi().onZoomFactorChange((zoomFactor) => {
         updateZoomFactor(zoomFactor);
@@ -231,31 +251,42 @@ async function initBare() {
 
     // Use Promise.race to add a timeout fallback for fonts.ready
     // In Tauri, fonts.ready might not resolve promptly
+    logger.debug("init", "Waiting for fonts.ready (2s timeout)");
     const fontsPromise = document.fonts.ready;
     const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
 
     Promise.race([fontsPromise, timeoutPromise]).then(async () => {
+        logger.lap("initBare", "Fonts ready");
+        logger.timeEnd("initBare");
         getApi().sendLog("Init Bare Done");
         getApi().setWindowInitStatus("ready");
+        logger.windowEvent("Init status", "ready");
 
         // In Tauri mode, handle initialization in frontend
         if (isTauri) {
+            logger.info("init", "🚀 Starting Tauri initialization");
+            logger.time("tauriInit");
             getApi().sendLog("Starting Tauri initialization");
             try {
                 // Check if this is a new window or the main window
                 const isMain = await getApi().isMainWindow();
+                logger.info("init", `Window type: ${isMain ? "MAIN" : "NEW"}`);
                 getApi().sendLog(`Window type: ${isMain ? "main" : "new window"}`);
 
                 if (isMain) {
                     // Main window: standard initialization
+                    logger.startupMilestone("Initializing main window");
                     await initTauriWave();
                 } else {
                     // New window: create backend objects first
                     const label = await getApi().getWindowLabel();
+                    logger.startupMilestone(`Initializing new window: ${label}`);
                     getApi().sendLog(`Initializing new window: ${label}`);
                     await initTauriNewWindow();
                 }
+                logger.timeEnd("tauriInit");
             } catch (error) {
+                logger.error("init", "❌ Tauri initialization FAILED:", error);
                 console.error("[initBare] Tauri initialization failed:", error);
                 getApi().sendLog(`Tauri init error: ${error}`);
             }
@@ -281,12 +312,18 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
         savedInitOpts = initOpts;
         await initWave(initOpts);
     } catch (e) {
+        logger.error("init", "❌ Error in initWave:", e);
         getApi().sendLog("Error in initWave " + e.message + "\n" + e.stack);
         console.error("Error in initWave", e);
     } finally {
+        logger.info("init", "🎬 Showing window - removing visibility:hidden");
         document.body.style.visibility = null;
         document.body.style.opacity = null;
         document.body.classList.remove("is-transparent");
+        logger.windowEvent("Body visible", "visibility: null, opacity: null");
+
+        const finalTime = performance.now() - startupTimer;
+        logger.startupMilestone(`🏁 WINDOW VISIBLE - Total startup: ${finalTime.toFixed(0)}ms`);
     }
 }
 
@@ -342,6 +379,11 @@ function loadAllWorkspaceTabs(ws: Workspace) {
 }
 
 async function initWave(initOpts: WaveInitOpts) {
+    const elapsed = performance.now() - startupTimer;
+    logger.startupMilestone("initWave START", elapsed);
+    logger.time("initWave");
+    logger.info("init", "🌊 Wave initialization", initOpts);
+
     getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
     console.log(
         "Wave Init",
@@ -354,6 +396,8 @@ async function initWave(initOpts: WaveInitOpts) {
         "platform",
         platform
     );
+
+    logger.lap("initWave", "initGlobal");
     initGlobal({
         tabId: initOpts.tabId,
         clientId: initOpts.clientId,
@@ -365,38 +409,59 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).globalAtoms = atoms;
 
     // Init WPS event handlers
+    logger.lap("initWave", "initWshrpc");
     const globalWS = initWshrpc(initOpts.tabId);
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
+
+    logger.lap("initWave", "loadConnStatus");
     await loadConnStatus();
+
+    logger.lap("initWave", "initGlobalWaveEventSubs");
     initGlobalWaveEventSubs(initOpts);
+
     if (isRustBackend()) {
+        logger.lap("initWave", "initTauriWpsEventListener");
         await initTauriWpsEventListener();
     }
+
+    logger.lap("initWave", "subscribeToConnEvents");
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
+    logger.lap("initWave", "Loading client/window/tab objects");
     const [client, waveWindow, initialTab] = await Promise.all([
         WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
         WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
         WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
     ]);
+    logger.lap("initWave", "Objects loaded, loading workspace");
+
     const [ws, layoutState] = await Promise.all([
         WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
         WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
     ]);
+    logger.lap("initWave", "Workspace loaded");
+
     loadAllWorkspaceTabs(ws);
     WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
 
     document.title = `Wave Terminal ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
 
+    logger.lap("initWave", "Registering global keys");
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
+
+    logger.lap("initWave", "Loading Monaco editor");
     await loadMonaco();
+
+    logger.lap("initWave", "Getting full config");
     const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
+
+    logger.info("init", "🎨 Preparing React first render");
     console.log("Wave First Render");
     let firstRenderResolveFn: () => void = null;
     let firstRenderPromise = new Promise<void>((resolve) => {
@@ -405,8 +470,19 @@ async function initWave(initOpts: WaveInitOpts) {
     const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn }, null);
     const elem = document.getElementById("main");
     const root = createRoot(elem);
+
+    logger.lap("initWave", "Calling root.render()");
     root.render(reactElem);
+
+    logger.info("init", "⏳ Waiting for first render callback");
     await firstRenderPromise;
+
+    const totalElapsed = performance.now() - startupTimer;
+    logger.startupMilestone("✅ Wave First Render COMPLETE", totalElapsed);
     console.log("Wave First Render Done");
     getApi().setWindowInitStatus("wave-ready");
+    logger.windowEvent("Init status", "wave-ready");
+
+    logger.timeEnd("initWave");
+    logger.info("init", `🎉 INITIALIZATION COMPLETE! Total time: ${totalElapsed.toFixed(0)}ms`);
 }

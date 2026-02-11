@@ -1,12 +1,12 @@
 // Copyright 2026, a5af.
 // SPDX-License-Identifier: Apache-2.0
 
-//! File streaming via `wavefile://` custom protocol.
+//! File streaming via `muxfile://` custom protocol.
 //! Replaces Go's HTTP `/wave/stream-file` and `/wave/stream-local-file` endpoints.
 //!
 //! Handles requests like:
-//!   wavefile://localhost/stream?path=wsh://local/home/user/image.png
-//!   wavefile://localhost/stream-local-file?path=/home/user/image.png&no404=1
+//!   muxfile://localhost/stream?path=wsh://local/home/user/image.png
+//!   muxfile://localhost/stream-local-file?path=/home/user/image.png&no404=1
 
 use std::path::PathBuf;
 
@@ -19,9 +19,9 @@ const TRANSPARENT_GIF: &[u8] = &[
     0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3B,
 ];
 
-/// Entry point for the `wavefile://` protocol handler.
+/// Entry point for the `muxfile://` protocol handler.
 /// Registered via `register_asynchronous_uri_scheme_protocol` in lib.rs.
-pub fn handle_wavefile_protocol(
+pub fn handle_muxfile_protocol(
     request: tauri::http::Request<Vec<u8>>,
     responder: tauri::UriSchemeResponder,
 ) {
@@ -235,19 +235,19 @@ mod tests {
 
     #[test]
     fn test_parse_query_params_empty() {
-        assert!(parse_query_params("wavefile://localhost/stream").is_empty());
+        assert!(parse_query_params("muxfile://localhost/stream").is_empty());
     }
 
     #[test]
     fn test_parse_query_params_single() {
-        let params = parse_query_params("wavefile://localhost/stream?path=foo");
+        let params = parse_query_params("muxfile://localhost/stream?path=foo");
         assert_eq!(params.len(), 1);
         assert_eq!(params[0], ("path".to_string(), "foo".to_string()));
     }
 
     #[test]
     fn test_parse_query_params_encoded() {
-        let params = parse_query_params("wavefile://localhost/stream?path=wsh%3A%2F%2Flocal%2Fhome&no404=1");
+        let params = parse_query_params("muxfile://localhost/stream?path=wsh%3A%2F%2Flocal%2Fhome&no404=1");
         assert_eq!(params.len(), 2);
         assert_eq!(params[0].0, "path");
         assert_eq!(params[0].1, "wsh://local/home");

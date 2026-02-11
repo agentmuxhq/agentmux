@@ -43,11 +43,11 @@ pub fn run() {
         // .plugin(tauri_plugin_updater::Builder::new().build())
         ;
 
-    // Register wavefile:// custom protocol for file streaming
+    // Register muxfile:// custom protocol for file streaming
     let builder = builder.register_asynchronous_uri_scheme_protocol(
-        "wavefile",
+        "muxfile",
         |_ctx, request, responder| {
-            crate::backend::filestream::handle_wavefile_protocol(request, responder);
+            crate::backend::filestream::handle_muxfile_protocol(request, responder);
         },
     );
 

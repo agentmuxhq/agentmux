@@ -16,9 +16,6 @@ pub mod genconn;
 pub mod sshclient;
 
 // Re-export commonly used types
-pub use connparse::Connection;
-pub use genconn::{CommandSpec, ShellClient, ShellProcessController};
-pub use sshclient::SSHOpts;
 
 // ---- Connection type constants ----
 

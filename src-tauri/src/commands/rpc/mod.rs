@@ -19,9 +19,6 @@ use serde_json::Value;
 use crate::state::AppState;
 
 // Re-export Tauri commands that live in sub-modules
-pub use file::fetch_wave_file;
-pub use reactive::{reactive_inject, reactive_poller_config, reactive_register, reactive_unregister};
-pub use schema::get_schema;
 
 /// Handle an RPC request from the frontend.
 ///

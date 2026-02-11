@@ -5,4 +5,4 @@
 //!
 //! New code should import from `crate::domain::value_objects`.
 
-pub use crate::domain::value_objects::ids::{ORef, ORefParseError, VALID_OTYPES};
+pub use crate::domain::value_objects::ids::ORef;

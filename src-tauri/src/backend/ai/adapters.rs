@@ -13,10 +13,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::unified::{
-    UnifiedMessage, UnifiedMessagePart, BACKEND_TYPE_AGENT, BACKEND_TYPE_CHAT, MSG_STATUS_COMPLETE,
-    MSG_STATUS_ERROR, MSG_STATUS_STREAMING, TOOL_APPROVAL_AUTO, TOOL_APPROVAL_PENDING,
+    UnifiedMessage, UnifiedMessagePart,
+    MSG_STATUS_ERROR, TOOL_APPROVAL_PENDING,
 };
-use super::{AIStreamEvent, ToolUseData};
+use super::AIStreamEvent;
 
 // ---- Adapter events (output from adapters) ----
 

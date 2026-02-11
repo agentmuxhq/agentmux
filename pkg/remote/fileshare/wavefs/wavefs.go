@@ -479,7 +479,7 @@ func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connpar
 }
 
 func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error) {
-	if srcConn.Scheme == connparse.ConnectionTypeWave && destConn.Scheme == connparse.ConnectionTypeWave {
+	if srcConn.Scheme == connparse.ConnectionTypeMux && destConn.Scheme == connparse.ConnectionTypeMux {
 		return c.CopyInternal(ctx, srcConn, destConn, opts)
 	}
 	zoneId := destConn.Host
@@ -618,7 +618,7 @@ func cleanPath(path string) (string, error) {
 		path = path[1:]
 	}
 	if strings.HasPrefix(path, "~") || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "..") {
-		return "", fmt.Errorf("wavefile path cannot start with ~, ., or ..")
+		return "", fmt.Errorf("muxfile path cannot start with ~, ., or ..")
 	}
 	var newParts []string
 	for _, part := range strings.Split(path, fspath.Separator) {
@@ -634,5 +634,5 @@ func cleanPath(path string) (string, error) {
 }
 
 func (c WaveClient) GetConnectionType() string {
-	return connparse.ConnectionTypeWave
+	return connparse.ConnectionTypeMux
 }

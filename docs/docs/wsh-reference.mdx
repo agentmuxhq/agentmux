@@ -518,16 +518,16 @@ Supported URI schemes:
 
 - `wavefile` - Used to retrieve blockfiles from the internal Wave filesystem.
 
-  Format: `wavefile://[zoneid]/[path]`
+  Format: `muxfile://[zoneid]/[path]`
 
   Wave file locations can be:
 
-  - `wavefile://block/...` - stored in the current block ("this" is also an alias for "block")
-  - `wavefile://tab/...` - stored in the current tab
-  - `wavefile://workspace/...` - stored in the current workspace ("ws" is also an alias for "workspace")
-  - `wavefile://client/...` - stored globally for the client ("global" is also an alias for "client")
-  - `wavefile://temp/...` - stored globally, but removed on startup/shutdown
-  - `wavefile://[uuid]/...` - an entity id (can be a block, tab, workspace, etc.)
+  - `muxfile://block/...` - stored in the current block ("this" is also an alias for "block")
+  - `muxfile://tab/...` - stored in the current tab
+  - `muxfile://workspace/...` - stored in the current workspace ("ws" is also an alias for "workspace")
+  - `muxfile://client/...` - stored globally for the client ("global" is also an alias for "client")
+  - `muxfile://temp/...` - stored globally, but removed on startup/shutdown
+  - `muxfile://[uuid]/...` - an entity id (can be a block, tab, workspace, etc.)
 
 :::
 
@@ -540,8 +540,8 @@ wsh file cat [file-uri]
 Display the contents of a file. For example:
 
 ```sh
-wsh file cat wavefile://block/config.txt
-wsh file cat wavefile://client/settings.json
+wsh file cat muxfile://block/config.txt
+wsh file cat muxfile://client/settings.json
 ```
 
 ### write
@@ -553,7 +553,7 @@ wsh file write [file-uri]
 Write data from stdin to a file. The maximum file size is 10MB. For example:
 
 ```sh
-echo "hello" | wsh file write wavefile://block/greeting.txt
+echo "hello" | wsh file write muxfile://block/greeting.txt
 cat config.json | wsh file write //ec2-user@remote01/~/config.json
 ```
 
@@ -566,8 +566,8 @@ wsh file append [file-uri]
 Append data from stdin to a file, respecting a 10MB total file size limit. This is useful for log files or accumulating data. For example:
 
 ```sh
-tail -f app.log | wsh file append wavefile://block/logs.txt
-echo "new line" | wsh file append wavefile://client/notes.txt
+tail -f app.log | wsh file append muxfile://block/logs.txt
+echo "new line" | wsh file append muxfile://client/notes.txt
 ```
 
 ### rm
@@ -580,7 +580,7 @@ Remove a file. For example:
 
 ```sh
 wsh file rm wsh://user@ec2/home/user/config.txt
-wsh file rm wavefile://client/settings.json
+wsh file rm muxfile://client/settings.json
 ```
 
 Flags:
@@ -597,7 +597,7 @@ Display information about a file including size, creation time, modification tim
 
 ```sh
 wsh file info wsh://user@ec2/home/user/config.txt
-wsh file info wavefile://client/settings.json
+wsh file info muxfile://client/settings.json
 ```
 
 ### cp
@@ -610,13 +610,13 @@ Copy files between different storage systems. For example:
 
 ```sh
 # Copy a wave file into your local filesystem
-wsh file cp wavefile://block/config.txt ./local-config.txt
+wsh file cp muxfile://block/config.txt ./local-config.txt
 
 # Copy a local file into the wave filesystem
-wsh file cp ./local-config.txt wavefile://block/config.txt
+wsh file cp ./local-config.txt muxfile://block/config.txt
 
 # Copy a remote file into the wave filesystem
-wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
+wsh file cp wsh://user@ec2/home/user/config.txt muxfile://client/config.txt
 
 # Recursively copy a directory between two remote computers
 wsh file cp wsh://user@ec2-1/home/user/.config wsh://user@ec2-2/home/user/.config -r
@@ -638,13 +638,13 @@ Move files between different storage systems. The source file will be deleted on
 
 ```sh
 # Move a wave file into your local filesystem
-wsh file mv wavefile://block/config.txt ./local-config.txt
+wsh file mv muxfile://block/config.txt ./local-config.txt
 
 # Move a local file into the wave filesystem
-wsh file mv ./local-config.txt wavefile://block/config.txt
+wsh file mv ./local-config.txt muxfile://block/config.txt
 
 # Move a remote file into the wave filesystem
-wsh file mv wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
+wsh file mv wsh://user@ec2/home/user/config.txt muxfile://client/config.txt
 
 # Recursively move a directory between two remote computers
 wsh file mv wsh://user@ec2-1/home/user/.config wsh://user@ec2-2/home/user/.config -r
@@ -667,7 +667,7 @@ Examples:
 
 ```sh
 wsh file ls wsh://user@ec2/home/user/
-wsh file ls wavefile://client/configs/
+wsh file ls muxfile://client/configs/
 ```
 
 Flags:
@@ -681,7 +681,7 @@ When output is piped to another command, automatically switches to one-file-per-
 
 ```sh
 # Easy to process with grep, awk, etc.
-wsh file ls wavefile://client/ | grep ".json$"
+wsh file ls muxfile://client/ | grep ".json$"
 ```
 
 ---

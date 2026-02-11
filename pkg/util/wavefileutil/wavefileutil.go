@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	WaveFilePathPattern = "wavefile://%s/%s"
+	MuxFilePathPattern = "muxfile://%s/%s"
 )
 
 func WaveFileToFileInfo(wf *filestore.WaveFile) *wshrpc.FileInfo {
-	path := fmt.Sprintf(WaveFilePathPattern, wf.ZoneId, wf.Name)
+	path := fmt.Sprintf(MuxFilePathPattern, wf.ZoneId, wf.Name)
 	rtn := &wshrpc.FileInfo{
 		Path:          path,
 		Dir:           fsutil.GetParentPathString(path),

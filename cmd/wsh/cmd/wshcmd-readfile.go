@@ -31,7 +31,7 @@ func runReadFile(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] %v\n", err)
 		return
 	}
-	data, err := wshclient.FileReadCommand(RpcClient, wshrpc.FileData{Info: &wshrpc.FileInfo{Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, fullORef.OID, args[0])}}, &wshrpc.RpcOpts{Timeout: 5000})
+	data, err := wshclient.FileReadCommand(RpcClient, wshrpc.FileData{Info: &wshrpc.FileInfo{Path: fmt.Sprintf(wavefileutil.MuxFilePathPattern, fullORef.OID, args[0])}}, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {
 		WriteStderr("[error] reading file: %v\n", err)
 		return

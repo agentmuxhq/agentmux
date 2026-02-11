@@ -53,10 +53,10 @@ wsh setvar -b workspace DEPLOY_ENV=staging
 curl -H "Authorization: $(wsh getvar API_KEY)" https://api.example.com
 
 # Store a file that can be accessed from any block
-echo "data" | wsh file write wavefile://global/config.txt
+echo "data" | wsh file write muxfile://global/config.txt
 
 # Append logs from multiple terminals
-echo "Terminal 1 log" | wsh file append wavefile://workspace/logs.txt
+echo "Terminal 1 log" | wsh file append muxfile://workspace/logs.txt
 ```
 
 ### Block Management

@@ -36,7 +36,7 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 			return nil, nil
 		}
 		return s3fs.NewS3Client(config), conn
-	} else if conntype == connparse.ConnectionTypeWave {
+	} else if conntype == connparse.ConnectionTypeMux {
 		return wavefs.NewWaveClient(), conn
 	} else if conntype == connparse.ConnectionTypeWsh {
 		return wshfs.NewWshClient(), conn

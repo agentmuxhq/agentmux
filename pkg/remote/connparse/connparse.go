@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	ConnectionTypeWsh  = "wsh"
-	ConnectionTypeS3   = "s3"
-	ConnectionTypeWave = "wavefile"
+	ConnectionTypeWsh = "wsh"
+	ConnectionTypeS3  = "s3"
+	ConnectionTypeMux = "muxfile"
 
 	ConnHostCurrent = "current"
 	ConnHostWaveSrv = "wavemuxsrv"

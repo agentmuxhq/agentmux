@@ -32,7 +32,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": [],
+    "targets": ["nsis"],
     "externalBin": [
       "binaries/wavemuxsrv",
       "binaries/wsh"

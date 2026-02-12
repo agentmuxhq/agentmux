@@ -5172,7 +5172,7 @@ dependencies = [
 
 [[package]]
 name = "wavemux"
-version = "0.24.2"
+version = "0.24.3"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -5201,6 +5201,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "url",
  "uuid",
  "whoami",
 ]

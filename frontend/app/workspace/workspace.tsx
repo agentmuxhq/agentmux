@@ -47,8 +47,7 @@ const WorkspaceElem = memo(() => {
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            {/* Temporarily hidden - will restore with multi-window support */}
-            {/* <TabBar key={ws.oid} workspace={ws} /> */}
+            <TabBar key={ws.oid} workspace={ws} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
                     <PanelGroup

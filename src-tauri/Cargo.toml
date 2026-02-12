@@ -6,6 +6,17 @@ authors = ["a5af"]
 edition = "2021"
 rust-version = "1.77"
 
+[features]
+default = []
+rust-backend = [
+    "dep:rusqlite",
+    "dep:base64",
+    "dep:dirs",
+    "dep:libc",
+    "dep:subtle",
+    "dep:thiserror",
+]
+
 [lib]
 name = "wavemux_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
@@ -30,18 +41,18 @@ tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 whoami = "1"
 chrono = "0.4"
-thiserror = "2"
-base64 = "0.22"
-dirs = "6"
-libc = "0.2"
-subtle = "2"
+thiserror = { version = "2", optional = true }
+base64 = { version = "0.22", optional = true }
+dirs = { version = "6", optional = true }
+libc = { version = "0.2", optional = true }
+subtle = { version = "2", optional = true }
 url = "2"
 
 [profile.release]

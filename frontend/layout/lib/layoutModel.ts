@@ -11,7 +11,7 @@ import { splitAtom } from "jotai/utils";
 import { createRef, CSSProperties } from "react";
 import { debounce } from "throttle-debounce";
 import { getLayoutStateAtomFromTab } from "./layoutAtom";
-import { balanceNode, findNode, newLayoutNode, walkNodes } from "./layoutNode";
+import { balanceNode, findNode, findNodeByBlockId, newLayoutNode, walkNodes } from "./layoutNode";
 import {
     clearTree,
     computeMoveNode,
@@ -436,7 +436,22 @@ export class LayoutModel {
             }
             case LayoutTreeActionType.DeleteNode: {
                 getApi().sendLog(`[BUG-TRACE] handleBackendAction DeleteNode triggered for blockId: ${action.blockid}`);
-                const leaf = this?.getNodeByBlockId(action.blockid);
+                let leaf = this?.getNodeByBlockId(action.blockid);
+
+                // If not found in leafs array, search the tree directly (handles orphaned blocks)
+                if (!leaf && this.treeState.rootNode) {
+                    leaf = findNodeByBlockId(this.treeState.rootNode, action.blockid);
+                    if (leaf) {
+                        getApi().sendLog(`[BUG-TRACE] Found orphaned block in tree: ${action.blockid}, nodeId: ${leaf.id}`);
+                        // Delete directly from tree instead of closeNode (which may expect block to exist)
+                        this.treeReducer({
+                            type: LayoutTreeActionType.DeleteNode,
+                            nodeId: leaf.id,
+                        } as LayoutTreeDeleteNodeAction, false);
+                        break;
+                    }
+                }
+
                 if (leaf) {
                     getApi().sendLog(`[BUG-TRACE] handleBackendAction calling closeNode for leaf: ${leaf.id}`);
                     await this.closeNode(leaf.id);

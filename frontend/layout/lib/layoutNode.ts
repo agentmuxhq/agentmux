@@ -122,6 +122,24 @@ export function findNode(node: LayoutNode, id: string): LayoutNode | undefined {
 }
 
 /**
+ * Finds the node with the given blockId by searching the tree.
+ * This is useful for finding orphaned blocks that may not be in the leafs array.
+ * @param node The node to start the search from.
+ * @param blockId The blockId to search for.
+ * @returns The node with the given blockId or undefined if not found.
+ */
+export function findNodeByBlockId(node: LayoutNode, blockId: string): LayoutNode | undefined {
+    if (!node) return;
+    if (node.data?.blockId === blockId) return node;
+    if (!node.children) return;
+    for (const child of node.children) {
+        const result = findNodeByBlockId(child, blockId);
+        if (result) return result;
+    }
+    return;
+}
+
+/**
  * Finds the node whose children contains the node with the given id.
  * @param node The node to start the search from.
  * @param id The id to search for.

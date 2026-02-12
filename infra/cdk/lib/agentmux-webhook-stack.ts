@@ -8,18 +8,18 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
-interface WaveMuxWebhookStackProps extends cdk.StackProps {
+interface AgentMuxWebhookStackProps extends cdk.StackProps {
   environment: string;
 }
 
-export class WaveMuxWebhookStack extends cdk.Stack {
+export class AgentMuxWebhookStack extends cdk.Stack {
   public readonly webhookConfigTable: dynamodb.Table;
   public readonly connectionTable: dynamodb.Table;
   public readonly webhookRouterFunction: lambda.Function;
   public readonly httpApi: apigatewayv2.HttpApi;
   public readonly webSocketApi: apigatewayv2.WebSocketApi;
 
-  constructor(scope: Construct, id: string, props: WaveMuxWebhookStackProps) {
+  constructor(scope: Construct, id: string, props: AgentMuxWebhookStackProps) {
     super(scope, id, props);
 
     const { environment } = props;
@@ -30,7 +30,7 @@ export class WaveMuxWebhookStack extends cdk.Stack {
 
     // Table for webhook configuration and subscriptions
     this.webhookConfigTable = new dynamodb.Table(this, 'WebhookConfigTable', {
-      tableName: `WaveMuxWebhookConfig-${environment}`,
+      tableName: `AgentMuxWebhookConfig-${environment}`,
       partitionKey: {
         name: 'subscriptionId',
         type: dynamodb.AttributeType.STRING,
@@ -66,7 +66,7 @@ export class WaveMuxWebhookStack extends cdk.Stack {
 
     // Table for active WebSocket connections
     this.connectionTable = new dynamodb.Table(this, 'ConnectionTable', {
-      tableName: `WaveMuxConnections-${environment}`,
+      tableName: `AgentMuxConnections-${environment}`,
       partitionKey: {
         name: 'connectionId',
         type: dynamodb.AttributeType.STRING,
@@ -91,7 +91,7 @@ export class WaveMuxWebhookStack extends cdk.Stack {
     // ==========================================================================
 
     // Use existing services/prod secret instead of creating a new one
-    // Webhook secrets will be stored at: services/prod["wavemux"]["GITHUB_WEBHOOK_SECRET"]
+    // Webhook secrets will be stored at: services/prod["agentmux"]["GITHUB_WEBHOOK_SECRET"]
     const servicesSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       'ServicesSecret',
@@ -103,7 +103,7 @@ export class WaveMuxWebhookStack extends cdk.Stack {
     // ==========================================================================
 
     this.webhookRouterFunction = new lambda.Function(this, 'WebhookRouterFunction', {
-      functionName: `wavemux-webhook-router-${environment}`,
+      functionName: `agentmux-webhook-router-${environment}`,
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.lambda_handler',
       code: lambda.Code.fromAsset('../lambda/webhook-router'),
@@ -114,7 +114,7 @@ export class WaveMuxWebhookStack extends cdk.Stack {
         CONNECTION_TABLE: this.connectionTable.tableName,
         ENVIRONMENT: environment,
         SECRET_NAME: 'services/prod',
-        PROJECT_NAME: 'wavemux',
+        PROJECT_NAME: 'agentmux',
       },
       logRetention: logs.RetentionDays.ONE_WEEK,
     });
@@ -125,12 +125,12 @@ export class WaveMuxWebhookStack extends cdk.Stack {
     servicesSecret.grantRead(this.webhookRouterFunction);
 
     // ==========================================================================
-    // WebSocket API - For WaveMux Client Connections
+    // WebSocket API - For AgentMux Client Connections
     // ==========================================================================
 
     this.webSocketApi = new apigatewayv2.WebSocketApi(this, 'WebSocketApi', {
-      apiName: `wavemux-webhook-ws-${environment}`,
-      description: 'WebSocket API for WaveMux webhook delivery',
+      apiName: `agentmux-webhook-ws-${environment}`,
+      description: 'WebSocket API for AgentMux webhook delivery',
       connectRouteOptions: {
         integration: new apigatewayv2Integrations.WebSocketLambdaIntegration(
           'ConnectIntegration',
@@ -166,7 +166,7 @@ export class WaveMuxWebhookStack extends cdk.Stack {
     // ==========================================================================
 
     this.httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
-      apiName: `wavemux-webhook-http-${environment}`,
+      apiName: `agentmux-webhook-http-${environment}`,
       description: 'HTTP API for receiving webhooks from external services',
       corsPreflight: {
         allowOrigins: ['*'],
@@ -245,13 +245,13 @@ export class WaveMuxWebhookStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'WebSocketApiEndpoint', {
       value: webSocketStage.url,
-      description: 'WebSocket API endpoint for WaveMux clients',
+      description: 'WebSocket API endpoint for AgentMux clients',
       exportName: `${id}-WebSocketApiEndpoint`,
     });
 
     new cdk.CfnOutput(this, 'SecretName', {
       value: 'services/prod',
-      description: 'Secrets Manager secret name (project: wavemux)',
+      description: 'Secrets Manager secret name (project: agentmux)',
       exportName: `${id}-SecretName`,
     });
 
@@ -259,7 +259,7 @@ export class WaveMuxWebhookStack extends cdk.Stack {
     // Tags
     // ==========================================================================
 
-    cdk.Tags.of(this).add('Project', 'WaveMux');
+    cdk.Tags.of(this).add('Project', 'AgentMux');
     cdk.Tags.of(this).add('Component', 'WebhookRouter');
     cdk.Tags.of(this).add('Environment', environment);
   }

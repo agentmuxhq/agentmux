@@ -1,4 +1,4 @@
-# WaveMux Release Build Script
+# AgentMux Release Build Script
 # Usage: .\scripts\build-release.ps1 [-Clean] [-SkipBackend] [-SkipFrontend] [-SkipPackage]
 
 param(
@@ -20,7 +20,7 @@ $Version = $PackageJson.version
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  WaveMux Build v$Version" -ForegroundColor Cyan
+Write-Host "  AgentMux Build v$Version" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -30,8 +30,8 @@ if ($Clean) {
 
     # Kill running processes (ignore if not running)
     $ErrorActionPreference = "SilentlyContinue"
-    taskkill /F /IM WaveMux.exe 2>$null | Out-Null
-    taskkill /F /IM wavemuxsrv.x64.exe 2>$null | Out-Null
+    taskkill /F /IM AgentMux.exe 2>$null | Out-Null
+    taskkill /F /IM agentmuxsrv.x64.exe 2>$null | Out-Null
     $ErrorActionPreference = "Stop"
 
     # Remove stale directories
@@ -96,10 +96,10 @@ if (-not (Test-Path $WshBinary)) {
     }
 }
 
-# Check wavemuxsrv exists
-$SrvBinary = "dist/bin/wavemuxsrv.x64.exe"
+# Check agentmuxsrv exists
+$SrvBinary = "dist/bin/agentmuxsrv.x64.exe"
 if (-not (Test-Path $SrvBinary)) {
-    $Errors += "wavemuxsrv binary not found: $SrvBinary"
+    $Errors += "agentmuxsrv binary not found: $SrvBinary"
 }
 
 # Check all wsh platform variants exist
@@ -155,7 +155,7 @@ if (-not $SkipPackage) {
 Write-Host "[6/6] Final verification..." -ForegroundColor Yellow
 
 if (-not $SkipPackage) {
-    $ExePath = "make/win-unpacked/WaveMux.exe"
+    $ExePath = "make/win-unpacked/AgentMux.exe"
     if (-not (Test-Path $ExePath)) {
         Write-Host "  Final exe not found: $ExePath" -ForegroundColor Red
         exit 1
@@ -172,6 +172,6 @@ Write-Host ""
 
 if (-not $SkipPackage) {
     Write-Host "To deploy to desktop:" -ForegroundColor Cyan
-    Write-Host "  xcopy /E /Y /I make\win-unpacked C:\Users\asafe\Desktop\WaveMux-$Version\" -ForegroundColor White
+    Write-Host "  xcopy /E /Y /I make\win-unpacked C:\Users\asafe\Desktop\AgentMux-$Version\" -ForegroundColor White
     Write-Host ""
 }

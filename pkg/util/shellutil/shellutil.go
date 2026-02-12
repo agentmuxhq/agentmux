@@ -39,11 +39,11 @@ var (
 	//go:embed shellintegration/bash_bashrc.sh
 	BashStartup_Bashrc string
 
-	//go:embed shellintegration/fish_wavefish.sh
-	FishStartup_Wavefish string
+	//go:embed shellintegration/fish_agentmuxfish.sh
+	FishStartup_AgentMuxFish string
 
-	//go:embed shellintegration/pwsh_wavepwsh.sh
-	PwshStartup_wavepwsh string
+	//go:embed shellintegration/pwsh_agentmuxpwsh.sh
+	PwshStartup_AgentMuxPwsh string
 )
 
 const DefaultTermType = "xterm-256color"
@@ -281,11 +281,11 @@ func InitRcFiles(waveHome string, absWshBinDir string) error {
 	if err != nil {
 		return fmt.Errorf("error writing bash-integration .bashrc: %v", err)
 	}
-	err = utilfn.WriteTemplateToFile(filepath.Join(fishDir, "wave.fish"), FishStartup_Wavefish, params)
+	err = utilfn.WriteTemplateToFile(filepath.Join(fishDir, "wave.fish"), FishStartup_AgentMuxFish, params)
 	if err != nil {
 		return fmt.Errorf("error writing fish-integration wave.fish: %v", err)
 	}
-	err = utilfn.WriteTemplateToFile(filepath.Join(pwshDir, "wavepwsh.ps1"), PwshStartup_wavepwsh, params)
+	err = utilfn.WriteTemplateToFile(filepath.Join(pwshDir, "wavepwsh.ps1"), PwshStartup_AgentMuxPwsh, params)
 	if err != nil {
 		return fmt.Errorf("error writing pwsh-integration wavepwsh.ps1: %v", err)
 	}

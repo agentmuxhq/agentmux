@@ -5,7 +5,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn } from "@/util/util";
 import { useState } from "react";
-import { WaveAIModel } from "./waveai-model";
+import { WaveAIModel } from "./agentai-model";
 
 interface TelemetryRequiredMessageProps {
     className?: string;

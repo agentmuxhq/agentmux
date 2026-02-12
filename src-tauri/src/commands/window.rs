@@ -4,7 +4,7 @@ use tauri::Runtime;
 
 use crate::state::AppState;
 
-/// Open a new WaveMux window.
+/// Open a new AgentMux window.
 /// Replaces: ipcMain.on("open-new-window") in emain/emain.ts
 ///
 /// Creates a new window that will initialize with a new backend Window/Workspace/Tab.
@@ -15,7 +15,7 @@ pub async fn open_new_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<Str
     let window_id = uuid::Uuid::new_v4();
     let label = format!("window-{}", window_id.simple());
     let version = env!("CARGO_PKG_VERSION");
-    let title = format!("WaveMux {}", version);
+    let title = format!("AgentMux {}", version);
 
     tauri::WebviewWindowBuilder::new(
         &app,
@@ -26,7 +26,6 @@ pub async fn open_new_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<Str
     .inner_size(1200.0, 800.0)
     .min_inner_size(400.0, 300.0)
     .decorations(false)
-    .transparent(true)
     .visible(false) // Start hidden, show after initialization
     .build()
     .map_err(|e| format!("Failed to create window: {}", e))?;

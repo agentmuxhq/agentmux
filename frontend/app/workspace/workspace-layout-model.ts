@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/app/aipanel/agentai-model";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";

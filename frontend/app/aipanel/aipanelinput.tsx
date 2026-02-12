@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
-import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
-import { type WaveAIModel } from "@/app/aipanel/waveai-model";
+import { waveAIHasFocusWithin } from "@/app/aipanel/agentai-focus-utils";
+import { type WaveAIModel } from "@/app/aipanel/agentai-model";
 import { focusManager } from "@/app/store/focusManager";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { cn } from "@/util/util";

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-# Bump version across all AgentMux fork configs and docs
+# Bump version across all WaveTerm fork configs and docs
 # Updates version in package.json, package-lock.json, Cargo.toml, tauri.conf.json, VERSION_HISTORY.md, and commits changes
 
 # Colors
@@ -25,7 +25,7 @@ usage() {
     cat << EOF
 Usage: $0 <type> [options]
 
-Bump version across all AgentMux fork configs and docs.
+Bump version across all WaveTerm fork configs and docs.
 
 Arguments:
     type            Version bump type: patch, minor, major, or specific version (e.g., 0.12.5)
@@ -147,7 +147,7 @@ success "New version: $NEW_VERSION"
 # Update src-tauri/Cargo.toml
 CARGO_TOML="src-tauri/Cargo.toml"
 if [[ -f "$CARGO_TOML" ]]; then
-    sed -i "0,/^version = \"[0-9.]*\"/{s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/}" "$CARGO_TOML"
+    sed -i "" "0,/^version = \"[0-9.]*\"/{s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/}" "$CARGO_TOML"
     success "Updated $CARGO_TOML"
 else
     error "$CARGO_TOML not found!"
@@ -156,8 +156,8 @@ fi
 # Update src-tauri/Cargo.lock
 CARGO_LOCK="src-tauri/Cargo.lock"
 if [[ -f "$CARGO_LOCK" ]]; then
-    # Update the wavemux package version in Cargo.lock
-    sed -i '/^name = "wavemux"$/,/^version = "/ s/^version = "[0-9.]*"/version = "'"$NEW_VERSION"'"/' "$CARGO_LOCK"
+    # Update the agentmux package version in Cargo.lock
+    sed -i "" '/^name = "agentmux"$/,/^version = "/ s/^version = "[0-9.]*"/version = "'"$NEW_VERSION"'"/' "$CARGO_LOCK"
     success "Updated $CARGO_LOCK"
 else
     warn "$CARGO_LOCK not found, skipping"
@@ -166,7 +166,7 @@ fi
 # Update src-tauri/tauri.conf.json
 TAURI_CONF="src-tauri/tauri.conf.json"
 if [[ -f "$TAURI_CONF" ]]; then
-    sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$NEW_VERSION\"/" "$TAURI_CONF"
+    sed -i "" "s/\"version\": \"[0-9.]*\"/\"version\": \"$NEW_VERSION\"/" "$TAURI_CONF"
     success "Updated $TAURI_CONF"
 else
     error "$TAURI_CONF not found!"
@@ -175,7 +175,7 @@ fi
 # Update Go backend ExpectedVersion in cmd/server/main-server.go
 MAIN_SERVER_GO="cmd/server/main-server.go"
 if [[ -f "$MAIN_SERVER_GO" ]]; then
-    sed -i "s/const ExpectedVersion = \"[0-9.]*\"/const ExpectedVersion = \"$NEW_VERSION\"/" "$MAIN_SERVER_GO"
+    sed -i "" "s/const ExpectedVersion = \"[0-9.]*\"/const ExpectedVersion = \"$NEW_VERSION\"/" "$MAIN_SERVER_GO"
     success "Updated $MAIN_SERVER_GO ExpectedVersion"
 else
     warn "$MAIN_SERVER_GO not found, skipping ExpectedVersion update"
@@ -199,14 +199,14 @@ VERSION_HISTORY="VERSION_HISTORY.md"
 
 if [[ -f "$VERSION_HISTORY" ]]; then
     # Update current version at top
-    sed -i "s/Current Version: [0-9.]*\(-fork\)\?/Current Version: $NEW_VERSION-fork/" "$VERSION_HISTORY"
+    sed -i "" "s/Current Version: [0-9.]*\(-fork\)\?/Current Version: $NEW_VERSION-fork/" "$VERSION_HISTORY"
 
     # Add new entry to table
     CHANGE_MSG="${MESSAGE:-Version bump}"
     NEW_ENTRY="| $NEW_VERSION-fork | v0.12.0 | $TODAY | $AGENT | $CHANGE_MSG |"
 
     # Find the table header and insert after it
-    sed -i "/| Fork Version | Upstream Base | Date | Agent | Changes |/,/|[-|]*|/ {
+    sed -i "" "/| Fork Version | Upstream Base | Date | Agent | Changes |/,/|[-|]*|/ {
         /|[-|]*|/ a\\
 $NEW_ENTRY
     }" "$VERSION_HISTORY"

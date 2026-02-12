@@ -313,7 +313,7 @@ func validateAgentMuxURL(urlStr string) error {
 
 // HandlePollerConfig handles POST requests to configure the cross-host poller at runtime.
 // Endpoint: POST /wave/reactive/poller/config
-// This allows updating AGENTMUX_URL and AGENTMUX_TOKEN without restarting WaveMux.
+// This allows updating AGENTMUX_URL and AGENTMUX_TOKEN without restarting AgentMux.
 func HandlePollerConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

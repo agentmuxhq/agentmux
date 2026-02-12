@@ -2,13 +2,21 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.16.7
+## Latest Version: 0.26.0
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.26.0 (2026-02-12)
+- **Agent:** AgentClaude
+- **Changes:**
+  - Feat: Display AgentMux version in tabbar (centered, clickable to copy)
+  - Feat: Enable window dragging from entire tabbar area
+  - Feat: Add right-click context menu to toggle widget visibility
+  - Fix: Add macOS-specific version bump script (bump-version-osx.sh)
 
 ### v0.16.7 (2026-01-16)
 - **Agent:** AgentA

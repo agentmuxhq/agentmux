@@ -15,8 +15,8 @@ import (
 )
 
 var wavepathCmd = &cobra.Command{
-	Use:     "wavepath {config|data|log}",
-	Short:   "Get paths to various waveterm files and directories",
+	Use:     "agentpath {config|data|log}",
+	Short:   "Get paths to various agentmux files and directories",
 	RunE:    wavepathRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -30,16 +30,16 @@ func init() {
 
 func wavepathRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("wavepath", rtnErr == nil)
+		sendActivity("agentpath", rtnErr == nil)
 	}()
 
 	if len(args) == 0 {
 		OutputHelpMessage(cmd)
-		return fmt.Errorf("no arguments. wsh wavepath requires a type argument (config, data, or log)")
+		return fmt.Errorf("no arguments. wsh agentpath requires a type argument (config, data, or log)")
 	}
 	if len(args) > 1 {
 		OutputHelpMessage(cmd)
-		return fmt.Errorf("too many arguments. wsh wavepath requires exactly one argument")
+		return fmt.Errorf("too many arguments. wsh agentpath requires exactly one argument")
 	}
 
 	pathType := args[0]

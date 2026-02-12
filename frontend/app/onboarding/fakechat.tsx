@@ -13,24 +13,24 @@ interface ChatConfig {
 
 const chatConfigs: ChatConfig[] = [
     {
-        userPrompt: "Check out ~/waveterm and summarize the project — what it does and how it's organized.",
+        userPrompt: "Check out ~/agentmux and summarize the project — what it does and how it's organized.",
         toolName: "read_dir",
-        toolDescription: 'reading directory "~/waveterm"',
-        markdownResponse: `Here's a quick, file-structure–driven overview of this repo (Wave Terminal):
+        toolDescription: 'reading directory "~/agentmux"',
+        markdownResponse: `Here's a quick, file-structure–driven overview of this repo (AgentMux):
 
 ## What it is
-- Electron + React front end with a Go backend ("wavemuxsrv"). Provides a terminal with GUI widgets, previews, web, and AI. (README.md)
+- Electron + React front end with a Go backend ("agentmuxsrv"). Provides a terminal with GUI widgets, previews, web, and AI. (README.md)
 - Licensed Apache-2.0. (LICENSE)
 
 ## Architecture at a glance
 - **Electron main process:** \`emain/*.ts\` configures windows, menus, preload scripts, updater, and ties into the Go backend via local RPC. (\`emain/\`)
 - **Renderer UI:** React/TS built with Vite, Tailwind. (\`frontend/\`, \`index.html\`, \`electron.vite.config.ts\`)
-- **Go backend ("wavemuxsrv"):** starts services, web and websocket listeners, telemetry loops, config watcher, local RPC, filestore and SQLite-backed object store. (\`cmd/server/main-server.go\`, \`pkg/*\`)
+- **Go backend ("agentmuxsrv"):** starts services, web and websocket listeners, telemetry loops, config watcher, local RPC, filestore and SQLite-backed object store. (\`cmd/server/main-server.go\`, \`pkg/*\`)
 - **CLI/helper ("wsh"):** built for multiple OS/arch; used for shell integration and remote operations. (\`cmd/wsh/\`, \`Taskfile.yml build:wsh\`)
 
 ## Key directories
 - **cmd/:** entrypoints and generators
-  - \`server/\`: wavemuxsrv main
+  - \`server/\`: agentmuxsrv main
   - \`generategs/\`, \`generatego/\`: TS/Go bindings generation
   - \`wsh/\`: shell helper
 
@@ -63,14 +63,14 @@ Want deeper triage? Run these and paste results:
 \`\`\`bash
 # 1) Scan recent logs for problems
 grep -Ei 'error|panic|fatal|websocket|1006|1011' \\
-  "$HOME/Library/Application Support/waveterm-dev/waveapp.log" | tail -n 200
+  "$HOME/Library/Application Support/agentmux/waveapp.log" | tail -n 200
 
 # 2) Inspect around the disconnect window
 awk '($0 ~ /2025-10-10 18:08:2[0-9]/){print}' \\
-  "$HOME/Library/Application Support/waveterm-dev/waveapp.log"
+  "$HOME/Library/Application Support/agentmux/waveapp.log"
 
 # 3) Live follow for recurring drops
-tail -f "$HOME/Library/Application Support/waveterm-dev/waveapp.log" \\
+tail -f "$HOME/Library/Application Support/agentmux/waveapp.log" \\
   | grep -Ei 'error|panic|fatal|websocket|close'
 \`\`\`
 

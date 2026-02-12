@@ -5,7 +5,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import { AIMessage } from "./aimessage";
-import { WaveAIModel } from "./waveai-model";
+import { WaveAIModel } from "./agentai-model";
 
 interface AIPanelMessagesProps {
     messages: any[];

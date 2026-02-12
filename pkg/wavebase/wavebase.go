@@ -258,7 +258,7 @@ func determineLang() string {
 
 		return preferredLang
 	} else {
-		// this is specifically to get the wavemuxsrv LANG so waveshell
+		// this is specifically to get the agentmuxsrv LANG so waveshell
 		// on a remote uses the same LANG
 		return os.Getenv("LANG")
 	}

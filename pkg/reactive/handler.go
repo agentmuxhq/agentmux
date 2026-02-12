@@ -235,7 +235,7 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 	h.mu.RUnlock()
 
 	if !exists {
-		return h.errorResponse(req, fmt.Sprintf("agent %s not found or not in a WaveMux pane", req.TargetAgentID))
+		return h.errorResponse(req, fmt.Sprintf("agent %s not found or not in a AgentMux pane", req.TargetAgentID))
 	}
 
 	// Send input to the block's PTY

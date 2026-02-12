@@ -1,20 +1,20 @@
 import * as cdk from 'aws-cdk-lib';
-import { WaveMuxWebhookStack } from '../lib/wavemux-webhook-stack';
+import { AgentMuxWebhookStack } from '../lib/agentmux-webhook-stack';
 
 /**
- * Integration tests for WaveMuxWebhookStack
+ * Integration tests for AgentMuxWebhookStack
  *
  * These tests validate the stack can be synthesized and deployed successfully.
  * They don't require actual AWS resources, but verify the CloudFormation template is valid.
  */
 
-describe('WaveMuxWebhookStack Integration', () => {
+describe('AgentMuxWebhookStack Integration', () => {
   test('stack can be synthesized without errors', () => {
     const app = new cdk.App();
 
     // Should not throw
     expect(() => {
-      new WaveMuxWebhookStack(app, 'IntegrationTestStack', {
+      new AgentMuxWebhookStack(app, 'IntegrationTestStack', {
         environment: 'test',
         env: {
           account: '123456789012',
@@ -26,7 +26,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('synthesized template is valid CloudFormation', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'ValidityTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'ValidityTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -53,7 +53,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
     environments.forEach((env) => {
       expect(() => {
-        new WaveMuxWebhookStack(app, `Stack-${env}`, {
+        new AgentMuxWebhookStack(app, `Stack-${env}`, {
           environment: env,
           env: {
             account: '123456789012',
@@ -66,7 +66,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('exported outputs have correct format', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'OutputTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'OutputTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -92,7 +92,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('stack resources have proper dependencies', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'DependencyTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'DependencyTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -117,7 +117,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('IAM roles have least privilege policies', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'SecurityTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'SecurityTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -164,7 +164,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('DynamoDB tables have appropriate capacity settings', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'CapacityTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'CapacityTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -193,7 +193,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('API Gateway has appropriate throttling', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'ThrottlingTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'ThrottlingTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -215,7 +215,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('Lambda function has appropriate timeout', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'TimeoutTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'TimeoutTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -237,7 +237,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('CloudWatch Logs retention is configured', () => {
     const app = new cdk.App();
-    const stack = new WaveMuxWebhookStack(app, 'LogsTestStack', {
+    const stack = new AgentMuxWebhookStack(app, 'LogsTestStack', {
       environment: 'test',
       env: {
         account: '123456789012',
@@ -268,7 +268,7 @@ describe('WaveMuxWebhookStack Integration', () => {
 
   test('prod environment has additional safeguards', () => {
     const app = new cdk.App();
-    const prodStack = new WaveMuxWebhookStack(app, 'ProdStack', {
+    const prodStack = new AgentMuxWebhookStack(app, 'ProdStack', {
       environment: 'prod',
       env: {
         account: '123456789012',

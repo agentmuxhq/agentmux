@@ -39,19 +39,21 @@ const HorizontalWidget = memo(({ widget }: { widget: WidgetConfigType }) => {
     }
 
     return (
-        <Tooltip
-            content={widget.description || widget.label}
-            placement="bottom"
-            divClassName="flex flex-row items-center gap-1 px-2 py-0.5 text-secondary hover:bg-hoverbg hover:text-white cursor-pointer rounded-sm h-full"
-            divOnClick={() => handleWidgetSelect(widget)}
-        >
-            <div style={{ color: widget.color }} className="text-sm">
-                <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
-            </div>
-            {!isBlank(widget.label) && (
-                <div className="text-xs whitespace-nowrap">{widget.label}</div>
-            )}
-        </Tooltip>
+        <div data-tauri-drag-region="false">
+            <Tooltip
+                content={widget.description || widget.label}
+                placement="bottom"
+                divClassName="flex flex-row items-center gap-1 px-2 py-0.5 text-secondary hover:bg-hoverbg hover:text-white cursor-pointer rounded-sm h-full"
+                divOnClick={() => handleWidgetSelect(widget)}
+            >
+                <div style={{ color: widget.color }} className="text-sm">
+                    <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
+                </div>
+                {!isBlank(widget.label) && (
+                    <div className="text-xs whitespace-nowrap">{widget.label}</div>
+                )}
+            </Tooltip>
+        </div>
     );
 });
 

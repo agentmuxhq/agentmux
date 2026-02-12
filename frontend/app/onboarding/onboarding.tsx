@@ -63,7 +63,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                 <div className={`${isCompact ? "" : "mb-2.5"} flex justify-center`}>
                     <Logo />
                 </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave Terminal</div>
+                <div className="text-center text-[25px] font-normal text-foreground">Welcome to AgentMux</div>
             </header>
             <OverlayScrollbarsComponent
                 className="flex-1 overflow-y-auto min-h-0"
@@ -74,7 +74,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                         <div>
                             <a
                                 target="_blank"
-                                href="https://github.com/wavetermdev/waveterm?ref=install"
+                                href="https://github.com/a5af/agentmux?ref=install"
                                 rel={"noopener"}
                             >
                                 <i className="text-[32px] text-white/50 fa-brands fa-github"></i>
@@ -87,10 +87,10 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 users. Please show your support by giving us a star on{" "}
                                 <a
                                     target="_blank"
-                                    href="https://github.com/wavetermdev/waveterm?ref=install"
+                                    href="https://github.com/a5af/agentmux?ref=install"
                                     rel={"noopener"}
                                 >
-                                    Github&nbsp;(wavetermdev/waveterm)
+                                    Github&nbsp;(a5af/agentmux)
                                 </a>
                             </div>
                         </div>
@@ -108,7 +108,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 enthusiasts.
                                 <br />
                                 <a target="_blank" href="https://discord.gg/XfvZ334gwU" rel={"noopener"}>
-                                    Join the Wave&nbsp;Discord&nbsp;Channel
+                                    Join the AgentMux&nbsp;Discord&nbsp;Channel
                                 </a>
                             </div>
                         </div>
@@ -120,20 +120,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                         <div className="flex flex-col items-start gap-1 flex-1">
                             <div className="text-foreground text-base leading-[18px]">Telemetry</div>
                             <div className="text-secondary leading-5">
-                                We collect minimal anonymous{" "}
-                                <a target="_blank" href="https://docs.waveterm.dev/telemetry" rel={"noopener"}>
-                                    telemetry data
-                                </a>{" "}
-                                to help us understand how people are using Wave (
-                                <a
-                                    className="plain-link"
-                                    target="_blank"
-                                    href="https://waveterm.dev/privacy"
-                                    rel="noopener"
-                                >
-                                    Privacy Policy
-                                </a>
-                                ).
+                                We collect minimal anonymous telemetry data to help us understand how people are using AgentMux.
                             </div>
                             <Toggle checked={telemetryEnabled} onChange={setTelemetry} label={label} />
                         </div>
@@ -160,7 +147,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
         });
-        window.open("https://github.com/wavetermdev/waveterm?ref=not", "_blank");
+        window.open("https://github.com/a5af/agentmux?ref=not", "_blank");
         setPageName("features");
     };
 

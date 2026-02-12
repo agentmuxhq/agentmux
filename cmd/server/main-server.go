@@ -51,7 +51,7 @@ var BuildTime = "0"
 // ExpectedVersion is the version this binary should be running
 // This is auto-updated by bump-version.sh to match package.json
 // If WaveVersion != ExpectedVersion, it indicates a stale cached binary
-const ExpectedVersion = "0.25.0"
+const ExpectedVersion = "0.26.0"
 
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
@@ -369,7 +369,7 @@ func clearTempFiles() error {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.SetPrefix("[wavemuxsrv] ")
+	log.SetPrefix("[agentmuxsrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
@@ -387,7 +387,7 @@ func main() {
 		log.Printf("  2. Binary not rebuilt after version bump")
 		log.Printf("")
 		log.Printf("To fix:")
-		log.Printf("  rm -f dist/bin/wavemuxsrv.* src-tauri/target/*/wavemuxsrv*")
+		log.Printf("  rm -f dist/bin/agentmuxsrv.* src-tauri/target/*/agentmuxsrv*")
 		log.Printf("  task build:backend")
 		log.Printf("  task sync:dev:binaries")
 		log.Printf("========================================")

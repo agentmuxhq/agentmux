@@ -191,7 +191,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     };
 }
 
-function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
+function initGlobalEventSubs(initOpts: AgentMuxInitOpts) {
     waveEventSubscribe(
         {
             eventType: "waveobj:update",
@@ -841,7 +841,7 @@ export {
     globalPrimaryTabStartup,
     globalStore,
     initGlobal,
-    initGlobalWaveEventSubs,
+    initGlobalEventSubs,
     isDev,
     loadConnStatus,
     openLink,

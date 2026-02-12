@@ -20,10 +20,10 @@ var agentmuxConfigCmd = &cobra.Command{
 	Use:   "config <url> <token>",
 	Short: "Configure AgentMux connection at runtime",
 	Long: `Sets the AgentMux URL and token for cross-host reactive messaging.
-This allows updating the AgentMux configuration without restarting WaveMux.
+This allows updating the AgentMux configuration without restarting AgentMux.
 
 The configuration is sent via OSC escape sequence to the terminal, which
-forwards it to the WaveMux backend to start/restart the cross-host poller.
+forwards it to the AgentMux backend to start/restart the cross-host poller.
 
 Examples:
   wsh agentmux config https://agentmux.example.com mytoken123
@@ -40,7 +40,7 @@ var agentmuxStatusCmd = &cobra.Command{
 The poller status can be checked via the local HTTP endpoint:
   curl http://localhost:<port>/wave/reactive/poller/status
 
-Or check the WaveMux logs for poller activity.`,
+Or check the AgentMux logs for poller activity.`,
 	Args: cobra.NoArgs,
 	RunE: runAgentmuxStatusCmd,
 }
@@ -88,7 +88,7 @@ func runAgentmuxConfigCmd(cmd *cobra.Command, args []string) error {
 
 func runAgentmuxStatusCmd(cmd *cobra.Command, args []string) error {
 	WriteStdout("To check AgentMux poller status, use one of these methods:\n\n")
-	WriteStdout("1. Check WaveMux logs for '[reactive/poller]' messages\n")
+	WriteStdout("1. Check AgentMux logs for '[reactive/poller]' messages\n")
 	WriteStdout("   Log location: ~/.waveterm/waveapp.log (or ~/.waveterm-dev/ in dev mode)\n\n")
 	WriteStdout("2. Use curl to query the local endpoint:\n")
 	WriteStdout("   curl http://localhost:$WAVETERM_DEV_PORT/wave/reactive/poller/status\n\n")

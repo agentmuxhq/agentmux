@@ -8,7 +8,7 @@ import { getFileIcon } from "./ai-utils";
 import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
-import { WaveAIModel } from "./waveai-model";
+import { WaveAIModel } from "./agentai-model";
 
 const AIThinking = memo(
     ({ message = "AI is thinking...", reasoningText }: { message?: string; reasoningText?: string }) => {

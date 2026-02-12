@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
+import { waveAIHasSelection } from "@/app/aipanel/agentai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { focusManager } from "@/app/store/focusManager";
@@ -23,7 +23,7 @@ import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
-import { WaveAIModel } from "./waveai-model";
+import { WaveAIModel } from "./agentai-model";
 
 const AIBlockMask = memo(() => {
     return (

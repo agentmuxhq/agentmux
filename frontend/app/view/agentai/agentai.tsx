@@ -18,7 +18,7 @@ import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { debounce, throttle } from "throttle-debounce";
-import "./waveai.scss";
+import "./agentai.scss";
 
 interface ChatMessageType {
     id: string;
@@ -32,7 +32,7 @@ const slidingWindowSize = 30;
 
 interface ChatItemProps {
     chatItemAtom: Atom<ChatMessageType>;
-    model: WaveAiModel;
+    model: AgentAiModel;
 }
 
 function promptToMsg(prompt: WaveAIPromptMessageType): ChatMessageType {
@@ -45,9 +45,9 @@ function promptToMsg(prompt: WaveAIPromptMessageType): ChatMessageType {
 
 class AiWshClient extends WshClient {
     blockId: string;
-    model: WaveAiModel;
+    model: AgentAiModel;
 
-    constructor(blockId: string, model: WaveAiModel) {
+    constructor(blockId: string, model: AgentAiModel) {
         super(makeFeBlockRouteId(blockId));
         this.blockId = blockId;
         this.model = model;
@@ -61,7 +61,7 @@ class AiWshClient extends WshClient {
     }
 }
 
-export class WaveAiModel implements ViewModel {
+export class AgentAiModel implements ViewModel {
     viewType: string;
     blockId: string;
     blockAtom: Atom<Block>;
@@ -91,11 +91,11 @@ export class WaveAiModel implements ViewModel {
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.aiWshClient);
         this.locked = atom(false);
         this.cancel = false;
-        this.viewType = "waveai";
+        this.viewType = "agentai";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = atom("sparkles");
-        this.viewName = atom("Wave AI");
+        this.viewName = atom("AgentMux AI");
         this.messagesAtom = atom([]);
         this.messagesSplitAtom = splitAtom(this.messagesAtom);
         this.latestMessageAtom = atom((get) => get(this.messagesAtom).slice(-1)[0]);
@@ -425,7 +425,7 @@ export class WaveAiModel implements ViewModel {
         fireAndForget(handleAiStreamingResponse);
     }
 
-    useWaveAi() {
+    useAgentAi() {
         return {
             sendMessage: this.sendMessage.bind(this) as (text: string) => void,
         };
@@ -517,7 +517,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
 interface ChatWindowProps {
     chatWindowRef: React.RefObject<HTMLDivElement>;
     msgWidths: Object;
-    model: WaveAiModel;
+    model: AgentAiModel;
 }
 
 const ChatWindow = memo(
@@ -626,7 +626,7 @@ interface ChatInputProps {
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
-    model: WaveAiModel;
+    model: AgentAiModel;
 }
 
 const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
@@ -673,7 +673,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 ref={textAreaRef}
                 autoComplete="off"
                 autoCorrect="off"
-                className="waveai-input"
+                className="agentai-input"
                 onMouseDown={onMouseDown} // When the user clicks on the textarea
                 onChange={onChange}
                 onKeyDown={onKeyDown}
@@ -685,9 +685,9 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
     }
 );
 
-const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
-    const { sendMessage } = model.useWaveAi();
-    const waveaiRef = useRef<HTMLDivElement>(null);
+const AgentAi = ({ model }: { model: AgentAiModel; blockId: string }) => {
+    const { sendMessage } = model.useAgentAi();
+    const agentaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -838,11 +838,11 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         }
     };
 
-    let buttonClass = "waveai-submit-button";
+    let buttonClass = "agentai-submit-button";
     let buttonIcon = makeIconClass("arrow-up", false);
     let buttonTitle = "run";
     if (locked) {
-        buttonClass = "waveai-submit-button stop";
+        buttonClass = "agentai-submit-button stop";
         buttonIcon = makeIconClass("stop", false);
         buttonTitle = "stop";
     }
@@ -855,12 +855,12 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     }, [locked, handleEnterKeyPressed]);
 
     return (
-        <div ref={waveaiRef} className="waveai">
-            <div className="waveai-chat">
+        <div ref={agentaiRef} className="agentai">
+            <div className="agentai-chat">
                 <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} msgWidths={msgWidths} model={model} />
             </div>
-            <div className="waveai-controls">
-                <div className="waveai-input-wrapper">
+            <div className="agentai-controls">
+                <div className="agentai-input-wrapper">
                     <ChatInput
                         ref={inputRef}
                         value={value}
@@ -879,4 +879,4 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     );
 };
 
-export { WaveAi };
+export { AgentAi };

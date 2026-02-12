@@ -1,7 +1,0 @@
-{
-  "instance": "dev",
-  "dataDir": "~/.wavemux-dev",
-  "description": "Isolated WaveMux development instance",
-  "purpose": "Development and testing without affecting production WaveMux",
-  "_usage": "wavemux --instance=dev"
-}

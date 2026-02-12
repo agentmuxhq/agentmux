@@ -22,7 +22,7 @@
 - **Name:** AgentMux
 - **GitHub:** https://github.com/a5af/agentmux
 - **Type:** Tauri v2 terminal application
-- **Version:** 0.19.0
+- **Version:** 0.26.0
 
 ## Git & Pull Requests
 

@@ -2,7 +2,7 @@
  * Close Button Bug Test Script
  *
  * This script tests the close button functionality by:
- * 1. Launching the production WaveMux build
+ * 1. Launching the production AgentMux build
  * 2. Creating 2 terminal panes
  * 3. Clicking the close button on one pane
  * 4. Verifying that only one pane closes (not all)
@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SCREENSHOT_DIR = path.join(__dirname, "screenshots");
-const APP_PATH = path.join(__dirname, "..", "make", "win-unpacked", "WaveMux.exe");
+const APP_PATH = path.join(__dirname, "..", "make", "win-unpacked", "AgentMux.exe");
 
 async function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -35,7 +35,7 @@ async function main() {
     console.log(`App exists: ${fs.existsSync(APP_PATH)}`);
 
     if (!fs.existsSync(APP_PATH)) {
-        console.error("ERROR: WaveMux.exe not found. Run 'task package' first.");
+        console.error("ERROR: AgentMux.exe not found. Run 'task package' first.");
         process.exit(1);
     }
 
@@ -43,7 +43,7 @@ async function main() {
     let consoleErrors: string[] = [];
 
     try {
-        console.log("\n1. Launching WaveMux...");
+        console.log("\n1. Launching AgentMux...");
         electronApp = await electron.launch({
             executablePath: APP_PATH,
             timeout: 60000,

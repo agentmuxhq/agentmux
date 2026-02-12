@@ -169,7 +169,7 @@ impl WaveLock {
         let fd = file.as_raw_fd();
         let result = unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) };
         if result != 0 {
-            return Err("another WaveMux instance is already running".to_string());
+            return Err("another AgentMux instance is already running".to_string());
         }
 
         Ok(WaveLock { file })

@@ -5,7 +5,7 @@ import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { formatFileSize, getFileIcon } from "./ai-utils";
-import type { WaveAIModel } from "./waveai-model";
+import type { WaveAIModel } from "./agentai-model";
 
 interface AIDroppedFilesProps {
     model: WaveAIModel;

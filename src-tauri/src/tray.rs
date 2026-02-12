@@ -8,7 +8,7 @@ use tauri::{
 pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     // Build tray menu
     let show_hide = MenuItem::with_id(app, "show_hide", "Show/Hide", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit WaveMux", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit AgentMux", true, None::<&str>)?;
 
     let menu = Menu::with_items(app, &[&show_hide, &quit])?;
 

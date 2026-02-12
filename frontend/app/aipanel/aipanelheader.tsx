@@ -4,7 +4,7 @@
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
-import { WaveAIModel } from "./waveai-model";
+import { WaveAIModel } from "./agentai-model";
 
 interface AIPanelHeaderProps {
     onClose?: () => void;

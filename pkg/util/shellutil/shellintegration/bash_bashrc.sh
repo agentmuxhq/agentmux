@@ -4,14 +4,14 @@ if [ -f /etc/profile ]; then
     . /etc/profile
 fi
 
-WAVETERM_WSHBINDIR={{.WSHBINDIR}}
+AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
 
 # after /etc/profile which is likely to clobber the path
-export PATH="$WAVETERM_WSHBINDIR:$PATH"
+export PATH="$AGENTMUX_WSHBINDIR:$PATH"
 
 # Source the dynamic script from wsh token
-eval "$(wsh token "$WAVETERM_SWAPTOKEN" bash 2> /dev/null)"
-unset WAVETERM_SWAPTOKEN
+eval "$(wsh token "$AGENTMUX_SWAPTOKEN" bash 2> /dev/null)"
+unset AGENTMUX_SWAPTOKEN
 
 # Source the first of ~/.bash_profile, ~/.bash_login, or ~/.profile that exists
 if [ -f ~/.bash_profile ]; then
@@ -22,20 +22,20 @@ elif [ -f ~/.profile ]; then
     . ~/.profile
 fi
 
-if [[ ":$PATH:" != *":$WAVETERM_WSHBINDIR:"* ]]; then
-    export PATH="$WAVETERM_WSHBINDIR:$PATH"
+if [[ ":$PATH:" != *":$AGENTMUX_WSHBINDIR:"* ]]; then
+    export PATH="$AGENTMUX_WSHBINDIR:$PATH"
 fi
-unset WAVETERM_WSHBINDIR
+unset AGENTMUX_WSHBINDIR
 if type _init_completion &>/dev/null; then
   source <(wsh completion bash)
 fi
 
 # shell integration
-_waveterm_si_blocked() {
+_agentmux_si_blocked() {
   [[ -n "$TMUX" || -n "$STY" || "$TERM" == tmux* || "$TERM" == screen* ]]
 }
 
-_waveterm_si_urlencode() {
+_agentmux_si_urlencode() {
   local s="$1"
   # Escape % first
   s="${s//%/%25}"
@@ -49,17 +49,17 @@ _waveterm_si_urlencode() {
   printf '%s' "$s"
 }
 
-_waveterm_si_osc7() {
-  _waveterm_si_blocked && return
-  local encoded_pwd=$(_waveterm_si_urlencode "$PWD")
+_agentmux_si_osc7() {
+  _agentmux_si_blocked && return
+  local encoded_pwd=$(_agentmux_si_urlencode "$PWD")
   printf '\033]7;file://%s%s\007' "$HOSTNAME" "$encoded_pwd"
 }
 
 # Hook OSC 7 into PROMPT_COMMAND
-_WAVETERM_SI_LAST_AGENT=""
+_AGENTMUX_SI_LAST_AGENT=""
 
 # Escape string for JSON embedding (escape backslashes and quotes)
-_waveterm_si_json_escape() {
+_agentmux_si_json_escape() {
   local s="$1"
   s="${s//\\/\\\\}"  # Escape backslashes first
   s="${s//\"/\\\"}"  # Escape quotes
@@ -67,17 +67,17 @@ _waveterm_si_json_escape() {
 }
 
 # Send agent environment for per-pane identification (on every prompt if changed)
-_waveterm_si_agent_env() {
-  _waveterm_si_blocked && return
+_agentmux_si_agent_env() {
+  _agentmux_si_blocked && return
   local current_agent=""
   if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
     current_agent="WAVEMUX_AGENT_ID:$WAVEMUX_AGENT_ID"
   fi
   # Only send if changed
-  if [[ "$current_agent" != "$_WAVETERM_SI_LAST_AGENT" ]]; then
-    _WAVETERM_SI_LAST_AGENT="$current_agent"
+  if [[ "$current_agent" != "$_AGENTMUX_SI_LAST_AGENT" ]]; then
+    _AGENTMUX_SI_LAST_AGENT="$current_agent"
     if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
-      local escaped=$(_waveterm_si_json_escape "$WAVEMUX_AGENT_ID")
+      local escaped=$(_agentmux_si_json_escape "$WAVEMUX_AGENT_ID")
       printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$escaped"
     else
       # Agent was cleared - send empty object to clear metadata
@@ -86,18 +86,18 @@ _waveterm_si_agent_env() {
   fi
 }
 
-_waveterm_si_prompt_command() {
-  _waveterm_si_osc7
+_agentmux_si_prompt_command() {
+  _agentmux_si_osc7
   # Send agent environment on every prompt (only if changed)
-  _waveterm_si_agent_env
+  _agentmux_si_agent_env
 }
 
-# Append _waveterm_si_prompt_command to PROMPT_COMMAND (v3-safe)
-_waveterm_si_append_pc() {
+# Append _agentmux_si_prompt_command to PROMPT_COMMAND (v3-safe)
+_agentmux_si_append_pc() {
   if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == "declare -a"* ]]; then
-    PROMPT_COMMAND+=(_waveterm_si_prompt_command)
+    PROMPT_COMMAND+=(_agentmux_si_prompt_command)
   else
-    PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'\n'}_waveterm_si_prompt_command"
+    PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'\n'}_agentmux_si_prompt_command"
   fi
 }
-_waveterm_si_append_pc
+_agentmux_si_append_pc

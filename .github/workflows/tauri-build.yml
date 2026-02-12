@@ -130,7 +130,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wavemux-${{ matrix.platform }}-${{ matrix.arch }}
+          name: agentmux-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*
           retention-days: 30

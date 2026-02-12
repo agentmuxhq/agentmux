@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	DefaultRoute  = "wavemuxsrv"
+	DefaultRoute  = "agentmuxsrv"
 	UpstreamRoute = "upstream"
 	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
 	ElectronRoute = "electron"

@@ -19,7 +19,7 @@ const (
 	ConnectionTypeWave = "wavefile"
 
 	ConnHostCurrent = "current"
-	ConnHostWaveSrv = "wavemuxsrv"
+	ConnHostWaveSrv = "agentmuxsrv"
 )
 
 var windowsDriveRegex = regexp.MustCompile(`^[a-zA-Z]:`)

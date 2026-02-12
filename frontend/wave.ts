@@ -21,7 +21,7 @@ import {
     getApi,
     globalStore,
     initGlobal,
-    initGlobalWaveEventSubs,
+    initGlobalEventSubs,
     loadConnStatus,
     pushFlashError,
     pushNotification,
@@ -39,8 +39,8 @@ const platform = getApi().getPlatform();
 
 const appVersion = getApi().getAboutModalDetails().version;
 
-document.title = `Wave Terminal ${appVersion}`;
-let savedInitOpts: WaveInitOpts = null;
+document.title = `AgentMux ${appVersion}`;
+let savedInitOpts: AgentMuxInitOpts = null;
 
 
 (window as any).WOS = WOS;
@@ -62,7 +62,7 @@ function updateZoomFactor(zoomFactor: number) {
 }
 
 /**
- * Initialize WaveMux in Tauri mode by fetching client/window/workspace/tab data
+ * Initialize AgentMux in Tauri mode by fetching client/window/workspace/tab data
  * from backend, verifying objects exist, and creating missing ones if needed.
  * This mirrors Electron's relaunchBrowserWindows() pattern.
  */
@@ -112,7 +112,7 @@ async function initTauriWave(): Promise<void> {
 
 
         // Create complete init options with ALL valid IDs
-        const initOpts: WaveInitOpts = {
+        const initOpts: AgentMuxInitOpts = {
             clientId: clientData.oid,
             windowId: windowData.oid,
             tabId: tabId,
@@ -127,7 +127,7 @@ async function initTauriWave(): Promise<void> {
 
     } catch (error) {
         console.error("[initTauriWave] Initialization failed:", error);
-        pushFlashError("Failed to initialize WaveMux: " + String(error));
+        pushFlashError("Failed to initialize AgentMux: " + String(error));
         // Show error UI instead of grey screen
         document.body.style.visibility = "visible";
         document.body.style.opacity = "1";
@@ -170,7 +170,7 @@ async function initTauriNewWindow(): Promise<void> {
         getApi().sendLog(`[initTauriNewWindow] Tab ID: ${tabId}`);
 
         // Create complete init options with NEW IDs
-        const initOpts: WaveInitOpts = {
+        const initOpts: AgentMuxInitOpts = {
             clientId: clientData.oid,
             windowId: newWindow.oid,
             tabId: tabId,
@@ -216,10 +216,10 @@ async function initBare() {
     const isTauri = typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
     getApi().sendLog(`Init Bare - Tauri mode: ${isTauri}`);
 
-    // Electron uses onWaveInit callback (backend emits wave-init event)
+    // Electron uses onAgentMuxInit callback (backend emits wave-init event)
     // Tauri handles initialization in frontend after backend is ready
     if (!isTauri) {
-        getApi().onWaveInit(initWaveWrap);
+        getApi().onAgentMuxInit(initWaveWrap);
     }
     setKeyUtilPlatform(platform);
     loadFonts();
@@ -276,7 +276,7 @@ if (document.readyState === "loading") {
     initBare();
 }
 
-async function initWaveWrap(initOpts: WaveInitOpts) {
+async function initWaveWrap(initOpts: AgentMuxInitOpts) {
     try {
         if (savedInitOpts) {
             await reinitWave();
@@ -312,7 +312,7 @@ async function reinitWave() {
     const initialTab = await WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
     await WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
     reloadAllWorkspaceTabs(ws);
-    document.title = `Wave Terminal ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
+    document.title = `AgentMux ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
     getApi().setWindowInitStatus("wave-ready");
     globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
     globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
@@ -345,7 +345,7 @@ function loadAllWorkspaceTabs(ws: Workspace) {
     });
 }
 
-async function initWave(initOpts: WaveInitOpts) {
+async function initWave(initOpts: AgentMuxInitOpts) {
     getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
     console.log(
         "Wave Init",
@@ -373,7 +373,7 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
-    initGlobalWaveEventSubs(initOpts);
+    initGlobalEventSubs(initOpts);
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
@@ -389,7 +389,7 @@ async function initWave(initOpts: WaveInitOpts) {
     loadAllWorkspaceTabs(ws);
     WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
 
-    document.title = `Wave Terminal ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
+    document.title = `AgentMux ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
 
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();

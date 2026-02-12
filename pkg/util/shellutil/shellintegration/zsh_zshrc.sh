@@ -1,32 +1,32 @@
 # add wsh to path, source dynamic script from wsh token
-WAVETERM_WSHBINDIR={{.WSHBINDIR}}
-export PATH="$WAVETERM_WSHBINDIR:$PATH"
-source <(wsh token "$WAVETERM_SWAPTOKEN" zsh 2>/dev/null)
-unset WAVETERM_SWAPTOKEN
+AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
+export PATH="$AGENTMUX_WSHBINDIR:$PATH"
+source <(wsh token "$AGENTMUX_SWAPTOKEN" zsh 2>/dev/null)
+unset AGENTMUX_SWAPTOKEN
 
 # Source the original zshrc only if ZDOTDIR has not been changed
-if [ "$ZDOTDIR" = "$WAVETERM_ZDOTDIR" ]; then
+if [ "$ZDOTDIR" = "$AGENTMUX_ZDOTDIR" ]; then
   [ -f ~/.zshrc ] && source ~/.zshrc
 fi
 
-if [[ ":$PATH:" != *":$WAVETERM_WSHBINDIR:"* ]]; then
-  export PATH="$WAVETERM_WSHBINDIR:$PATH"
+if [[ ":$PATH:" != *":$AGENTMUX_WSHBINDIR:"* ]]; then
+  export PATH="$AGENTMUX_WSHBINDIR:$PATH"
 fi
-unset WAVETERM_WSHBINDIR
+unset AGENTMUX_WSHBINDIR
 
 if [[ -n ${_comps+x} ]]; then
   source <(wsh completion zsh)
 fi
 
-typeset -g _WAVETERM_SI_FIRSTPRECMD=1
-typeset -g _WAVETERM_SI_LAST_AGENT=""
+typeset -g _AGENTMUX_SI_FIRSTPRECMD=1
+typeset -g _AGENTMUX_SI_LAST_AGENT=""
 
 # shell integration
-_waveterm_si_blocked() {
+_agentmux_si_blocked() {
   [[ -n "$TMUX" || -n "$STY" || "$TERM" == tmux* || "$TERM" == screen* ]]
 }
 
-_waveterm_si_urlencode() {
+_agentmux_si_urlencode() {
   if (( $+functions[omz_urlencode] )); then
     omz_urlencode "$1"
   else
@@ -44,14 +44,14 @@ _waveterm_si_urlencode() {
   fi
 }
 
-_waveterm_si_osc7() {
-  _waveterm_si_blocked && return
-  local encoded_pwd=$(_waveterm_si_urlencode "$PWD")
+_agentmux_si_osc7() {
+  _agentmux_si_blocked && return
+  local encoded_pwd=$(_agentmux_si_urlencode "$PWD")
   printf '\033]7;file://%s%s\007' "$HOST" "$encoded_pwd"  # OSC 7 - current directory
 }
 
 # Escape string for JSON embedding (escape backslashes and quotes)
-_waveterm_si_json_escape() {
+_agentmux_si_json_escape() {
   local s="$1"
   s="${s//\\/\\\\}"  # Escape backslashes first
   s="${s//\"/\\\"}"  # Escape quotes
@@ -59,17 +59,17 @@ _waveterm_si_json_escape() {
 }
 
 # Send agent environment for per-pane identification (on every prompt if changed)
-_waveterm_si_agent_env() {
-  _waveterm_si_blocked && return
+_agentmux_si_agent_env() {
+  _agentmux_si_blocked && return
   local current_agent=""
   if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
     current_agent="WAVEMUX_AGENT_ID:$WAVEMUX_AGENT_ID"
   fi
   # Only send if changed
-  if [[ "$current_agent" != "$_WAVETERM_SI_LAST_AGENT" ]]; then
-    _WAVETERM_SI_LAST_AGENT="$current_agent"
+  if [[ "$current_agent" != "$_AGENTMUX_SI_LAST_AGENT" ]]; then
+    _AGENTMUX_SI_LAST_AGENT="$current_agent"
     if [[ -n "$WAVEMUX_AGENT_ID" ]]; then
-      local escaped=$(_waveterm_si_json_escape "$WAVEMUX_AGENT_ID")
+      local escaped=$(_agentmux_si_json_escape "$WAVEMUX_AGENT_ID")
       printf '\033]16162;E;{"WAVEMUX_AGENT_ID":"%s"}\007' "$escaped"
     else
       # Agent was cleared - send empty object to clear metadata
@@ -78,25 +78,25 @@ _waveterm_si_agent_env() {
   fi
 }
 
-_waveterm_si_precmd() {
-  local _waveterm_si_status=$?
-  _waveterm_si_blocked && return
+_agentmux_si_precmd() {
+  local _agentmux_si_status=$?
+  _agentmux_si_blocked && return
   # D;status for previous command (skip before first prompt)
-  if (( !_WAVETERM_SI_FIRSTPRECMD )); then
-    printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status
+  if (( !_AGENTMUX_SI_FIRSTPRECMD )); then
+    printf '\033]16162;D;{"exitcode":%d}\007' $_agentmux_si_status
   else
     local uname_info=$(uname -smr 2>/dev/null)
     printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s"}\007' "$ZSH_VERSION" "$uname_info"
-    _waveterm_si_osc7
+    _agentmux_si_osc7
   fi
   # Send agent environment on every prompt (only if changed)
-  _waveterm_si_agent_env
+  _agentmux_si_agent_env
   printf '\033]16162;A\007'      # start of new prompt
-  _WAVETERM_SI_FIRSTPRECMD=0
+  _AGENTMUX_SI_FIRSTPRECMD=0
 }
 
-_waveterm_si_preexec() {
-  _waveterm_si_blocked && return
+_agentmux_si_preexec() {
+  _agentmux_si_blocked && return
   local cmd_length=${#1}
   if [ "$cmd_length" -gt 8192 ]; then
     local cmd64
@@ -113,18 +113,18 @@ _waveterm_si_preexec() {
   fi
 }
 
-typeset -g WAVETERM_SI_INPUTEMPTY=1
+typeset -g AGENTMUX_SI_INPUTEMPTY=1
 
-_waveterm_si_inputempty() {
-  _waveterm_si_blocked && return
+_agentmux_si_inputempty() {
+  _agentmux_si_blocked && return
   
   local current_empty=1
   if [[ -n "$BUFFER" ]]; then
     current_empty=0
   fi
   
-  if (( current_empty != WAVETERM_SI_INPUTEMPTY )); then
-    WAVETERM_SI_INPUTEMPTY=$current_empty
+  if (( current_empty != AGENTMUX_SI_INPUTEMPTY )); then
+    AGENTMUX_SI_INPUTEMPTY=$current_empty
     if (( current_empty )); then
       printf '\033]16162;I;{"inputempty":true}\007'
     else
@@ -135,11 +135,11 @@ _waveterm_si_inputempty() {
 
 autoload -Uz add-zle-hook-widget 2>/dev/null
 if (( $+functions[add-zle-hook-widget] )); then
-  add-zle-hook-widget zle-line-init _waveterm_si_inputempty
-  add-zle-hook-widget zle-line-pre-redraw _waveterm_si_inputempty
+  add-zle-hook-widget zle-line-init _agentmux_si_inputempty
+  add-zle-hook-widget zle-line-pre-redraw _agentmux_si_inputempty
 fi
 
 autoload -U add-zsh-hook
-add-zsh-hook precmd  _waveterm_si_precmd
-add-zsh-hook preexec _waveterm_si_preexec
-add-zsh-hook chpwd   _waveterm_si_osc7
+add-zsh-hook precmd  _agentmux_si_precmd
+add-zsh-hook preexec _agentmux_si_preexec
+add-zsh-hook chpwd   _agentmux_si_osc7

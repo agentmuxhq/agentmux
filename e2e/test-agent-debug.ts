@@ -6,7 +6,7 @@ async function main() {
     console.log("Starting test...");
     
     const app = await electron.launch({
-        executablePath: "C:/Systems/wavemux/make/win-unpacked/WaveMux.exe",
+        executablePath: "C:/Systems/agentmux/make/win-unpacked/AgentMux.exe",
         timeout: 60000,
     });
     

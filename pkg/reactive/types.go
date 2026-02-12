@@ -46,12 +46,12 @@ type InjectionResponse struct {
 	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 
-// AgentRegistration represents an agent's presence in a WaveMux pane.
+// AgentRegistration represents an agent's presence in a AgentMux pane.
 type AgentRegistration struct {
 	// AgentID is the unique identifier for the agent (e.g., "AgentA", "AgentX")
 	AgentID string `json:"agent_id"`
 
-	// BlockID is the WaveMux block/pane ID
+	// BlockID is the AgentMux block/pane ID
 	BlockID string `json:"block_id"`
 
 	// TabID is the tab containing the block

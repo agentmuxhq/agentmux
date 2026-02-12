@@ -2,7 +2,7 @@
 /target/
 
 # Sidecar binaries (built per-platform, not checked in)
-/binaries/wavemuxsrv-*
+/binaries/agentmuxsrv-*
 /binaries/wsh-*
 
 # Generated icons (keep source icons in git)

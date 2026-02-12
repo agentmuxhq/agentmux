@@ -289,8 +289,8 @@ export function buildTauriApi(): ElectronApi {
         setWindowInitStatus: (status: "ready" | "wave-ready") => {
             invoke("set_window_init_status", { status }).catch(console.error);
         },
-        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => {
-            listen<WaveInitOpts>("wave-init", (event) => {
+        onAgentMuxInit: (callback: (initOpts: AgentMuxInitOpts) => void) => {
+            listen<AgentMuxInitOpts>("agentmux-init", (event) => {
                 callback(event.payload);
             });
         },

@@ -446,7 +446,7 @@ func StopGlobalPoller() {
 // ReconfigureGlobalPoller updates the global poller configuration at runtime.
 // If agentmuxURL is empty, polling is stopped. If both URL and token are set,
 // polling is started/restarted with the new configuration.
-// This enables runtime configuration without restarting WaveMux.
+// This enables runtime configuration without restarting AgentMux.
 // The configuration is also persisted to the config file for future startups.
 func ReconfigureGlobalPoller(agentmuxURL, agentmuxToken string) error {
 	globalPollerMu.Lock()

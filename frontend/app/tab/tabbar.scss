@@ -33,9 +33,31 @@
     width: 100vw;
     -webkit-app-region: drag;
     height: max(33px, calc(33px * var(--zoomfactor-inv)));
+    cursor: grab;
+
+    &:active {
+        cursor: grabbing;
+    }
 
     button {
         -webkit-app-region: no-drag;
+    }
+
+    .tab-bar-version {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: calc(11px * var(--zoomfactor));
+        color: var(--secondary-text-color);
+        opacity: 0.6;
+        user-select: none;
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+        -webkit-app-region: drag;
+
+        &:hover {
+            opacity: 1;
+        }
     }
 
     .tabs-wrapper {
@@ -87,6 +109,7 @@
         gap: 6px;
         height: 100%;
         align-items: center;
+        cursor: pointer;
         &:not(:empty) {
             margin-left: auto;
             margin-right: 6px;

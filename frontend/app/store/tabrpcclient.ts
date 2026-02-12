@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/app/aipanel/agentai-model";
 import { getApi } from "@/app/store/global";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getLayoutModelForStaticTab } from "@/layout/index";

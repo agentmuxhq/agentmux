@@ -18,7 +18,7 @@ const (
 var waveSrvClient_Singleton *wshutil.WshRpc
 var waveSrvClient_Once = &sync.Once{}
 
-// returns the wavemuxsrv main rpc client singleton
+// returns the agentmuxsrv main rpc client singleton
 func GetMainRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		inputCh := make(chan []byte, DefaultInputChSize)

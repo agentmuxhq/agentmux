@@ -36,7 +36,7 @@ pub const SCHEME_WSL: &str = "wsl";
 pub const CONN_HOST_CURRENT: &str = "current";
 
 /// Server-side connection.
-pub const CONN_HOST_WAVE_SRV: &str = "wavemuxsrv";
+pub const CONN_HOST_WAVE_SRV: &str = "agentmuxsrv";
 
 // ---- Connection type ----
 
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_connection_is_wave_srv() {
-        assert!(Connection::new("wsh", "wavemuxsrv", "").is_wave_srv());
+        assert!(Connection::new("wsh", "agentmuxsrv", "").is_wave_srv());
         assert!(!Connection::new("wsh", "myhost", "").is_wave_srv());
     }
 

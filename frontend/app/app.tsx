@@ -18,6 +18,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
+import { ZoomIndicator } from "./element/zoomindicator";
 import { NotificationBubbles } from "./notification/notificationbubbles";
 
 import "./app.scss";
@@ -199,6 +200,39 @@ const AppKeyHandlers = () => {
     return null;
 };
 
+const AppZoomHandler = () => {
+    useEffect(() => {
+        const handleWheel = (e: WheelEvent) => {
+            // Only zoom if Ctrl/Cmd is held
+            if (!e.ctrlKey && !e.metaKey) {
+                return;
+            }
+
+            // Prevent default browser zoom
+            e.preventDefault();
+
+            // Import zoom functions
+            const { zoomIn, zoomOut, WHEEL_STEP } = require("@/app/store/zoom");
+
+            // Zoom direction based on wheel delta
+            // Note: deltaY > 0 = scroll down = zoom out
+            if (e.deltaY > 0) {
+                zoomOut(globalStore, WHEEL_STEP);
+            } else if (e.deltaY < 0) {
+                zoomIn(globalStore, WHEEL_STEP);
+            }
+        };
+
+        // Add with passive: false to allow preventDefault
+        window.addEventListener("wheel", handleWheel, { passive: false });
+
+        return () => {
+            window.removeEventListener("wheel", handleWheel);
+        };
+    }, []);
+    return null;
+};
+
 const FlashError = () => {
     const flashErrors = useAtomValue(atoms.flashErrors);
     const [hoveredId, setHoveredId] = useState<string>(null);
@@ -296,6 +330,7 @@ const AppInner = () => {
         >
             <AppBackground />
             <AppKeyHandlers />
+            <AppZoomHandler />
             <AppFocusHandler />
             <AppSettingsUpdater />
             <DndProvider backend={HTML5Backend}>
@@ -303,6 +338,7 @@ const AppInner = () => {
             </DndProvider>
             <FlashError />
             {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
+            <ZoomIndicator />
         </div>
     );
 };

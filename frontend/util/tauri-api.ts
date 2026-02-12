@@ -187,6 +187,9 @@ export function buildTauriApi(): ElectronApi {
                 callback(event.payload);
             });
         },
+        setZoomFactor: (zoomFactor: number) => {
+            invoke("set_zoom_factor", { factor: zoomFactor }).catch(console.error);
+        },
 
         // --- Updater ---
         getUpdaterStatus: () => cachedValues!.updaterStatus,

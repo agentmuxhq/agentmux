@@ -175,52 +175,6 @@ func BootstrapStarterLayout(ctx context.Context) error {
 	return nil
 }
 
-// ValidateLayoutState checks for orphaned block references in a layout and queues cleanup actions.
-// Orphaned blocks are references in leaforder that don't exist in the database.
-// This acts as a safety net to catch orphans from any source (bugs, corruption, etc.).
-func ValidateLayoutState(ctx context.Context, layoutStateId string) error {
-	layout, err := wstore.DBGet[*waveobj.LayoutState](ctx, layoutStateId)
-	if err != nil {
-		return fmt.Errorf("error getting layout state: %w", err)
-	}
-	if layout == nil || layout.LeafOrder == nil {
-		return nil
-	}
-
-	// Check each block in leaforder exists
-	orphanedBlocks := []string{}
-	for _, leaf := range *layout.LeafOrder {
-		block, err := wstore.DBGet[*waveobj.Block](ctx, leaf.BlockId)
-		if err != nil || block == nil {
-			orphanedBlocks = append(orphanedBlocks, leaf.BlockId)
-		}
-	}
-
-	// Queue removal actions for orphaned blocks
-	if len(orphanedBlocks) > 0 {
-		log.Printf("ValidateLayoutState: found %d orphaned blocks in layout %s", len(orphanedBlocks), layoutStateId)
-		actions := make([]waveobj.LayoutActionData, len(orphanedBlocks))
-		for i, blockId := range orphanedBlocks {
-			actions[i] = waveobj.LayoutActionData{
-				ActionType: LayoutActionDataType_Remove,
-				BlockId:    blockId,
-			}
-		}
-		return QueueLayoutAction(ctx, layoutStateId, actions...)
-	}
-
-	return nil
-}
-
-// ValidateLayoutStateForTab is a convenience function that validates the layout for a given tab.
-func ValidateLayoutStateForTab(ctx context.Context, tabId string) error {
-	layoutStateId, err := GetLayoutIdForTab(ctx, tabId)
-	if err != nil {
-		return err
-	}
-	return ValidateLayoutState(ctx, layoutStateId)
-}
-
 // MigrateOrphanedLayouts scans all tabs and cleans up orphaned block references.
 // This should be run once on app startup to fix existing orphaned layouts.
 // Orphaned blocks are those in layout.LeafOrder but not in tab.BlockIds.

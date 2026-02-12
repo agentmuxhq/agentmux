@@ -24,10 +24,44 @@ tasks:
             - npm:install
             - docsite:build:embedded
             - build:backend
+            - sync:dev:binaries
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
+
+    sync:dev:binaries:
+        desc: Sync built binaries to Tauri dev/release cache (prevents stale binary issues)
+        cmds:
+            - task: sync:dev:binaries:{{OS}}
+
+    sync:dev:binaries:windows:
+        internal: true
+        platforms: [windows]
+        cmds:
+            - powershell Copy-Item -Force dist/bin/wavemuxsrv.x64.exe src-tauri/target/debug/wavemuxsrv.exe -ErrorAction SilentlyContinue
+            - powershell Copy-Item -Force dist/bin/wavemuxsrv.x64.exe src-tauri/target/release/wavemuxsrv.exe -ErrorAction SilentlyContinue
+            - echo "✓ Synced wavemuxsrv to Tauri dev/release cache (Windows)"
+
+    sync:dev:binaries:darwin:
+        internal: true
+        platforms: [darwin]
+        cmds:
+            - mkdir -p src-tauri/target/debug src-tauri/target/release
+            - cp -f dist/bin/wavemuxsrv.arm64 src-tauri/target/debug/wavemuxsrv || true
+            - cp -f dist/bin/wavemuxsrv.arm64 src-tauri/target/release/wavemuxsrv || true
+            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/debug/wavemuxsrv || true
+            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/release/wavemuxsrv || true
+            - echo "✓ Synced wavemuxsrv to Tauri dev/release cache (macOS)"
+
+    sync:dev:binaries:linux:
+        internal: true
+        platforms: [linux]
+        cmds:
+            - mkdir -p src-tauri/target/debug src-tauri/target/release
+            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/debug/wavemuxsrv || true
+            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/release/wavemuxsrv || true
+            - echo "✓ Synced wavemuxsrv to Tauri dev/release cache (Linux)"
 
     start:
         desc: Build and run the Tauri application in production mode (no installer).

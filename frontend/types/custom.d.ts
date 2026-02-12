@@ -98,6 +98,7 @@ declare global {
         // Window management (multi-window support)
         openNewWindow: () => Promise<string>; // open-new-window, returns window label
         closeWindow: (label?: string) => Promise<void>; // close-window
+        toggleDevtools: () => void; // toggle-devtools
         getWindowLabel: () => Promise<string>; // get-window-label
         isMainWindow: () => Promise<boolean>; // is-main-window
         listWindows: () => Promise<string[]>; // list-windows

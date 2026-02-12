@@ -9,6 +9,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 // Tauri injects this global at build time via TAURI_ENV_APP_VERSION
@@ -241,6 +242,10 @@ export function buildTauriApi(): ElectronApi {
         },
         closeWindow: async (label?: string) => {
             await invoke("close_window", { label: label ?? null });
+        },
+        toggleDevtools: () => {
+            const webview = getCurrentWebviewWindow();
+            webview.toggleDevtools();
         },
         getWindowLabel: async () => {
             return await invoke<string>("get_window_label");

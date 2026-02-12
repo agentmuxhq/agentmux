@@ -195,7 +195,7 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 	// This was causing issues where the tab would be unexpectedly deleted.
 	// Users can manually close empty tabs if desired.
 	// See: https://github.com/a5af/wavemux/issues/xxx
-	if recursive && parentORef.OType == waveobj.OType_Tab && parentBlockCount == 0 {
+	if recursive && parentORef != nil && parentORef.OType == waveobj.OType_Tab && parentBlockCount == 0 {
 		log.Printf("DeleteBlock: parent tab %s has no blocks remaining, but not auto-deleting", parentORef.OID)
 	}
 	go blockcontroller.StopBlockController(blockId)

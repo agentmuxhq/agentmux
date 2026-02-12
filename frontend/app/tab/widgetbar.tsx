@@ -24,6 +24,11 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
 }
 
 async function handleWidgetSelect(widget: WidgetConfigType) {
+    // Special handling for devtools widget
+    if (widget.blockdef?.meta?.view === "devtools") {
+        getApi().toggleDevtools();
+        return;
+    }
     const blockDef = widget.blockdef;
     createBlock(blockDef, widget.magnified);
 }
@@ -68,6 +73,16 @@ const WidgetBar = memo(() => {
         blockdef: {
             meta: {
                 view: "tips",
+            },
+        },
+    };
+    const devToolsWidget: WidgetConfigType = {
+        icon: "code",
+        label: "devtools",
+        description: "Toggle Developer Tools",
+        blockdef: {
+            meta: {
+                view: "devtools",
             },
         },
     };
@@ -130,6 +145,7 @@ const WidgetBar = memo(() => {
                     <HorizontalWidget key="help" widget={helpWidget} />
                 </>
             )}
+            <HorizontalWidget key="devtools" widget={devToolsWidget} />
             {isDev() && <NotificationPopover />}
         </div>
     );

@@ -48,6 +48,11 @@ import (
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
+// ExpectedVersion is the version this binary should be running
+// This is auto-updated by bump-version.sh to match package.json
+// If WaveVersion != ExpectedVersion, it indicates a stale cached binary
+const ExpectedVersion = "0.24.13"
+
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
 const TelemetryInterval = 4 * time.Hour
@@ -367,6 +372,27 @@ func main() {
 	log.SetPrefix("[wavemuxsrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
+
+	// Verify version consistency to detect stale cached binaries
+	if WaveVersion != ExpectedVersion {
+		log.Printf("========================================")
+		log.Printf("⚠️  VERSION MISMATCH DETECTED")
+		log.Printf("========================================")
+		log.Printf("Expected: %s", ExpectedVersion)
+		log.Printf("Actual:   %s", WaveVersion)
+		log.Printf("BuildTime: %s", BuildTime)
+		log.Printf("")
+		log.Printf("This likely means:")
+		log.Printf("  1. Stale binary in src-tauri/target/")
+		log.Printf("  2. Binary not rebuilt after version bump")
+		log.Printf("")
+		log.Printf("To fix:")
+		log.Printf("  rm -f dist/bin/wavemuxsrv.* src-tauri/target/*/wavemuxsrv*")
+		log.Printf("  task build:backend")
+		log.Printf("  task sync:dev:binaries")
+		log.Printf("========================================")
+		// Continue anyway in dev, but log prominently
+	}
 
 	err := grabAndRemoveEnvVars()
 	if err != nil {

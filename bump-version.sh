@@ -162,6 +162,15 @@ else
     error "$TAURI_CONF not found!"
 fi
 
+# Update Go backend ExpectedVersion in cmd/server/main-server.go
+MAIN_SERVER_GO="cmd/server/main-server.go"
+if [[ -f "$MAIN_SERVER_GO" ]]; then
+    sed -i "s/const ExpectedVersion = \"[0-9.]*\"/const ExpectedVersion = \"$NEW_VERSION\"/" "$MAIN_SERVER_GO"
+    success "Updated $MAIN_SERVER_GO ExpectedVersion"
+else
+    warn "$MAIN_SERVER_GO not found, skipping ExpectedVersion update"
+fi
+
 # Determine agent name
 if [[ -z "$AGENT" ]]; then
     BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")

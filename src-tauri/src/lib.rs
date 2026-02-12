@@ -104,17 +104,17 @@ pub fn run() {
             });
             tauri::async_runtime::spawn(heartbeat::start_heartbeat(data_dir.clone()));
 
-            // Build and set application menu
-            match menu::build_app_menu(&handle) {
-                Ok(app_menu) => {
-                    if let Err(e) = handle.set_menu(app_menu) {
-                        tracing::error!("Failed to set application menu: {}", e);
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to build application menu: {}", e);
-                }
-            }
+            // Menu disabled for frameless window build
+            // match menu::build_app_menu(&handle) {
+            //     Ok(app_menu) => {
+            //         if let Err(e) = handle.set_menu(app_menu) {
+            //             tracing::error!("Failed to set application menu: {}", e);
+            //         }
+            //     }
+            //     Err(e) => {
+            //         tracing::error!("Failed to build application menu: {}", e);
+            //     }
+            // }
 
             // Build system tray icon
             if let Err(e) = tray::build_tray(&handle) {

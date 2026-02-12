@@ -1,6 +1,6 @@
 [package]
 name = "wavemux"
-version = "0.24.7"
+version = "0.24.8"
 description = "WaveMux - AI-Native Terminal"
 authors = ["a5af"]
 edition = "2021"

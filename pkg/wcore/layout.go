@@ -228,27 +228,79 @@ func MigrateOrphanedLayouts(ctx context.Context) error {
 				}
 			}
 
-			// Queue cleanup actions
+			// Directly clean tree structure (more reliable than frontend actions)
 			if len(orphanedBlocks) > 0 {
 				log.Printf("MigrateOrphanedLayouts: found %d orphaned blocks in tab %s", len(orphanedBlocks), tab.OID)
-				actions := make([]waveobj.LayoutActionData, len(orphanedBlocks))
-				for i, blockId := range orphanedBlocks {
-					actions[i] = waveobj.LayoutActionData{
-						ActionType: LayoutActionDataType_Remove,
-						BlockId:    blockId,
-					}
+
+				// Create orphan set for fast lookup
+				orphanSet := make(map[string]bool)
+				for _, blockId := range orphanedBlocks {
+					orphanSet[blockId] = true
 				}
-				err = QueueLayoutActionForTab(ctx, tab.OID, actions...)
+
+				// Clean rootnode tree
+				if layout.RootNode != nil {
+					layout.RootNode = removeOrphanedNodesFromTree(layout.RootNode, orphanSet)
+				}
+
+				// Clean leaforder
+				if layout.LeafOrder != nil {
+					cleanedLeafOrder := make([]waveobj.LeafOrderEntry, 0)
+					for _, leaf := range *layout.LeafOrder {
+						if !orphanSet[leaf.BlockId] {
+							cleanedLeafOrder = append(cleanedLeafOrder, leaf)
+						}
+					}
+					layout.LeafOrder = &cleanedLeafOrder
+				}
+
+				// Increment version and persist
+				layout.Version++
+				err = wstore.DBUpdate(ctx, layout)
 				if err != nil {
-					log.Printf("MigrateOrphanedLayouts: error queuing cleanup for tab %s: %v", tab.OID, err)
+					log.Printf("MigrateOrphanedLayouts: error updating layout for tab %s: %v", tab.OID, err)
 					continue
 				}
+
 				fixedTabCount++
 				totalOrphanCount += len(orphanedBlocks)
+				log.Printf("MigrateOrphanedLayouts: cleaned %d orphans from tab %s", len(orphanedBlocks), tab.OID)
 			}
 		}
 	}
 
 	log.Printf("MigrateOrphanedLayouts: complete - fixed %d tabs, cleaned %d orphaned blocks", fixedTabCount, totalOrphanCount)
 	return nil
+}
+
+// removeOrphanedNodesFromTree recursively removes nodes with orphaned blockIds from the layout tree
+func removeOrphanedNodesFromTree(node *waveobj.LayoutNode, orphanSet map[string]bool) *waveobj.LayoutNode {
+	if node == nil {
+		return nil
+	}
+
+	// If this node's blockId is orphaned, remove the entire node
+	if node.Data != nil && orphanSet[node.Data.BlockId] {
+		log.Printf("removeOrphanedNodesFromTree: removing orphaned node %s with blockId %s", node.Id, node.Data.BlockId)
+		return nil
+	}
+
+	// Recursively clean children
+	if node.Children != nil && len(node.Children) > 0 {
+		cleanedChildren := make([]*waveobj.LayoutNode, 0)
+		for _, child := range node.Children {
+			cleaned := removeOrphanedNodesFromTree(child, orphanSet)
+			if cleaned != nil {
+				cleanedChildren = append(cleanedChildren, cleaned)
+			}
+		}
+		node.Children = cleanedChildren
+
+		// If all children were removed, this parent becomes a leaf (shouldn't happen in practice)
+		if len(node.Children) == 0 {
+			node.Children = nil
+		}
+	}
+
+	return node
 }

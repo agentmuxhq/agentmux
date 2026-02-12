@@ -2,7 +2,7 @@
 set -eo pipefail
 
 # Bump version across all WaveTerm fork configs and docs
-# Updates version in package.json, package-lock.json, VERSION_HISTORY.md, and commits changes
+# Updates version in package.json, package-lock.json, Cargo.toml, tauri.conf.json, VERSION_HISTORY.md, and commits changes
 
 # Colors
 GREEN='\033[0;32m'
@@ -144,6 +144,24 @@ fi
 
 success "New version: $NEW_VERSION"
 
+# Update src-tauri/Cargo.toml
+CARGO_TOML="src-tauri/Cargo.toml"
+if [[ -f "$CARGO_TOML" ]]; then
+    sed -i "0,/^version = \"[0-9.]*\"/{s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/}" "$CARGO_TOML"
+    success "Updated $CARGO_TOML"
+else
+    error "$CARGO_TOML not found!"
+fi
+
+# Update src-tauri/tauri.conf.json
+TAURI_CONF="src-tauri/tauri.conf.json"
+if [[ -f "$TAURI_CONF" ]]; then
+    sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$NEW_VERSION\"/" "$TAURI_CONF"
+    success "Updated $TAURI_CONF"
+else
+    error "$TAURI_CONF not found!"
+fi
+
 # Determine agent name
 if [[ -z "$AGENT" ]]; then
     BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
@@ -183,7 +201,7 @@ fi
 if [[ "$NO_COMMIT" != true ]]; then
     info "Committing version bump..."
 
-    git add package.json package-lock.json VERSION_HISTORY.md
+    git add package.json package-lock.json VERSION_HISTORY.md src-tauri/Cargo.toml src-tauri/tauri.conf.json
 
     if [[ -n "$MESSAGE" ]]; then
         COMMIT_MSG="chore: bump version to $NEW_VERSION

@@ -705,6 +705,22 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <WidgetBar />
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />
+                <div
+                    className="close-button"
+                    onClick={() => {
+                        getApi().closeWindow();
+                    }}
+                    title="Close Window"
+                    style={{
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        color: '#ff4444',
+                        fontSize: '16px',
+                        WebkitAppRegion: 'no-drag'
+                    } as React.CSSProperties}
+                >
+                    <i className="fa fa-times" />
+                </div>
             </div>
         </div>
     );

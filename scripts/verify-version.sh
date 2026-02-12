@@ -15,6 +15,13 @@ info() { echo -e "${CYAN}→ $1${NC}"; }
 error() { echo -e "${RED}✗ $1${NC}" >&2; }
 warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
 
+# Parse flags
+STRICT_MODE=false
+if [[ "$1" == "--strict" ]]; then
+    STRICT_MODE=true
+    info "Running in STRICT mode (failures will exit 1)"
+fi
+
 # Get current version from package.json
 EXPECTED_VERSION=$(node -p "require('./package.json').version")
 info "Checking version consistency for: $EXPECTED_VERSION"
@@ -47,6 +54,120 @@ else
     warn "wsh binaries NOT found for version $EXPECTED_VERSION"
     warn "Run 'task build:backend' to rebuild binaries"
     echo "  Expected files like: dist/bin/wsh-${EXPECTED_VERSION}-windows.x64.exe"
+fi
+
+# Check wavemuxsrv binary version (Phase 3: Binary Version Verification)
+info "Checking wavemuxsrv binary version..."
+BINARY_CHECKED=false
+
+if [[ -f "dist/bin/wavemuxsrv.x64.exe" ]]; then
+    BINARY_VERSION=$(strings dist/bin/wavemuxsrv.x64.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+    if [[ -n "$BINARY_VERSION" ]]; then
+        if [[ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]]; then
+            error "wavemuxsrv.x64.exe version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
+            if [[ "$STRICT_MODE" == true ]]; then
+                ((ISSUES++))
+            fi
+        else
+            success "wavemuxsrv.x64.exe: $BINARY_VERSION"
+        fi
+        BINARY_CHECKED=true
+    fi
+elif [[ -f "dist/bin/wavemuxsrv.arm64" ]]; then
+    BINARY_VERSION=$(strings dist/bin/wavemuxsrv.arm64 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+    if [[ -n "$BINARY_VERSION" ]]; then
+        if [[ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]]; then
+            error "wavemuxsrv.arm64 version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
+            if [[ "$STRICT_MODE" == true ]]; then
+                ((ISSUES++))
+            fi
+        else
+            success "wavemuxsrv.arm64: $BINARY_VERSION"
+        fi
+        BINARY_CHECKED=true
+    fi
+elif [[ -f "dist/bin/wavemuxsrv.x64" ]]; then
+    BINARY_VERSION=$(strings dist/bin/wavemuxsrv.x64 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+    if [[ -n "$BINARY_VERSION" ]]; then
+        if [[ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]]; then
+            error "wavemuxsrv.x64 version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
+            if [[ "$STRICT_MODE" == true ]]; then
+                ((ISSUES++))
+            fi
+        else
+            success "wavemuxsrv.x64: $BINARY_VERSION"
+        fi
+        BINARY_CHECKED=true
+    fi
+fi
+
+if [[ "$BINARY_CHECKED" == false ]]; then
+    warn "No wavemuxsrv binary found in dist/bin/"
+fi
+
+# Check Tauri cached binaries (Phase 3: Prevent Stale Cache)
+info "Checking Tauri cached binaries..."
+CACHE_ISSUES=0
+
+if [[ -f "src-tauri/target/debug/wavemuxsrv.exe" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/debug/wavemuxsrv.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+    if [[ -n "$CACHED_VERSION" ]]; then
+        if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
+            error "Tauri debug cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"
+            echo "  Run: task sync:dev:binaries"
+            ((CACHE_ISSUES++))
+            if [[ "$STRICT_MODE" == true ]]; then
+                ((ISSUES++))
+            fi
+        else
+            success "Tauri debug cache: $CACHED_VERSION"
+        fi
+    fi
+elif [[ -f "src-tauri/target/debug/wavemuxsrv" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/debug/wavemuxsrv 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+    if [[ -n "$CACHED_VERSION" ]]; then
+        if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
+            error "Tauri debug cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"
+            echo "  Run: task sync:dev:binaries"
+            ((CACHE_ISSUES++))
+            if [[ "$STRICT_MODE" == true ]]; then
+                ((ISSUES++))
+            fi
+        else
+            success "Tauri debug cache: $CACHED_VERSION"
+        fi
+    fi
+fi
+
+if [[ -f "src-tauri/target/release/wavemuxsrv.exe" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/release/wavemuxsrv.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+    if [[ -n "$CACHED_VERSION" ]]; then
+        if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
+            warn "Tauri release cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"
+            echo "  Run: task sync:dev:binaries"
+            ((CACHE_ISSUES++))
+        else
+            success "Tauri release cache: $CACHED_VERSION"
+        fi
+    fi
+elif [[ -f "src-tauri/target/release/wavemuxsrv" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/release/wavemuxsrv 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+    if [[ -n "$CACHED_VERSION" ]]; then
+        if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
+            warn "Tauri release cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"
+            echo "  Run: task sync:dev:binaries"
+            ((CACHE_ISSUES++))
+        else
+            success "Tauri release cache: $CACHED_VERSION"
+        fi
+    fi
+fi
+
+if [[ $CACHE_ISSUES -gt 0 ]]; then
+    warn "Found $CACHE_ISSUES stale cached binaries"
+    if [[ "$STRICT_MODE" == true ]]; then
+        error "Strict mode: stale caches are not allowed"
+    fi
 fi
 
 # Check VERSION_HISTORY.md

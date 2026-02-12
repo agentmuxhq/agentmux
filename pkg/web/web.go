@@ -554,22 +554,18 @@ func RunWebServer(listener net.Listener) {
 			originalHandler.ServeHTTP(w, r)
 		})
 	} else {
-		// In production, still allow CORS for Tauri
+		// In production, allow CORS for all origins (local backend, no security concern)
 		originalHandler := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := r.Header.Get("Origin")
-			// Allow tauri.localhost and ipc.localhost origins
-			if origin == "http://tauri.localhost" || origin == "http://ipc.localhost" || origin == "https://tauri.localhost" {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Session-Id, X-AuthKey, Authorization, X-Requested-With, Accept, x-vercel-ai-ui-message-stream")
-				w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo, Content-Length, Content-Type, x-vercel-ai-ui-message-stream")
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			// Always allow CORS from any origin
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Session-Id, X-AuthKey, Authorization, X-Requested-With, Accept, x-vercel-ai-ui-message-stream")
+			w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo, Content-Length, Content-Type, x-vercel-ai-ui-message-stream")
 
-				if r.Method == "OPTIONS" {
-					w.WriteHeader(204)
-					return
-				}
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(204)
+				return
 			}
 
 			originalHandler.ServeHTTP(w, r)

@@ -228,6 +228,11 @@ async function initBare() {
         updateZoomFactor(zoomFactor);
     });
 
+    // Initialize zoom state
+    import("@/app/store/zoom").then(({ loadZoom }) => {
+        loadZoom(globalStore);
+    });
+
     // Use Promise.race to add a timeout fallback for fonts.ready
     // In Tauri, fonts.ready might not resolve promptly
     const fontsPromise = document.fonts.ready;

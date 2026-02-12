@@ -8,6 +8,8 @@
 
 The web widget currently shows a black screen because it uses Electron's `<webview>` tag, which doesn't exist in Tauri v2. The temporary fix (iframe) displays content but lacks critical features like navigation controls, devtools, and proper sandboxing.
 
+**Critical Constraint:** Any solution MUST NOT create separate taskbar items. Each web widget should be embedded within the main application window's UI without appearing as a separate application window in the OS taskbar.
+
 ### Current State (v0.24.3)
 
 **What Works:**
@@ -108,7 +110,7 @@ Users cannot:
 
 **Verdict:** ❌ Not suitable for production
 
-### Option 2: Tauri WebviewWindow (Recommended)
+### Option 2: Tauri WebviewWindow
 
 Create a child WebviewWindow for each web widget instance.
 
@@ -118,30 +120,74 @@ Create a child WebviewWindow for each web widget instance.
 - Devtools support via window methods
 - Proper sandboxing
 - Event handling (navigation, load, etc.)
+- Can use `.skip_taskbar(true)` to prevent taskbar appearance
 
 **Cons:**
+- ❌ **FATAL:** Positioning synchronization glitches
+  - Child window lags behind when dragging/resizing main window
+  - Visible "sliding" effect as windows reposition
+  - Cannot achieve smooth embedded appearance
 - Each widget is a separate OS window
-- Requires window management
-- May feel disconnected from main UI
+- Requires complex window management
 
-**Verdict:** ✅ Best option for feature parity
+**Verdict:** ❌ Not viable due to poor UX (positioning glitches)
 
-### Option 3: Custom WebView Component
+### Option 3: Custom WebView Component (Recommended)
 
-Use platform-specific webview libraries (webview2, webkit, etc.).
+Embed platform-specific webview directly into Tauri window using native APIs.
+
+**Approach:**
+- Windows: Embed WebView2 control into Tauri window's HWND
+- macOS: Embed WKWebView into Tauri window's NSView
+- Linux: Embed webkit2gtk into Tauri window's GtkWindow
 
 **Pros:**
-- Embedded directly in UI
-- Full control over rendering
+- ✅ Properly embedded (no positioning sync issues)
+- ✅ Full webview features available
+- ✅ Native performance
+- ✅ No taskbar issues (embedded in existing window)
+- ✅ Smooth dragging/resizing
 
 **Cons:**
-- Complex platform-specific code
-- Harder to maintain
-- May conflict with Tauri's webview
+- Complex platform-specific Rust code
+- Requires FFI/unsafe code for each platform
+- More maintenance burden
+- Need to bridge events back to Tauri
+- May conflict with Tauri's main webview (need testing)
 
-**Verdict:** ❌ Too complex, reinventing wheel
+**Verdict:** ✅ Most viable for production quality embedded browser
 
-### Option 4: Wait for Tauri WebView Plugin
+**Technical Notes:**
+- Tauri uses tao (window library) + wry (webview library)
+- Can potentially use wry's WebViewBuilder directly for embedded views
+- Need to investigate if wry supports embedding multiple webviews in single window
+
+### Option 4: Enhanced IFrame with Feature Bridge
+
+Keep iframe but add features via postMessage bridge and parent window proxying.
+
+**Approach:**
+- Use iframe for display (stable, no positioning issues)
+- Inject bridge script into iframe pages
+- Proxy navigation, devtools, zoom via parent window
+- Use Tauri commands to control iframe indirectly
+
+**Pros:**
+- ✅ Simple, stable implementation
+- ✅ No positioning sync issues
+- ✅ Properly embedded
+- ✅ Can add navigation controls (via history API)
+- ✅ Can add zoom (via CSS transform)
+
+**Cons:**
+- ❌ No native devtools for iframe content
+- ❌ Cross-origin limitations (can't inject into all sites)
+- ❌ Limited sandboxing control
+- ❌ Performance overhead from proxying
+
+**Verdict:** ⚠️  Pragmatic fallback - 70% feature parity, 100% stability
+
+### Option 5: Wait for Tauri WebView Plugin
 
 Tauri may add webview component support in future.
 
@@ -155,9 +201,40 @@ Tauri may add webview component support in future.
 
 **Verdict:** ❌ Not feasible for current release
 
-## Selected Approach: Option 2 (WebviewWindow)
+## Selected Approach: Option 3 (Custom WebView Component) + Option 4 Fallback
 
-Implement each web widget as a child `WebviewWindow` that's positioned and sized to appear embedded in the main UI.
+**Primary:** Embed platform-specific webview directly into Tauri window (Option 3)
+**Fallback:** Enhanced iframe with feature bridge (Option 4)
+
+### Decision Rationale
+
+**Why Not Option 2 (WebviewWindow)?**
+- User testing revealed fatal UX flaw: "you can drag and move it around, and as you do that the webview moves in weird ways"
+- Child window repositioning cannot sync perfectly with parent
+- Visible lag/sliding effect breaks embedded appearance
+- Even with `.skip_taskbar(true)`, positioning glitches make it unusable
+
+**Why Option 3 (Custom WebView)?**
+- Properly embedded - no positioning sync issues
+- Full webview features (navigation, devtools, sandboxing)
+- Professional UX with smooth dragging/resizing
+- Worth complexity for production-quality browser widget
+
+**Why Option 4 (Enhanced IFrame) as Fallback?**
+- If Option 3 proves too complex or has compatibility issues
+- Gets 70% of features with 100% stability
+- Already partially working
+- Quick to implement improvements (navigation, zoom, etc.)
+
+### Implementation Strategy
+
+**Phase 1: Investigate wry multi-webview support** (3-5 days)
+- Research if Tauri's wry library supports multiple embedded webviews
+- Prototype single embedded webview in Tauri window
+- Test compatibility with main Tauri webview
+
+**Phase 2a: If wry supports embedding** → Implement Option 3
+**Phase 2b: If wry doesn't support** → Implement Option 4 (Enhanced iframe)
 
 ### Architecture
 
@@ -209,6 +286,28 @@ Main Window (WaveMux UI)
    - Sync zoom levels
 
 ### Detailed Design
+
+#### 0. Taskbar Solution
+
+**Problem:** Default WebviewWindow behavior creates OS windows that appear in the taskbar as separate applications.
+
+**Solution:** Configure window with `.skip_taskbar(true)` flag:
+
+```rust
+WebviewWindowBuilder::new(&app, &label, url)
+    .skip_taskbar(true)  // Prevents taskbar appearance
+    .parent_window(main_window)  // Makes it a child window
+    .decorations(false)  // No title bar
+    .transparent(true)   // Blends with UI
+    .build()
+```
+
+**Platform Behavior:**
+- **Windows:** Window excluded from taskbar and Alt+Tab
+- **macOS:** Window excluded from Dock and Cmd+Tab
+- **Linux:** Behavior depends on window manager (most respect skip_taskbar hint)
+
+**Result:** Web widget appears embedded in main UI without separate OS presence.
 
 #### 1. WebViewModel Updates
 
@@ -336,6 +435,7 @@ pub async fn create_web_widget(
     .inner_size(bounds.width, bounds.height)
     .decorations(false)
     .transparent(true)
+    .skip_taskbar(true)  // CRITICAL: Prevents window from appearing in taskbar
     .parent_window(app.get_webview_window("main").unwrap())
     .build()
     .map_err(|e| format!("Failed to create web widget: {}", e))?;
@@ -610,6 +710,19 @@ C. **Use WebView2 API directly** (Windows only)
 - Use platform-specific code where needed
 - Document platform limitations
 
+### Risk 5: Taskbar Behavior on Linux
+
+**Impact:** Low
+**Probability:** Low
+
+**Issue:** Some Linux window managers may ignore `.skip_taskbar(true)` hint
+
+**Mitigation:**
+- Test on popular DEs (GNOME, KDE, XFCE)
+- Use additional X11/Wayland hints if needed
+- Document workarounds for affected WMs
+- Fallback: Use iframe on platforms where skip_taskbar fails
+
 ## Success Metrics
 
 1. **Feature Parity:** 95% of Electron webview features working
@@ -659,6 +772,10 @@ C. **Use WebView2 API directly** (Windows only)
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2026-02-11
-**Next Review:** 2026-02-18
+**Document Version:** 1.2
+**Last Updated:** 2026-02-12
+**Next Review:** 2026-02-19
+**Changelog:**
+- v1.2 (2026-02-12): Marked Option 2 as non-viable due to positioning glitches; promoted Option 3 (Custom WebView) to recommended approach with Option 4 (Enhanced iframe) as fallback
+- v1.1 (2026-02-12): Added `.skip_taskbar(true)` solution to prevent taskbar appearance
+- v1.0 (2026-02-11): Initial draft

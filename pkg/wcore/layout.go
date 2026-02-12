@@ -174,3 +174,81 @@ func BootstrapStarterLayout(ctx context.Context) error {
 
 	return nil
 }
+
+// MigrateOrphanedLayouts scans all tabs and cleans up orphaned block references.
+// This should be run once on app startup to fix existing orphaned layouts.
+// Orphaned blocks are those in layout.LeafOrder but not in tab.BlockIds.
+func MigrateOrphanedLayouts(ctx context.Context) error {
+	log.Println("MigrateOrphanedLayouts: checking for orphaned layout references...")
+
+	// Get all workspaces to find all tabs
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("error getting client: %w", err)
+	}
+
+	fixedTabCount := 0
+	totalOrphanCount := 0
+
+	// Iterate through all windows and workspaces to find tabs
+	for _, windowId := range client.WindowIds {
+		window, err := wstore.DBGet[*waveobj.Window](ctx, windowId)
+		if err != nil || window == nil {
+			continue
+		}
+
+		workspace, err := wstore.DBGet[*waveobj.Workspace](ctx, window.WorkspaceId)
+		if err != nil || workspace == nil {
+			continue
+		}
+
+		// Check each tab in the workspace
+		for _, tabId := range workspace.TabIds {
+			tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+			if err != nil || tab == nil {
+				continue
+			}
+
+			layout, err := wstore.DBGet[*waveobj.LayoutState](ctx, tab.LayoutState)
+			if err != nil || layout == nil || layout.LeafOrder == nil {
+				continue
+			}
+
+			// Build set of valid block IDs from tab
+			blockIdSet := make(map[string]bool)
+			for _, bid := range tab.BlockIds {
+				blockIdSet[bid] = true
+			}
+
+			// Find orphaned blocks (in layout but not in tab.BlockIds)
+			orphanedBlocks := []string{}
+			for _, leaf := range *layout.LeafOrder {
+				if !blockIdSet[leaf.BlockId] {
+					orphanedBlocks = append(orphanedBlocks, leaf.BlockId)
+				}
+			}
+
+			// Queue cleanup actions
+			if len(orphanedBlocks) > 0 {
+				log.Printf("MigrateOrphanedLayouts: found %d orphaned blocks in tab %s", len(orphanedBlocks), tab.OID)
+				actions := make([]waveobj.LayoutActionData, len(orphanedBlocks))
+				for i, blockId := range orphanedBlocks {
+					actions[i] = waveobj.LayoutActionData{
+						ActionType: LayoutActionDataType_Remove,
+						BlockId:    blockId,
+					}
+				}
+				err = QueueLayoutActionForTab(ctx, tab.OID, actions...)
+				if err != nil {
+					log.Printf("MigrateOrphanedLayouts: error queuing cleanup for tab %s: %v", tab.OID, err)
+					continue
+				}
+				fixedTabCount++
+				totalOrphanCount += len(orphanedBlocks)
+			}
+		}
+	}
+
+	log.Printf("MigrateOrphanedLayouts: complete - fixed %d tabs, cleaned %d orphaned blocks", fixedTabCount, totalOrphanCount)
+	return nil
+}

@@ -3,7 +3,6 @@ module github.com/a5af/wavemux
 go 1.24.6
 
 require (
-	github.com/a5af/wavemux/tsunami v0.0.0-00010101000000-000000000000
 	github.com/alexflint/go-filemutex v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.41.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.6
@@ -108,5 +107,3 @@ require (
 replace github.com/kevinburke/ssh_config => github.com/wavetermdev/ssh_config v0.0.0-20241219203747-6409e4292f34
 
 replace github.com/creack/pty => github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b
-
-replace github.com/a5af/wavemux/tsunami => ./tsunami

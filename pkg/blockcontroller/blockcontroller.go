@@ -151,10 +151,6 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 			if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
 				needsReplace = true
 			}
-		case *TsunamiController:
-			if controllerName != BlockController_Tsunami {
-				needsReplace = true
-			}
 		}
 
 		if needsReplace {
@@ -194,10 +190,6 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		switch controllerName {
 		case BlockController_Shell, BlockController_Cmd:
 			controller = MakeShellController(tabId, blockId, controllerName)
-			registerController(blockId, controller)
-
-		case BlockController_Tsunami:
-			controller = MakeTsunamiController(tabId, blockId)
 			registerController(blockId, controller)
 
 		default:

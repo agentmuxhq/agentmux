@@ -453,6 +453,20 @@ func main() {
 	if firstLaunch {
 		log.Printf("first launch detected")
 	}
+
+	// Migrate orphaned layout references (cleanup existing orphans)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("MigrateOrphanedLayouts", recover())
+		}()
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		err := wcore.MigrateOrphanedLayouts(ctx)
+		if err != nil {
+			log.Printf("error migrating orphaned layouts: %v\n", err)
+		}
+	}()
+
 	err = clearTempFiles()
 	if err != nil {
 		log.Printf("error clearing temp files: %v\n", err)

@@ -157,6 +157,14 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 	if block == nil {
 		return nil
 	}
+
+	// Get parent tab ID for layout cleanup
+	parentORef := waveobj.ParseORefNoErr(block.ParentORef)
+	var tabId string
+	if parentORef != nil && parentORef.OType == waveobj.OType_Tab {
+		tabId = parentORef.OID
+	}
+
 	if len(block.SubBlockIds) > 0 {
 		for _, subBlockId := range block.SubBlockIds {
 			err := DeleteBlock(ctx, subBlockId, recursive)
@@ -170,13 +178,24 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
 	log.Printf("DeleteBlock: parentBlockCount: %d", parentBlockCount)
-	parentORef := waveobj.ParseORefNoErr(block.ParentORef)
+
+	// Queue layout removal action to prevent orphaned block references
+	if tabId != "" {
+		err = QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+			ActionType: LayoutActionDataType_Remove,
+			BlockId:    blockId,
+		})
+		if err != nil {
+			log.Printf("warning: failed to queue layout removal for block %s: %v", blockId, err)
+			// Don't fail block deletion if layout update fails
+		}
+	}
 
 	// Note: We no longer auto-delete the tab when all blocks are removed.
 	// This was causing issues where the tab would be unexpectedly deleted.
 	// Users can manually close empty tabs if desired.
 	// See: https://github.com/a5af/wavemux/issues/xxx
-	if recursive && parentORef.OType == waveobj.OType_Tab && parentBlockCount == 0 {
+	if recursive && parentORef != nil && parentORef.OType == waveobj.OType_Tab && parentBlockCount == 0 {
 		log.Printf("DeleteBlock: parent tab %s has no blocks remaining, but not auto-deleting", parentORef.OID)
 	}
 	go blockcontroller.StopBlockController(blockId)

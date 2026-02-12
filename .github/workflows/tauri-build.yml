@@ -67,6 +67,10 @@ jobs:
       - name: Build Go backend binaries
         shell: bash
         run: |
+          # Get version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          BUILD_TIME=$(date +%Y%m%d%H%M)
+
           # Set Go environment for cross-compilation
           export CGO_ENABLED=0
           export GOOS=${{ matrix.platform }}
@@ -78,20 +82,27 @@ jobs:
             export GOARCH=${{ matrix.arch }}
           fi
 
-          # Build wavemuxsrv
-          echo "Building wavemuxsrv for $GOOS/$GOARCH"
+          # Build wavemuxsrv with version injection
+          echo "Building wavemuxsrv v$VERSION for $GOOS/$GOARCH"
           go build -o dist/bin/wavemuxsrv-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
-            -ldflags "-s -w" \
+            -ldflags "-s -w -X main.WaveVersion=$VERSION -X main.BuildTime=$BUILD_TIME" \
             ./cmd/server/main-server.go
 
-          # Build wsh
-          echo "Building wsh for $GOOS/$GOARCH"
+          # Build wsh with version injection
+          echo "Building wsh v$VERSION for $GOOS/$GOARCH"
           go build -o dist/bin/wsh-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
-            -ldflags "-s -w" \
+            -ldflags "-s -w -X main.WaveVersion=$VERSION -X main.BuildTime=$BUILD_TIME" \
             ./cmd/wsh/main-wsh.go
 
           # List built binaries
           ls -lh dist/bin/
+
+      - name: Verify version consistency
+        shell: bash
+        run: |
+          # Run version verification in strict mode
+          # This ensures all binaries match package.json version
+          bash scripts/verify-version.sh --strict
 
       - name: Copy sidecar binaries to Tauri
         shell: bash

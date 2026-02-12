@@ -102,6 +102,38 @@ After fix:
 2. Should see console log: "Opening devtools for window: main" (or "Closing...")
 3. DevTools panel should appear/disappear
 
+## Potential Issues (If Still Doesn't Work)
+
+### 1. Silent Invoke Errors
+**Symptom**: Button does nothing, no console errors
+**Check**: Look in Rust logs at `~/.waveterm-dev/waveapp.log` or `%APPDATA%/com.a5af.wavemux/logs/`
+**Fix**: Add better error handling in frontend
+
+### 2. Window Context Missing
+**Symptom**: Error like "window not found"
+**Cause**: invoke() might not have window context
+**Fix**: Pass window label explicitly: `invoke("toggle_devtools", { window: "main" })`
+
+### 3. Permissions Issue
+**Symptom**: Permission denied error
+**Check**: Ensure `core:webview:default` in capabilities includes `allow-internal-toggle-devtools`
+**Current**: Line 21 in `capabilities/default.json` has `core:webview:default`
+
+### 4. Feature Flag Not Working
+**Symptom**: Methods don't exist even though feature is enabled
+**Check**: Verify `devtools` feature in Cargo.toml (currently line 17)
+**Rebuild**: Try clean rebuild: `cargo clean && npm run build`
+
+### 5. Webview vs Window Confusion
+**Symptom**: Command runs but nothing happens
+**Cause**: Tauri v2 has both Window and Webview - devtools might be on wrong object
+**Check**: The command uses `WebviewWindow` which is correct for Tauri v2
+
+### 6. Release Build Limitation
+**Symptom**: Works in dev, not in release
+**Check**: The devtools.rs has both debug and release implementations
+**Note**: Should work in both (intentional for debugging support)
+
 ## Related Files
 
 - `frontend/app/tab/widgetbar.tsx:29` - Button click handler

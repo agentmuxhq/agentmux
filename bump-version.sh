@@ -153,6 +153,16 @@ else
     error "$CARGO_TOML not found!"
 fi
 
+# Update src-tauri/Cargo.lock
+CARGO_LOCK="src-tauri/Cargo.lock"
+if [[ -f "$CARGO_LOCK" ]]; then
+    # Update the wavemux package version in Cargo.lock
+    sed -i '/^name = "wavemux"$/,/^version = "/ s/^version = "[0-9.]*"/version = "'"$NEW_VERSION"'"/' "$CARGO_LOCK"
+    success "Updated $CARGO_LOCK"
+else
+    warn "$CARGO_LOCK not found, skipping"
+fi
+
 # Update src-tauri/tauri.conf.json
 TAURI_CONF="src-tauri/tauri.conf.json"
 if [[ -f "$TAURI_CONF" ]]; then

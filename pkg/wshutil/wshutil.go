@@ -22,12 +22,12 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/util/packetparser"
-	"github.com/a5af/wavemux/pkg/util/shellutil"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/util/packetparser"
+	"github.com/a5af/agentmux/pkg/util/shellutil"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 	"golang.org/x/term"
 )
 

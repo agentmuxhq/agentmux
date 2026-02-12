@@ -18,10 +18,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
-	"github.com/a5af/wavemux/pkg/aiusechat/chatstore"
-	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/web/sse"
+	"github.com/a5af/agentmux/pkg/aiusechat/chatstore"
+	"github.com/a5af/agentmux/pkg/aiusechat/uctypes"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/web/sse"
 )
 
 const (

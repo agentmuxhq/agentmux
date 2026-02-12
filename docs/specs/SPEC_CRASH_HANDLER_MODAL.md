@@ -54,7 +54,7 @@ process.on("uncaughtException", (error) => {
 ### 1.2 Existing Dialog Patterns
 
 The codebase already uses `electron.dialog.showMessageBoxSync()` in several places:
-- Multi-instance dialogs (`emain/emain-wavemuxsrv.ts:76`)
+- Multi-instance dialogs (`emain/emain-agentmuxsrv.ts:76`)
 - Window close confirmations (`emain/emain-window.ts:276`)
 - Workspace deletion confirmations (`emain/emain-window.ts:740`)
 - ARM64 translation warnings (`emain/platform.ts:119`)
@@ -173,7 +173,7 @@ import * as electron from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import { getWaveDataDir, getWaveConfigDir, unamePlatform, unameArch, getMultiInstanceInfo } from "./platform";
-import { getWaveVersion } from "./emain-wavemuxsrv";
+import { getWaveVersion } from "./emain-agentmuxsrv";
 import { getAllWaveWindows } from "./emain-window";
 import { log } from "./log";
 
@@ -622,7 +622,7 @@ function sanitizeLog(log: string): string {
 ### 9.1 Similar Features
 
 This crash handler is similar to:
-- Multi-instance dialog (`emain/emain-wavemuxsrv.ts:54-84`)
+- Multi-instance dialog (`emain/emain-agentmuxsrv.ts:54-84`)
 - ARM64 translation warning (`emain/platform.ts:109-128`)
 
 ### 9.2 Future Enhancements
@@ -646,7 +646,7 @@ This crash handler is similar to:
 ## 11. References
 
 - **Current Crash Handler**: `emain/emain.ts:655-672`
-- **Dialog Examples**: `emain/emain-wavemuxsrv.ts`, `emain/emain-window.ts`
+- **Dialog Examples**: `emain/emain-agentmuxsrv.ts`, `emain/emain-window.ts`
 - **Logging System**: `emain/log.ts`
 - **Electron Dialog API**: https://www.electronjs.org/docs/latest/api/dialog
 - **Clipboard API**: https://www.electronjs.org/docs/latest/api/clipboard
@@ -701,7 +701,7 @@ Location: C:\Users\asafe\AppData\Local\waveterm\Data\waveapp.log
 
 Recent Log Entries (last 50 lines):
 2025-10-19 14:23:40.123 waveterm-app starting, data_dir=C:\Users\asafe\AppData\Local\waveterm\Data...
-2025-10-19 14:23:41.456 wavemuxsrv started successfully
+2025-10-19 14:23:41.456 agentmuxsrv started successfully
 2025-10-19 14:23:42.789 created new window workspace:abc123
 2025-10-19 14:23:45.012 handleWSEvent electron:updateactivetab
 2025-10-19 14:23:45.123 Uncaught Exception, showing crash dialog: TypeError: Cannot read property 'workspaceId' of null

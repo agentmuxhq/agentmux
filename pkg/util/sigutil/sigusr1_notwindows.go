@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
 )
 
 func InstallSIGUSR1Handler() {

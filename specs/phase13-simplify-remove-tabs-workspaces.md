@@ -22,7 +22,7 @@ Instead of migrating the complex Electron multi-tab/workspace system to Tauri, *
 
 **What We Keep:**
 - ✅ Single terminal pane
-- ✅ Backend (wavemuxsrv) unchanged
+- ✅ Backend (agentmuxsrv) unchanged
 - ✅ Terminal rendering (xterm.js)
 - ✅ AI chat integration
 - ✅ File previews
@@ -412,7 +412,7 @@ initializeTerminal(blockId);
 useEffect(() => {
   // Update window title with current directory
   const cwd = terminalState.cwd || '~';
-  document.title = `WaveMux - ${cwd}`;
+  document.title = `AgentMux - ${cwd}`;
 }, [terminalState.cwd]);
 ```
 
@@ -443,7 +443,7 @@ useEffect(() => {
 
 **On first launch of simplified version:**
 1. Detect old workspace/tab data in DB
-2. Show dialog: "WaveMux has been simplified. Your workspace/tabs will be restored in a future update."
+2. Show dialog: "AgentMux has been simplified. Your workspace/tabs will be restored in a future update."
 3. Delete workspace/tab data from DB
 4. Create single terminal block
 
@@ -630,10 +630,10 @@ test('new window creates independent terminal', async () => {
 
 **Release Notes (0.18.7):**
 ```markdown
-## WaveMux 0.18.7 - Simplified Release
+## AgentMux 0.18.7 - Simplified Release
 
 To accelerate the Tauri migration and improve stability, we've temporarily
-simplified WaveMux to focus on core terminal functionality.
+simplified AgentMux to focus on core terminal functionality.
 
 **What's Changed:**
 - ✅ Faster, more stable terminal experience

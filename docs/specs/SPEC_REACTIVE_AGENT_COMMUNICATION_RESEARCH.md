@@ -8,11 +8,11 @@
 
 ## Executive Summary
 
-This document researches how to implement **reactive communication between Claude Code agents** running in WaveMux terminal panes. The primary use case:
+This document researches how to implement **reactive communication between Claude Code agents** running in AgentMux terminal panes. The primary use case:
 
 > AgentA finishes code changes → injects message into AgentX's running terminal → AgentX (reviewer) receives notification in real-time
 
-**Key Finding:** WaveMux already has deployed AWS infrastructure and comprehensive specs for this. The recommended approach combines:
+**Key Finding:** AgentMux already has deployed AWS infrastructure and comprehensive specs for this. The recommended approach combines:
 1. **Webhook-based terminal injection** (for external events)
 2. **MCP server tools** (for agent-to-agent messaging)
 3. **AgentMux as message broker** (unified API for both patterns)
@@ -23,7 +23,7 @@ This document researches how to implement **reactive communication between Claud
 
 1. [User Scenario](#1-user-scenario)
 2. [Critical Insight: Claude Code is NOT a REPL](#2-critical-insight-claude-code-is-not-a-repl)
-3. [Existing WaveMux Infrastructure](#3-existing-wavemux-infrastructure)
+3. [Existing AgentMux Infrastructure](#3-existing-agentmux-infrastructure)
 4. [Terminal Injection Methods](#4-terminal-injection-methods)
 5. [MCP Protocol for Agent Communication](#5-mcp-protocol-for-agent-communication)
 6. [AgentMux Integration Architecture](#6-agentmux-integration-architecture)
@@ -122,17 +122,17 @@ Multiple Claude Code agents work on the same codebase:
 
 ---
 
-## 3. Existing WaveMux Infrastructure
+## 3. Existing AgentMux Infrastructure
 
 ### Already Deployed (AWS)
 
 | Component | Endpoint | Status |
 |-----------|----------|--------|
-| Lambda Router | `wavemux-webhook-router-prod` | ✅ Deployed |
+| Lambda Router | `agentmux-webhook-router-prod` | ✅ Deployed |
 | HTTP API | `https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com` | ✅ Live |
 | WebSocket API | `wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com` | ✅ Live |
-| DynamoDB Config | `WaveMuxWebhookConfig-prod` | ✅ Active |
-| DynamoDB Connections | `WaveMuxConnections-prod` | ✅ Active |
+| DynamoDB Config | `AgentMuxWebhookConfig-prod` | ✅ Active |
+| DynamoDB Connections | `AgentMuxConnections-prod` | ✅ Active |
 
 ### Existing Specifications
 
@@ -146,9 +146,9 @@ Multiple Claude Code agents work on the same codebase:
 
 | Component | Status |
 |-----------|--------|
-| Go webhook client in wavemuxsrv | ⏳ Not implemented |
+| Go webhook client in agentmuxsrv | ⏳ Not implemented |
 | MCP server integration | ⏳ Not implemented |
-| AgentMux ↔ WaveMux bridge | ⏳ Not implemented |
+| AgentMux ↔ AgentMux bridge | ⏳ Not implemented |
 | Frontend configuration UI | ⏳ Not implemented |
 
 ---
@@ -171,7 +171,7 @@ tmux list-panes -a -F "#{session_name}:#{window_index}.#{pane_index}" | \
 ```
 
 **Pros:** Simple, reliable, widely supported
-**Cons:** Requires tmux, not directly applicable to WaveMux/Electron
+**Cons:** Requires tmux, not directly applicable to AgentMux/Electron
 
 ### Method 2: PTY Master Injection (Low-Level)
 
@@ -184,17 +184,17 @@ PTY Pair:
 Process with Master FD can inject any text into terminal.
 ```
 
-**WaveMux Implementation:**
-- WaveMux owns PTY master for each terminal pane
+**AgentMux Implementation:**
+- AgentMux owns PTY master for each terminal pane
 - Can write ANSI text directly via `BlockController`
 - Already used for shell integration (OSC sequences)
 
-### Method 3: WebSocket + Terminal Bridge (WaveMux Approach)
+### Method 3: WebSocket + Terminal Bridge (AgentMux Approach)
 
 **How it works:**
 1. External event → AWS API Gateway
 2. Lambda routes to WebSocket connection
-3. WaveMux client receives message
+3. AgentMux client receives message
 4. Client injects into terminal PTY
 
 ```
@@ -204,7 +204,7 @@ AWS Lambda
      ↓
 WebSocket API
      ↓
-WaveMux Client ──PTY write──→ Terminal Pane
+AgentMux Client ──PTY write──→ Terminal Pane
 ```
 
 ### Method 4: ANSI Text Injection (Universal)
@@ -230,7 +230,7 @@ printf "\033[90m[%s]\033[0m \033[36m[AGENT-MSG]\033[0m %s: %s\n" \
 
 ### Comparison Table
 
-| Method | Latency | Setup | WaveMux Support | Best For |
+| Method | Latency | Setup | AgentMux Support | Best For |
 |--------|---------|-------|-----------------|----------|
 | tmux send-keys | <10ms | Simple | ❌ Not applicable | tmux users |
 | PTY Master | <1ms | Complex | ✅ Native | Low-level control |
@@ -263,7 +263,7 @@ Agent A (MCP Client)           Agent B (MCP Server)
     │                               │
 ```
 
-### Proposed MCP Tools for WaveMux
+### Proposed MCP Tools for AgentMux
 
 From `SPEC_AGENTMUX_INTEGRATION.md`:
 
@@ -292,7 +292,7 @@ waveterm_list_agents({
 
 | Protocol | Purpose | Use Case |
 |----------|---------|----------|
-| **MCP** | Agent ↔ Tools | Claude Code calling WaveMux tools |
+| **MCP** | Agent ↔ Tools | Claude Code calling AgentMux tools |
 | **A2A** | Agent ↔ Agent | Direct peer-to-peer messaging |
 
 **Recommendation:** Use MCP for tool invocation, extend for agent messaging via AgentMux.
@@ -326,7 +326,7 @@ AgentMux sends messages to an inbox. But agents need messages **injected into th
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      WaveMux Application                         │
+│                      AgentMux Application                         │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │ WebSocket   │  │ Terminal    │  │ PTY                     │  │
 │  │ Client      │──│ Router      │──│ Injector                │  │
@@ -392,15 +392,15 @@ Agent A                    AgentMux                   Agent X Terminal
 - Centralized routing logic
 
 **Cons:**
-- AgentMux needs WaveMux-specific code
+- AgentMux needs AgentMux-specific code
 - Tight coupling
 
-### Option B: WaveMux MCP Server (Most Flexible)
+### Option B: AgentMux MCP Server (Most Flexible)
 
-**Architecture:** WaveMux exposes MCP tools, AgentMux routes to them
+**Architecture:** AgentMux exposes MCP tools, AgentMux routes to them
 
 ```
-Agent A                    AgentMux                   WaveMux (MCP)
+Agent A                    AgentMux                   AgentMux (MCP)
    │                          │                            │
    │ ─send_to_terminal()───→  │                            │
    │                          │ ─MCP tool call────────────→│
@@ -409,37 +409,37 @@ Agent A                    AgentMux                   WaveMux (MCP)
 
 **Pros:**
 - Standard MCP protocol
-- WaveMux controls its own injection logic
+- AgentMux controls its own injection logic
 - Decoupled architecture
 
 **Cons:**
 - More moving parts
-- MCP server implementation needed in WaveMux
+- MCP server implementation needed in AgentMux
 
 ### Option C: Hybrid (Recommended)
 
-**Architecture:** AgentMux for routing, WaveMux for injection, both connected
+**Architecture:** AgentMux for routing, AgentMux for injection, both connected
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                  │
-│  Agent A ──MCP──→ AgentMux ──WebSocket──→ WaveMux ──PTY──→ Term │
+│  Agent A ──MCP──→ AgentMux ──WebSocket──→ AgentMux ──PTY──→ Term │
 │                                                                  │
-│  Agent X ──MCP──→ AgentMux ──WebSocket──→ WaveMux ──PTY──→ Term │
+│  Agent X ──MCP──→ AgentMux ──WebSocket──→ AgentMux ──PTY──→ Term │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Flow:**
 1. AgentA calls `agentmux.inject_terminal("agentx", "message")`
-2. AgentMux looks up AgentX's WaveMux connection
-3. AgentMux sends via WebSocket to WaveMux
-4. WaveMux injects into AgentX's terminal PTY
+2. AgentMux looks up AgentX's AgentMux connection
+3. AgentMux sends via WebSocket to AgentMux
+4. AgentMux injects into AgentX's terminal PTY
 
 **Pros:**
 - Clear separation of concerns
 - AgentMux handles identity/routing
-- WaveMux handles terminal I/O
+- AgentMux handles terminal I/O
 - Leverages existing AWS infrastructure
 
 ---
@@ -451,7 +451,7 @@ Agent A                    AgentMux                   WaveMux (MCP)
 | Layer | Mechanism |
 |-------|-----------|
 | AgentMux | Token-based auth (AGENTMUX_TOKEN) |
-| WaveMux WebSocket | Workspace-scoped tokens |
+| AgentMux WebSocket | Workspace-scoped tokens |
 | Terminal injection | Agent-to-pane mapping verification |
 
 ### Authorization
@@ -504,14 +504,14 @@ inject_terminal({
 ```
 
 **AgentMux server changes:**
-1. Maintain agent → WaveMux connection mapping
-2. On inject_terminal, lookup target's WaveMux WebSocket
+1. Maintain agent → AgentMux connection mapping
+2. On inject_terminal, lookup target's AgentMux WebSocket
 3. Send injection request via WebSocket
 4. Return delivery confirmation
 
-### Phase 2: WaveMux WebSocket Client
+### Phase 2: AgentMux WebSocket Client
 
-**Add to wavemuxsrv:**
+**Add to agentmuxsrv:**
 
 ```go
 // pkg/agentmux/client.go
@@ -529,10 +529,10 @@ func (c *AgentMuxClient) OnTerminalInjection(msg InjectionMessage) {
 
 ### Phase 3: Agent Registration
 
-**On WaveMux startup:**
+**On AgentMux startup:**
 1. Read WAVEMUX_AGENT_ID from environment
 2. Connect to AgentMux WebSocket
-3. Register: `{agentId, wavemuxInstanceId, paneIds}`
+3. Register: `{agentId, agentmuxInstanceId, paneIds}`
 4. Heartbeat every 30s
 
 **On terminal pane open:**
@@ -547,10 +547,10 @@ func (c *AgentMuxClient) OnTerminalInjection(msg InjectionMessage) {
 
 2. AgentMux server:
    - Validates AgentA's token
-   - Looks up AgentX's WaveMux connection
+   - Looks up AgentX's AgentMux connection
    - Sends: {type: "inject", to: "agentx", message: "PR ready"}
 
-3. WaveMux (AgentX's instance):
+3. AgentMux (AgentX's instance):
    - Receives WebSocket message
    - Finds AgentX's active terminal pane
    - Writes to PTY: "\033[36m[AGENT-MSG]\033[0m AgentA: PR ready\n"
@@ -632,7 +632,7 @@ mcp__agentmux__broadcast_message({
 
 ---
 
-## Appendix B: Existing WaveMux Specs
+## Appendix B: Existing AgentMux Specs
 
 | Spec | Purpose | Status |
 |------|---------|--------|

@@ -13,9 +13,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wstore"
-	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/wps"
 )
 
 // the wcore package coordinates actions across the storage layer

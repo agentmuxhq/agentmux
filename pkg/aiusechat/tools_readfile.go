@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
-	"github.com/a5af/wavemux/pkg/util/readutil"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/aiusechat/uctypes"
+	"github.com/a5af/agentmux/pkg/util/readutil"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wavebase"
 )
 
 const ReadFileDefaultLineCount = 100

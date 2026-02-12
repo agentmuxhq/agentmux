@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wavebase"
 )
 
 // WebhookConfigType defines the webhook integration configuration

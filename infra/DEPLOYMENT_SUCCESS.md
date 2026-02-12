@@ -1,4 +1,4 @@
-# WaveMux Webhook Infrastructure - Deployment Success
+# AgentMux Webhook Infrastructure - Deployment Success
 
 **Deployment Date:** October 29, 2025 at 10:03 AM EDT
 **Status:** ✅ Successfully Deployed
@@ -9,7 +9,7 @@
 
 ## Deployment Summary
 
-The WaveMux Webhook Infrastructure has been successfully deployed to AWS. All resources are operational and ready for use.
+The AgentMux Webhook Infrastructure has been successfully deployed to AWS. All resources are operational and ready for use.
 
 ### Key Milestones Completed
 
@@ -41,8 +41,8 @@ The WaveMux Webhook Infrastructure has been successfully deployed to AWS. All re
 
 ### 2. Lambda Function
 
-**Name:** wavemux-webhook-router-prod
-**ARN:** arn:aws:lambda:us-east-1:050544946291:function:wavemux-webhook-router-prod
+**Name:** agentmux-webhook-router-prod
+**ARN:** arn:aws:lambda:us-east-1:050544946291:function:agentmux-webhook-router-prod
 **Runtime:** Python 3.12
 **Memory:** 512 MB
 **Timeout:** 30 seconds
@@ -50,11 +50,11 @@ The WaveMux Webhook Infrastructure has been successfully deployed to AWS. All re
 
 ### 3. DynamoDB Tables
 
-**WebhookConfigTable:** WaveMuxWebhookConfig-prod
+**WebhookConfigTable:** AgentMuxWebhookConfig-prod
 - Status: ✅ Active
 - Indexes: ProviderEventIndex, WorkspaceIndex
 
-**ConnectionTable:** WaveMuxConnections-prod
+**ConnectionTable:** AgentMuxConnections-prod
 - Status: ✅ Active
 - TTL: Enabled (24 hours)
 - Index: WorkspaceIndex
@@ -62,7 +62,7 @@ The WaveMux Webhook Infrastructure has been successfully deployed to AWS. All re
 ### 4. Secrets Manager
 
 **Secret:** services/prod
-**Project:** wavemux
+**Project:** agentmux
 **Keys:**
 - ✅ GITHUB_WEBHOOK_SECRET
 - ✅ CUSTOM_WEBHOOK_SECRET
@@ -78,7 +78,7 @@ The WaveMux Webhook Infrastructure has been successfully deployed to AWS. All re
 ```json
 {
   "status": "healthy",
-  "service": "wavemux-webhook-router",
+  "service": "agentmux-webhook-router",
   "environment": "prod",
   "timestamp": 1761757477
 }
@@ -104,17 +104,17 @@ The WaveMux Webhook Infrastructure has been successfully deployed to AWS. All re
 
 ## Next Phase: Integration
 
-The infrastructure is now ready for Phase 2 integration with WaveMux backend (Go WebSocket client).
+The infrastructure is now ready for Phase 2 integration with AgentMux backend (Go WebSocket client).
 
 ### Pending Implementation
 
-1. **WaveMux Backend (Go)**
+1. **AgentMux Backend (Go)**
    - WebSocket client to connect to cloud endpoint
    - Terminal registration with persistent IDs
    - PTY command injection
    - Subscription management
 
-2. **WaveMux Frontend (React)**
+2. **AgentMux Frontend (React)**
    - Configuration modal for webhooks
    - Subscription list view
    - Terminal webhook assignments
@@ -126,7 +126,7 @@ The infrastructure is now ready for Phase 2 integration with WaveMux backend (Go
 
 ### Configuration Files Needed
 
-**~/.wavemux/webhook-config.json**
+**~/.agentmux/webhook-config.json**
 ```json
 {
   "version": "1.0",
@@ -154,12 +154,12 @@ The infrastructure is now ready for Phase 2 integration with WaveMux backend (Go
 ## Stack Outputs
 
 ```
-ConnectionTableName = WaveMuxConnections-prod
+ConnectionTableName = AgentMuxConnections-prod
 HttpApiEndpoint = https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com
 SecretName = services/prod
 WebSocketApiEndpoint = wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com/prod
-WebhookConfigTableName = WaveMuxWebhookConfig-prod
-WebhookRouterFunctionArn = arn:aws:lambda:us-east-1:050544946291:function:wavemux-webhook-router-prod
+WebhookConfigTableName = AgentMuxWebhookConfig-prod
+WebhookRouterFunctionArn = arn:aws:lambda:us-east-1:050544946291:function:agentmux-webhook-router-prod
 ```
 
 ---
@@ -184,11 +184,11 @@ WebhookRouterFunctionArn = arn:aws:lambda:us-east-1:050544946291:function:wavemu
 
 **CloudWatch Logs:**
 ```bash
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow --profile Agent2
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow --profile Agent2
 ```
 
 **Lambda Metrics:**
-- Console: https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/wavemux-webhook-router-prod
+- Console: https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/agentmux-webhook-router-prod
 - Invocations, errors, duration, throttles
 
 **DynamoDB Metrics:**
@@ -231,10 +231,10 @@ aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow --profile Agent2
 
 ## Ready for Production Use
 
-The WaveMux Webhook Infrastructure is now **production-ready** and can be used to:
+The AgentMux Webhook Infrastructure is now **production-ready** and can be used to:
 
 1. Receive webhooks from GitHub and other services
-2. Route events to subscribed WaveMux terminals
+2. Route events to subscribed AgentMux terminals
 3. Manage WebSocket connections for real-time delivery
 4. Authenticate workspaces securely
 5. Store and query webhook subscriptions

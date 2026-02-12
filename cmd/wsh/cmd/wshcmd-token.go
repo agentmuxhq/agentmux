@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/a5af/wavemux/pkg/util/shellutil"
+	"github.com/a5af/agentmux/pkg/util/shellutil"
 )
 
 var tokenCmd = &cobra.Command{

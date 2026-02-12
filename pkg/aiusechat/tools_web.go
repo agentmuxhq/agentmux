@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wcore"
-	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/aiusechat/uctypes"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wcore"
+	"github.com/a5af/agentmux/pkg/wstore"
 )
 
 type WebNavigateToolInput struct {

@@ -19,12 +19,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/a5af/wavemux/pkg/vdom"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/wps"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
-	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/agentmux/pkg/vdom"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshutil"
 )
 
 type AppOpts struct {

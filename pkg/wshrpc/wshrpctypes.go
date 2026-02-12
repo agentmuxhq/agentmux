@@ -12,14 +12,14 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
-	"github.com/a5af/wavemux/pkg/ijson"
-	"github.com/a5af/wavemux/pkg/telemetry/telemetrydata"
-	"github.com/a5af/wavemux/pkg/util/iochan/iochantypes"
-	"github.com/a5af/wavemux/pkg/vdom"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wconfig"
-	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/aiusechat/uctypes"
+	"github.com/a5af/agentmux/pkg/ijson"
+	"github.com/a5af/agentmux/pkg/telemetry/telemetrydata"
+	"github.com/a5af/agentmux/pkg/util/iochan/iochantypes"
+	"github.com/a5af/agentmux/pkg/vdom"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wconfig"
+	"github.com/a5af/agentmux/pkg/wps"
 )
 
 const (

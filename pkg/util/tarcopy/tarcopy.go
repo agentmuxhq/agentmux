@@ -15,10 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/util/iochan"
-	"github.com/a5af/wavemux/pkg/util/iochan/iochantypes"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/util/iochan"
+	"github.com/a5af/agentmux/pkg/util/iochan/iochantypes"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 const (

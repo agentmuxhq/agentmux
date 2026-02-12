@@ -17,9 +17,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/ijson"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/ijson"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 const (

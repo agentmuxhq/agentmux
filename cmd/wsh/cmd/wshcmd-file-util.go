@@ -11,12 +11,12 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/remote/connparse"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/fsutil"
-	"github.com/a5af/wavemux/pkg/util/fileutil"
-	"github.com/a5af/wavemux/pkg/util/wavefileutil"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/remote/connparse"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/fsutil"
+	"github.com/a5af/agentmux/pkg/util/fileutil"
+	"github.com/a5af/agentmux/pkg/util/wavefileutil"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
 )
 
 func convertNotFoundErr(err error) error {

@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/a5af/wavemux/pkg/ijson"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/ijson"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 func initDb(t *testing.T) {

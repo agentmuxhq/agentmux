@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
 )
 
 var ValidEventNames = map[string]bool{

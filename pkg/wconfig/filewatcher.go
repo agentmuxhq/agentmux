@@ -10,9 +10,9 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wps"
 )
 
 var instance *Watcher

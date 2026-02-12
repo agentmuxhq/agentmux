@@ -1,4 +1,4 @@
-# WaveMux Tauri Initialization Analysis
+# AgentMux Tauri Initialization Analysis
 
 **Date:** 2026-02-08
 **Author:** Claude (AgentA)
@@ -46,7 +46,7 @@ The Tauri port shows a **grey screen** on launch due to incomplete initializatio
 
 ### Key Files and Flow
 
-#### 1. Backend Initialization (`wavemuxsrv` startup)
+#### 1. Backend Initialization (`agentmuxsrv` startup)
 
 **File**: `cmd/server/main-server.go:448`
 
@@ -159,7 +159,7 @@ func CreateTab(ctx, workspaceId, tabName string, activateTab, pinned, isInitialL
 
 ```typescript
 async function appMain() {
-    // Launch wavemuxsrv backend
+    // Launch agentmuxsrv backend
     await runWaveSrv(handleWSEvent);
     await getWaveSrvReady();  // ← Wait for backend startup
 

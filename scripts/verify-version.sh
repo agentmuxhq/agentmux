@@ -56,61 +56,61 @@ else
     echo "  Expected files like: dist/bin/wsh-${EXPECTED_VERSION}-windows.x64.exe"
 fi
 
-# Check wavemuxsrv binary version (Phase 3: Binary Version Verification)
-info "Checking wavemuxsrv binary version..."
+# Check agentmuxsrv binary version (Phase 3: Binary Version Verification)
+info "Checking agentmuxsrv binary version..."
 BINARY_CHECKED=false
 
-if [[ -f "dist/bin/wavemuxsrv.x64.exe" ]]; then
-    BINARY_VERSION=$(strings dist/bin/wavemuxsrv.x64.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+if [[ -f "dist/bin/agentmuxsrv.x64.exe" ]]; then
+    BINARY_VERSION=$(strings dist/bin/agentmuxsrv.x64.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
     if [[ -n "$BINARY_VERSION" ]]; then
         if [[ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]]; then
-            error "wavemuxsrv.x64.exe version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
+            error "agentmuxsrv.x64.exe version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
             if [[ "$STRICT_MODE" == true ]]; then
                 ((ISSUES++))
             fi
         else
-            success "wavemuxsrv.x64.exe: $BINARY_VERSION"
+            success "agentmuxsrv.x64.exe: $BINARY_VERSION"
         fi
         BINARY_CHECKED=true
     fi
-elif [[ -f "dist/bin/wavemuxsrv.arm64" ]]; then
-    BINARY_VERSION=$(strings dist/bin/wavemuxsrv.arm64 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+elif [[ -f "dist/bin/agentmuxsrv.arm64" ]]; then
+    BINARY_VERSION=$(strings dist/bin/agentmuxsrv.arm64 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
     if [[ -n "$BINARY_VERSION" ]]; then
         if [[ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]]; then
-            error "wavemuxsrv.arm64 version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
+            error "agentmuxsrv.arm64 version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
             if [[ "$STRICT_MODE" == true ]]; then
                 ((ISSUES++))
             fi
         else
-            success "wavemuxsrv.arm64: $BINARY_VERSION"
+            success "agentmuxsrv.arm64: $BINARY_VERSION"
         fi
         BINARY_CHECKED=true
     fi
-elif [[ -f "dist/bin/wavemuxsrv.x64" ]]; then
-    BINARY_VERSION=$(strings dist/bin/wavemuxsrv.x64 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+elif [[ -f "dist/bin/agentmuxsrv.x64" ]]; then
+    BINARY_VERSION=$(strings dist/bin/agentmuxsrv.x64 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
     if [[ -n "$BINARY_VERSION" ]]; then
         if [[ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]]; then
-            error "wavemuxsrv.x64 version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
+            error "agentmuxsrv.x64 version mismatch: $BINARY_VERSION (expected: $EXPECTED_VERSION)"
             if [[ "$STRICT_MODE" == true ]]; then
                 ((ISSUES++))
             fi
         else
-            success "wavemuxsrv.x64: $BINARY_VERSION"
+            success "agentmuxsrv.x64: $BINARY_VERSION"
         fi
         BINARY_CHECKED=true
     fi
 fi
 
 if [[ "$BINARY_CHECKED" == false ]]; then
-    warn "No wavemuxsrv binary found in dist/bin/"
+    warn "No agentmuxsrv binary found in dist/bin/"
 fi
 
 # Check Tauri cached binaries (Phase 3: Prevent Stale Cache)
 info "Checking Tauri cached binaries..."
 CACHE_ISSUES=0
 
-if [[ -f "src-tauri/target/debug/wavemuxsrv.exe" ]]; then
-    CACHED_VERSION=$(strings src-tauri/target/debug/wavemuxsrv.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+if [[ -f "src-tauri/target/debug/agentmuxsrv.exe" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/debug/agentmuxsrv.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
     if [[ -n "$CACHED_VERSION" ]]; then
         if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
             error "Tauri debug cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"
@@ -123,8 +123,8 @@ if [[ -f "src-tauri/target/debug/wavemuxsrv.exe" ]]; then
             success "Tauri debug cache: $CACHED_VERSION"
         fi
     fi
-elif [[ -f "src-tauri/target/debug/wavemuxsrv" ]]; then
-    CACHED_VERSION=$(strings src-tauri/target/debug/wavemuxsrv 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+elif [[ -f "src-tauri/target/debug/agentmuxsrv" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/debug/agentmuxsrv 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
     if [[ -n "$CACHED_VERSION" ]]; then
         if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
             error "Tauri debug cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"
@@ -139,8 +139,8 @@ elif [[ -f "src-tauri/target/debug/wavemuxsrv" ]]; then
     fi
 fi
 
-if [[ -f "src-tauri/target/release/wavemuxsrv.exe" ]]; then
-    CACHED_VERSION=$(strings src-tauri/target/release/wavemuxsrv.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+if [[ -f "src-tauri/target/release/agentmuxsrv.exe" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/release/agentmuxsrv.exe 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
     if [[ -n "$CACHED_VERSION" ]]; then
         if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
             warn "Tauri release cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"
@@ -150,8 +150,8 @@ if [[ -f "src-tauri/target/release/wavemuxsrv.exe" ]]; then
             success "Tauri release cache: $CACHED_VERSION"
         fi
     fi
-elif [[ -f "src-tauri/target/release/wavemuxsrv" ]]; then
-    CACHED_VERSION=$(strings src-tauri/target/release/wavemuxsrv 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
+elif [[ -f "src-tauri/target/release/agentmuxsrv" ]]; then
+    CACHED_VERSION=$(strings src-tauri/target/release/agentmuxsrv 2>/dev/null | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3 || echo "")
     if [[ -n "$CACHED_VERSION" ]]; then
         if [[ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]]; then
             warn "Tauri release cache is stale! (v$CACHED_VERSION, expected v$EXPECTED_VERSION)"

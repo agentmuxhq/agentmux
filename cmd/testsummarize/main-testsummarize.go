@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/aiusechat/google"
+	"github.com/a5af/agentmux/pkg/aiusechat/google"
 )
 
 func printUsage() {

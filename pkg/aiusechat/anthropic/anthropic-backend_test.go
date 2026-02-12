@@ -6,7 +6,7 @@ package anthropic
 import (
 	"testing"
 
-	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
+	"github.com/a5af/agentmux/pkg/aiusechat/uctypes"
 )
 
 func TestConvertPartsToAnthropicBlocks_TextOnly(t *testing.T) {

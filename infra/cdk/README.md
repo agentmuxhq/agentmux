@@ -1,14 +1,14 @@
-# WaveMux Webhook Router Infrastructure
+# AgentMux Webhook Router Infrastructure
 
-CDK infrastructure for WaveMux reactive agent communication via webhook-based shell injection.
+CDK infrastructure for AgentMux reactive agent communication via webhook-based shell injection.
 
 ## Overview
 
-This infrastructure enables webhooks from external services (GitHub, CI/CD, etc.) to inject commands into specific WaveMux terminal panes in real-time.
+This infrastructure enables webhooks from external services (GitHub, CI/CD, etc.) to inject commands into specific AgentMux terminal panes in real-time.
 
 **Architecture:**
 - **HTTP API:** Receives webhooks from external services
-- **WebSocket API:** Real-time delivery to WaveMux client instances
+- **WebSocket API:** Real-time delivery to AgentMux client instances
 - **Lambda Function:** Routes webhooks to appropriate terminals
 - **DynamoDB:** Stores webhook configurations and active connections
 
@@ -55,7 +55,7 @@ After deployment, you'll receive:
   - Health check: `GET /health`
 
 - **WebSocketApiEndpoint:** `wss://{api-id}.execute-api.us-east-1.amazonaws.com/prod`
-  - WaveMux clients connect here
+  - AgentMux clients connect here
 
 - **WebhookSecretArn:** ARN for Secrets Manager secret
   - Store GitHub webhook secrets here
@@ -67,13 +67,13 @@ After deployment, you'll receive:
 ```bash
 # Update GitHub webhook secret
 aws secretsmanager put-secret-value \
-  --secret-id wavemux/webhook-secret-prod \
+  --secret-id agentmux/webhook-secret-prod \
   --secret-string '{"github":"your-github-webhook-secret","custom":"your-custom-secret","default":"shared-secret"}'
 ```
 
-### 2. Configure WaveMux Client
+### 2. Configure AgentMux Client
 
-Add to `~/.wavemux/webhook-config.json`:
+Add to `~/.agentmux/webhook-config.json`:
 
 ```json
 {
@@ -151,17 +151,17 @@ curl -X POST \
 View Lambda logs:
 
 ```bash
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow
 ```
 
 View DynamoDB tables:
 
 ```bash
 # View webhook configurations
-aws dynamodb scan --table-name WaveMuxWebhookConfig-prod
+aws dynamodb scan --table-name AgentMuxWebhookConfig-prod
 
 # View active connections
-aws dynamodb scan --table-name WaveMuxConnections-prod
+aws dynamodb scan --table-name AgentMuxConnections-prod
 ```
 
 ## Cost Estimation
@@ -188,7 +188,7 @@ aws dynamodb scan --table-name WaveMuxConnections-prod
 Check if connection is active:
 ```bash
 aws dynamodb query \
-  --table-name WaveMuxConnections-prod \
+  --table-name AgentMuxConnections-prod \
   --index-name WorkspaceIndex \
   --key-condition-expression "workspaceId = :wid" \
   --expression-attribute-values '{":wid":{"S":"agent2-workspace"}}'
@@ -205,7 +205,7 @@ aws dynamodb query \
 
 - [SPEC_REACTIVE_AGENT_COMMUNICATION.md](../../SPEC_REACTIVE_AGENT_COMMUNICATION.md) - Full specification
 - [Lambda Handler](../lambda/webhook-router/handler.py) - Python implementation
-- [CDK Stack](./lib/wavemux-webhook-stack.ts) - Infrastructure definition
+- [CDK Stack](./lib/agentmux-webhook-stack.ts) - Infrastructure definition
 
 ## Development
 

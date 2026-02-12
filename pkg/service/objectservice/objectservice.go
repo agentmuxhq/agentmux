@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/tsgen/tsgenmeta"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wcore"
-	"github.com/a5af/wavemux/pkg/wps"
-	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/tsgen/tsgenmeta"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wcore"
+	"github.com/a5af/agentmux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/wstore"
 )
 
 type ObjectService struct{}

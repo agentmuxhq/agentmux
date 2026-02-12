@@ -1,4 +1,4 @@
-# WaveMux Event Listener - Research Summary
+# AgentMux Event Listener - Research Summary
 
 ## Primary User Story
 
@@ -16,7 +16,7 @@
 │  3. GitHub Event: pull_request_review (action: changes_requested)           │
 │          │                                                                  │
 │          ▼                                                                  │
-│  4. Event routed to WaveMux via webhook infrastructure                      │
+│  4. Event routed to AgentMux via webhook infrastructure                      │
 │          │                                                                  │
 │          ▼                                                                  │
 │  5. Terminal injection → directs AgentX to address the PR comments          │
@@ -48,7 +48,7 @@ Multiple agents run simultaneously in different terminal panes. The system needs
 ### Proposed Mapping Table (DynamoDB)
 
 ```
-WaveMuxAgentRegistry
+AgentMuxAgentRegistry
 ├── agent_id (PK)     : "agent2"
 ├── pane_id           : "pane-abc123"
 ├── workspace_path    : "C:/Code/agent-workspaces/agent2"
@@ -70,7 +70,7 @@ Lambda extracts branch name → "agent2/fix-auth"
 Parse agent ID from branch prefix → "agent2"
        │
        ▼
-Lookup WaveMuxAgentRegistry → pane_id = "pane-abc123"
+Lookup AgentMuxAgentRegistry → pane_id = "pane-abc123"
        │
        ▼
 Route to correct WebSocket connection → inject into pane
@@ -87,9 +87,9 @@ Route to correct WebSocket connection → inject into pane
 
 ## Project Overview
 
-**WaveMux** (v0.12.19) - Terminal multiplexer forked from Wave Terminal
+**AgentMux** (v0.12.19) - Terminal multiplexer forked from Wave Terminal
 - **Location:** Runs on **gamerlove** (to avoid crashes during development on claudius)
-- **Tech:** Electron 38.1.2 + TypeScript/React frontend + Go backend (wavemuxsrv)
+- **Tech:** Electron 38.1.2 + TypeScript/React frontend + Go backend (agentmuxsrv)
 - **Current version:** 0.12.19
 
 ---
@@ -98,9 +98,9 @@ Route to correct WebSocket connection → inject into pane
 
 | Spec | Location | Description |
 |------|----------|-------------|
-| **SPEC_REACTIVE_AGENT_COMMUNICATION.md** | wavemux root (GitHub main) | **KEY SPEC** - 35KB comprehensive webhook shell injection spec |
-| **SPEC_AGENTMUX_INTEGRATION.md** | wavemux root | Agent communication hub with MCP server |
-| **wps-events.md** | wavemux/aiprompts/ | WPS (Wave PubSub) internal event system guide |
+| **SPEC_REACTIVE_AGENT_COMMUNICATION.md** | agentmux root (GitHub main) | **KEY SPEC** - 35KB comprehensive webhook shell injection spec |
+| **SPEC_AGENTMUX_INTEGRATION.md** | agentmux root | Agent communication hub with MCP server |
+| **wps-events.md** | agentmux/aiprompts/ | WPS (Wave PubSub) internal event system guide |
 | **Pulse webhooks.md** | pulse/docs/04-features/github-integration/ | GitHub webhook handler spec (1445 lines) |
 | **ReAgent ARCHITECTURE.md** | dev-tools/packages/reagent-worker/ | GitHub router Lambda architecture |
 
@@ -109,14 +109,14 @@ Route to correct WebSocket connection → inject into pane
 ## AWS Infrastructure (DEPLOYED)
 
 ### CloudFormation Stack
-- **Stack Name:** `wavemux-webhook-prod`
+- **Stack Name:** `agentmux-webhook-prod`
 - **Status:** CREATE_COMPLETE (deployed 2025-10-29)
 - **Region:** us-east-1
 
 ### Lambda
 | Resource | Value |
 |----------|-------|
-| Function | `wavemux-webhook-router-prod` |
+| Function | `agentmux-webhook-router-prod` |
 | Runtime | Python 3.12 |
 | Handler | `lambda_function.lambda_handler` |
 | Memory | 256 MB |
@@ -127,14 +127,14 @@ Route to correct WebSocket connection → inject into pane
 **HTTP API (Webhooks)**
 | Resource | Value |
 |----------|-------|
-| Name | `wavemux-webhook-http-prod` |
+| Name | `agentmux-webhook-http-prod` |
 | Endpoint | `https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com` |
 | Routes | `/webhook` (POST), `/health` (GET), `/admin/*` |
 
 **WebSocket API (Real-time)**
 | Resource | Value |
 |----------|-------|
-| Name | `wavemux-webhook-ws-prod` |
+| Name | `agentmux-webhook-ws-prod` |
 | Endpoint | `wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com` |
 | Routes | `$connect`, `$disconnect`, `$default`, `register`, `heartbeat` |
 
@@ -142,8 +142,8 @@ Route to correct WebSocket connection → inject into pane
 
 | Table | Purpose |
 |-------|---------|
-| `WaveMuxWebhookConfig-prod` | Webhook routing configuration |
-| `WaveMuxConnections-prod` | Active WebSocket connections |
+| `AgentMuxWebhookConfig-prod` | Webhook routing configuration |
+| `AgentMuxConnections-prod` | Active WebSocket connections |
 
 ---
 
@@ -159,7 +159,7 @@ External Sources (GitHub, CI/CD, etc.)
               ▼
     ┌─────────────────────────┐
     │   AWS Lambda Router     │
-    │  (WaveMuxWebhookRouter) │
+    │  (AgentMuxWebhookRouter) │
     └───────────┬─────────────┘
                 │
     ┌───────────┴───────────┐
@@ -172,7 +172,7 @@ HTTP API             WebSocket API
                 │
                 ▼
     ┌─────────────────────────┐
-    │     WaveMux Backend     │
+    │     AgentMux Backend     │
     │    (webhookinjector)    │
     └───────────┬─────────────┘
                 │
@@ -188,7 +188,7 @@ HTTP API             WebSocket API
    - Used for webhook routing
 
 2. **Webhook Configuration**
-   - Stored in DynamoDB (`WaveMuxWebhookConfig-prod`)
+   - Stored in DynamoDB (`AgentMuxWebhookConfig-prod`)
    - Maps external events to terminal panes
    - Supports filters, transformations
 
@@ -218,7 +218,7 @@ HTTP API             WebSocket API
 
 ## Existing GitHub Router (shared-infrastructure)
 
-Separate from WaveMux webhook system:
+Separate from AgentMux webhook system:
 
 - **Function:** `infrastructure-github-router-function`
 - **Endpoint:** `https://github-router.asaf.cc/webhook`
@@ -231,7 +231,7 @@ Separate from WaveMux webhook system:
 
 ## WPS (Wave PubSub) - Internal Events
 
-Internal event system for WaveMux components:
+Internal event system for AgentMux components:
 
 - **Broker pattern** for async internal communication
 - **Location:** `pkg/wps/` (Go)
@@ -251,7 +251,7 @@ Event_WaveAIRateLimit  = "waveai:ratelimit"
 
 ## infra/ Folder Contents (GitHub main)
 
-Located at `wavemux/infra/`:
+Located at `agentmux/infra/`:
 
 | File/Folder | Description |
 |-------------|-------------|
@@ -276,7 +276,7 @@ Located at `wavemux/infra/`:
 3. **Frontend UI** - Webhook configuration panel
 
 ### Backend Integration Points
-- WebSocket client in wavemuxsrv to connect to `wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com`
+- WebSocket client in agentmuxsrv to connect to `wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com`
 - Shell injection via existing pty infrastructure
 - WPS event publishing for UI updates
 
@@ -299,7 +299,7 @@ curl -X POST https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com/webhook \
 curl https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com/health
 
 # View Lambda logs
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow
 ```
 
 ---

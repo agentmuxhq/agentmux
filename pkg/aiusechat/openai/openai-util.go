@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
 )
 
 func debugPrintInput(idx int, input any) {

@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"github.com/invopop/jsonschema"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wconfig"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wconfig"
 )
 
 const WaveSchemaSettingsFileName = "schema/settings.json"

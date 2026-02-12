@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/blockcontroller"
-	"github.com/a5af/wavemux/pkg/filestore"
-	"github.com/a5af/wavemux/pkg/tsgen/tsgenmeta"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/blockcontroller"
+	"github.com/a5af/agentmux/pkg/filestore"
+	"github.com/a5af/agentmux/pkg/tsgen/tsgenmeta"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wstore"
 )
 
 type BlockService struct{}

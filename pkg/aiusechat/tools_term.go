@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
-	"github.com/a5af/wavemux/pkg/wcore"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
-	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/agentmux/pkg/aiusechat/uctypes"
+	"github.com/a5af/agentmux/pkg/wcore"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshutil"
 )
 
 type TermGetScrollbackToolInput struct {

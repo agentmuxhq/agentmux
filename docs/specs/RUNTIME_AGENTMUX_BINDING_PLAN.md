@@ -9,7 +9,7 @@
 
 ## Problem Statement
 
-Currently, `AGENTMUX_URL` and `AGENTMUX_TOKEN` must be set as environment variables **before** WaveMux starts. The poller reads these values once at initialization:
+Currently, `AGENTMUX_URL` and `AGENTMUX_TOKEN` must be set as environment variables **before** AgentMux starts. The poller reads these values once at initialization:
 
 ```go
 // pkg/reactive/poller.go:316-320
@@ -19,7 +19,7 @@ config := PollerConfig{
 }
 ```
 
-In production, restarting WaveMux to change these values is disruptive. We need runtime reconfiguration like `WAVEMUX_AGENT_ID` already has.
+In production, restarting AgentMux to change these values is disruptive. We need runtime reconfiguration like `WAVEMUX_AGENT_ID` already has.
 
 ---
 
@@ -324,7 +324,7 @@ func TestReconfigureGlobalPoller(t *testing.T) {
 
 ### Integration Tests
 
-1. **Start WaveMux without env vars**
+1. **Start AgentMux without env vars**
    - Verify poller not running
    - Run `wsh agentmux-config https://agentmux.asaf.cc token123`
    - Verify poller starts
@@ -363,10 +363,10 @@ func TestReconfigureGlobalPoller(t *testing.T) {
 
 ### Before (Current)
 ```bash
-# Must set before starting WaveMux
+# Must set before starting AgentMux
 export AGENTMUX_URL=https://agentmux.asaf.cc
 export AGENTMUX_TOKEN=secret
-wavemux
+agentmux
 ```
 
 ### After (New)
@@ -374,10 +374,10 @@ wavemux
 # Option 1: Still works with env vars
 export AGENTMUX_URL=https://agentmux.asaf.cc
 export AGENTMUX_TOKEN=secret
-wavemux
+agentmux
 
 # Option 2: Configure at runtime
-wavemux
+agentmux
 # In any terminal pane:
 wsh agentmux-config https://agentmux.asaf.cc secret
 
@@ -415,7 +415,7 @@ wsh agentmux-config https://agentmux.asaf.cc "$AGENTMUX_TOKEN"
 1. Should we support partial updates (URL only, token only)?
    - **Recommendation:** No, require both for simplicity
 
-2. Should config persist across WaveMux restarts?
+2. Should config persist across AgentMux restarts?
    - **Recommendation:** No, use env vars for persistence
 
 3. Should we add a status command (`wsh agentmux-status`)?

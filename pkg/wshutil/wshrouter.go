@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wps"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 const (

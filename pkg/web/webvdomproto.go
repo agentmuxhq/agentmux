@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshserver"
-	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshserver"
+	"github.com/a5af/agentmux/pkg/wshutil"
 )
 
 // Add the new handler function

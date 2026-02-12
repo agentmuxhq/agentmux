@@ -1,6 +1,6 @@
-# WaveMux Performance Benchmarking
+# AgentMux Performance Benchmarking
 
-Automated tools for measuring WaveMux performance metrics to validate the Tauri migration goals.
+Automated tools for measuring AgentMux performance metrics to validate the Tauri migration goals.
 
 ## Metrics Measured
 
@@ -46,7 +46,7 @@ task package
 .\scripts\benchmarks\measure-performance.ps1 -OutputJson
 
 # Specify custom app path
-.\scripts\benchmarks\measure-performance.ps1 -AppPath "path\to\WaveMux.exe"
+.\scripts\benchmarks\measure-performance.ps1 -AppPath "path\to\AgentMux.exe"
 ```
 
 ### macOS / Linux (Bash)
@@ -96,7 +96,7 @@ After Init:  48.3 MB
   Bundle Size Measurement
 ========================================
 
-WaveMux.exe:      8.2 MB
+AgentMux.exe:      8.2 MB
 Installer (.msi): 15.4 MB
 
 Electron Package: 142.3 MB
@@ -144,7 +144,7 @@ Executable Size:     8.2 MB
 - ❌ > 1000ms: Poor - investigate startup bottlenecks
 
 **Common bottlenecks:**
-- Backend (wavemuxsrv) spawn time
+- Backend (agentmuxsrv) spawn time
 - WebSocket connection establishment
 - Frontend bundle loading
 - Window state restoration
@@ -172,7 +172,7 @@ Executable Size:     8.2 MB
 - ❌ > 50MB: Poor - review included dependencies
 
 **Optimization tips:**
-- Strip debug symbols: `strip WaveMux.exe`
+- Strip debug symbols: `strip AgentMux.exe`
 - Use `--release` mode
 - Review Cargo.toml dependencies
 - Minimize frontend bundle with tree-shaking

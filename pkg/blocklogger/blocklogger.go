@@ -10,8 +10,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
 )
 
 // Buffer size for the output channel

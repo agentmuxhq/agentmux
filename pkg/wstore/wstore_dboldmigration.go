@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/waveobj"
 )
 
 const OldDBName = "~/.waveterm/waveterm.db"

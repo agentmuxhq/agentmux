@@ -15,8 +15,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/aiusechat"
-	"github.com/a5af/wavemux/pkg/aiusechat/openai"
+	"github.com/a5af/agentmux/pkg/aiusechat"
+	"github.com/a5af/agentmux/pkg/aiusechat/openai"
 )
 
 func makeOpenAIRequest(ctx context.Context, apiKey, model, message string, tools bool) error {

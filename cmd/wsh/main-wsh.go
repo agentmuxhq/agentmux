@@ -4,8 +4,8 @@
 package main
 
 import (
-	"github.com/a5af/wavemux/cmd/wsh/cmd"
-	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/agentmux/cmd/wsh/cmd"
+	"github.com/a5af/agentmux/pkg/wavebase"
 )
 
 // set by main-server.go

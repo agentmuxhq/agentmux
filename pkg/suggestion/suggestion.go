@@ -16,12 +16,12 @@ import (
 
 	"github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
-	"github.com/a5af/wavemux/pkg/faviconcache"
-	"github.com/a5af/wavemux/pkg/util/fileutil"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/wconfig"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/faviconcache"
+	"github.com/a5af/agentmux/pkg/util/fileutil"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wconfig"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 const MaxSuggestions = 50

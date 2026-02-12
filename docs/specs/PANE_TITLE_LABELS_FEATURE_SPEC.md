@@ -907,7 +907,7 @@ This pane labeling feature is a **prerequisite** for the reactive agent communic
 │  AGENT PANE IDENTIFICATION FLOW                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  1. Agent2 spawns in a WaveMux terminal pane                                │
+│  1. Agent2 spawns in a AgentMux terminal pane                                │
 │          │                                                                  │
 │          ▼                                                                  │
 │  2. Pane title auto-detects agent identity:                                 │
@@ -916,7 +916,7 @@ This pane labeling feature is a **prerequisite** for the reactive agent communic
 │     - From branch: git branch → agent2/feature-x                            │
 │          │                                                                  │
 │          ▼                                                                  │
-│  3. Pane title displays: "🤖 Agent2 | wavemux/agent2/fix-auth"              │
+│  3. Pane title displays: "🤖 Agent2 | agentmux/agent2/fix-auth"              │
 │          │                                                                  │
 │          ▼                                                                  │
 │  4. Registration sent to AWS: {agent_id, pane_id, branches}                 │
@@ -1049,7 +1049,7 @@ Claude Code automatically updates the terminal window title using OSC (Operating
 
 **Current behavior:** These updates go to the OS window title (PowerShell/iTerm2/etc.)
 
-**Opportunity:** WaveMux can intercept these and display them in the pane title bar.
+**Opportunity:** AgentMux can intercept these and display them in the pane title bar.
 
 ### Proposed Integration
 

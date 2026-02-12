@@ -4,7 +4,7 @@
 package wcloud
 
 import (
-	"github.com/a5af/wavemux/pkg/telemetry"
+	"github.com/a5af/agentmux/pkg/telemetry"
 )
 
 type NoTelemetryInputType struct {

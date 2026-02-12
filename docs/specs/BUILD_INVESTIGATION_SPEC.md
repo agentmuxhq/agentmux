@@ -24,7 +24,7 @@ Investigation into WaveTerm packaging failures revealed a **critical pre-existin
 ### Timeline of Events
 
 #### Initial Problem (Oct 9, 2025)
-- User reported WaveTerm crashes: "wavemuxsrv.x64.exe ENOENT"
+- User reported WaveTerm crashes: "agentmuxsrv.x64.exe ENOENT"
 - Investigation showed application was launched from stale `make/win-unpacked/` directory
 - **Pattern**: This mistake occurred "at least 4 times" according to user
 - **Symptom**: Agents repeatedly launching from packaged builds instead of dev server
@@ -66,7 +66,7 @@ function verifyRequiredArtifacts() {
     const version = pkg.version;
     const requiredFiles = [
         "dist/main/index.js",
-        "dist/bin/wavemuxsrv.x64.exe",
+        "dist/bin/agentmuxsrv.x64.exe",
         `dist/bin/wsh-${version}-windows.x64.exe`, // Versioned wsh binary
     ];
 
@@ -86,7 +86,7 @@ ${missingFiles.map((f) => `  - ${f}`).join("\n")}
 
 Before packaging, you must:
 1. Build the frontend: npm run build:prod
-2. Build the Go binaries: task build (or go build the wavemuxsrv/wsh binaries)
+2. Build the Go binaries: task build (or go build the agentmuxsrv/wsh binaries)
 
 The package cannot be created without these critical files.
 `;
@@ -158,11 +158,11 @@ files: [
 **How it works**:
 - `version.cjs` reads from `package.json` (source of truth: 0.12.2)
 - Taskfile uses `VERSION: sh: node version.cjs` variable
-- wavemuxsrv built as: `wavemuxsrv.{arch}.exe` (e.g., `wavemuxsrv.x64.exe`)
+- agentmuxsrv built as: `agentmuxsrv.{arch}.exe` (e.g., `agentmuxsrv.x64.exe`)
 - wsh built as: `wsh-{VERSION}-{GOOS}.{GOARCH}.exe` (e.g., `wsh-0.12.2-windows.x64.exe`)
 
 **Runtime Resolution**:
-- emain/platform.ts:224: `const wavemuxsrvBinName = `wavemuxsrv.${unameArch}``
+- emain/platform.ts:224: `const agentmuxsrvBinName = `agentmuxsrv.${unameArch}``
 - pkg/util/shellutil/shellutil.go:222: `baseName := fmt.Sprintf("wsh-%s-%s.%s%s", version, goos, goarch, ext)`
 
 **Critical**: The verification function now correctly checks for `wsh-${version}-windows.x64.exe` instead of hardcoded `wsh.exe`.
@@ -182,7 +182,7 @@ files: [
 2. **Backend** (manually built):
    ```bash
    $ ls -lh D:/Code/waveterm/dist/bin/
-   -rwxr-xr-x 1 asafe 197609  66M Oct 18 21:38 wavemuxsrv.x64.exe
+   -rwxr-xr-x 1 asafe 197609  66M Oct 18 21:38 agentmuxsrv.x64.exe
    -rwxr-xr-x 1 asafe 197609  11M Oct 18 21:39 wsh-0.12.2-windows.x64.exe
    ```
 
@@ -368,7 +368,7 @@ The verification function modifies behavior before config is fully processed.
 3. **[ ] Verify dev workflow**
    - Ensure `task dev` works with new binaries
    - Confirm hot reload functions correctly
-   - Test wavemuxsrv spawning with updated verification
+   - Test agentmuxsrv spawning with updated verification
 
 ### Medium Priority (Quality Improvements)
 
@@ -379,8 +379,8 @@ The verification function modifies behavior before config is fully processed.
    - Consider if old version docs should remain for historical reference
 
 5. **[ ] Binary naming consistency**
-   - Document why wsh is versioned but wavemuxsrv is not
-   - Consider versioning wavemuxsrv for consistency
+   - Document why wsh is versioned but agentmuxsrv is not
+   - Consider versioning agentmuxsrv for consistency
    - Update verification function if naming changes
 
 6. **[ ] Build validation enhancements**
@@ -665,7 +665,7 @@ Wave.exe (or Wave-portable.zip containing:)
 │   └── app.asar.unpacked/            # Unpacked binaries
 │       └── dist/
 │           ├── bin/
-│           │   ├── wavemuxsrv.x64.exe  # ← CRITICAL BINARY
+│           │   ├── agentmuxsrv.x64.exe  # ← CRITICAL BINARY
 │           │   └── wsh-0.12.2-windows.x64.exe
 │           └── docsite/
 └── (other Electron framework files)
@@ -705,7 +705,7 @@ npm run dev
 # Build backend binaries
 task build:backend
 # OR manually:
-go build -o dist/bin/wavemuxsrv.x64.exe cmd/server/main-server.go
+go build -o dist/bin/agentmuxsrv.x64.exe cmd/server/main-server.go
 go build -o dist/bin/wsh-0.12.2-windows.x64.exe cmd/wsh/main-wsh.go
 
 # Build frontend
@@ -733,7 +733,7 @@ npx electron-builder -p never
 ```bash
 # Check if artifacts exist
 ls -la dist/main/index.js
-ls -la dist/bin/wavemuxsrv.x64.exe
+ls -la dist/bin/agentmuxsrv.x64.exe
 ls -la dist/bin/wsh-0.12.2-windows.x64.exe
 
 # Inspect asar contents (DEBUGGING)

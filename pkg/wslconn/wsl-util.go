@@ -16,12 +16,12 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/blocklogger"
-	"github.com/a5af/wavemux/pkg/genconn"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/util/shellutil"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/wsl"
+	"github.com/a5af/agentmux/pkg/blocklogger"
+	"github.com/a5af/agentmux/pkg/genconn"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/util/shellutil"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wsl"
 )
 
 func hasBashInstalled(ctx context.Context, client *wsl.Distro) (bool, error) {

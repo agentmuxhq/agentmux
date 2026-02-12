@@ -82,9 +82,9 @@ jobs:
             export GOARCH=${{ matrix.arch }}
           fi
 
-          # Build wavemuxsrv with version injection
-          echo "Building wavemuxsrv v$VERSION for $GOOS/$GOARCH"
-          go build -o dist/bin/wavemuxsrv-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
+          # Build agentmuxsrv with version injection
+          echo "Building agentmuxsrv v$VERSION for $GOOS/$GOARCH"
+          go build -o dist/bin/agentmuxsrv-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
             -ldflags "-s -w -X main.WaveVersion=$VERSION -X main.BuildTime=$BUILD_TIME" \
             ./cmd/server/main-server.go
 
@@ -108,7 +108,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p src-tauri/binaries
-          cp dist/bin/wavemuxsrv-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
+          cp dist/bin/agentmuxsrv-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
              src-tauri/binaries/
           cp dist/bin/wsh-${{ matrix.target }}${{ matrix.platform == 'windows' && '.exe' || '' }} \
              src-tauri/binaries/

@@ -105,9 +105,9 @@ export const sendMessageTool = {
 };
 ```
 
-#### 4. WaveMux Poller (Optional)
+#### 4. AgentMux Poller (Optional)
 
-For defense in depth, normalize in WaveMux too:
+For defense in depth, normalize in AgentMux too:
 
 **File:** `pkg/reactive/poller.go`
 
@@ -170,7 +170,7 @@ curl /messages/AGENTG
 - [ ] Update `get_pending` handler
 - [ ] Update `ack_delivery` handler
 - [ ] Update MCP tool handlers
-- [ ] Update WaveMux poller (defense in depth)
+- [ ] Update AgentMux poller (defense in depth)
 - [ ] Add tests for case variations
 - [ ] Deploy and verify
 

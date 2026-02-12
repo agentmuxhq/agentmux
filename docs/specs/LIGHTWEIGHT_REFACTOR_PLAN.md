@@ -1,8 +1,8 @@
-# WaveMux Lightweight Refactor Plan
+# AgentMux Lightweight Refactor Plan
 
 ## Overview
 
-This document outlines features that can be removed or simplified to create a lighter WaveMux build optimized for agent workflows.
+This document outlines features that can be removed or simplified to create a lighter AgentMux build optimized for agent workflows.
 
 ---
 

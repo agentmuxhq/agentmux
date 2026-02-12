@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
 )
 
 // special I/O wrappers for wshrpc

@@ -1,10 +1,10 @@
 # AgentMux Configuration Demonstration Plan
 
-This document provides a step-by-step demonstration plan for testing the WaveMux 0.16.7 agentmux auto-configuration and runtime reconfiguration features.
+This document provides a step-by-step demonstration plan for testing the AgentMux 0.16.7 agentmux auto-configuration and runtime reconfiguration features.
 
 ## Prerequisites
 
-- WaveMux 0.16.7 installed
+- AgentMux 0.16.7 installed
 - Access to AgentMux server (https://agentmux.asaf.cc)
 - Valid token: `<YOUR_AGENTMUX_TOKEN>`
 
@@ -14,7 +14,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
 
 ### Test 1.1: Fresh Start with Config File
 
-1. **Close WaveMux completely**
+1. **Close AgentMux completely**
 
 2. **Create config file** at `~/.waveterm/agentmux.json`:
    ```json
@@ -27,7 +27,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
    On Windows: `%USERPROFILE%\.waveterm\agentmux.json`
    On Linux/Mac: `~/.waveterm/agentmux.json`
 
-3. **Start WaveMux**
+3. **Start AgentMux**
 
 4. **Verify poller started** - Check logs for:
    ```
@@ -40,7 +40,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
 ### Test 1.2: No Config File
 
 1. **Delete or rename** `~/.waveterm/agentmux.json`
-2. **Start WaveMux**
+2. **Start AgentMux**
 3. **Verify poller NOT started** - Check logs for:
    ```
    [reactive/poller] cross-host polling disabled (no AGENTMUX_URL)
@@ -52,9 +52,9 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
 
 ### Test 2.1: Configure at Runtime
 
-1. **Start WaveMux** (without config file or env vars)
+1. **Start AgentMux** (without config file or env vars)
 
-2. **Open terminal** in WaveMux
+2. **Open terminal** in AgentMux
 
 3. **Run configuration command**:
    ```bash
@@ -130,7 +130,7 @@ This document provides a step-by-step demonstration plan for testing the WaveMux
 ### Test 3.2: Configuration Persistence
 
 1. **Configure poller** via `wsh agentmux config`
-2. **Restart WaveMux**
+2. **Restart AgentMux**
 3. **Verify poller auto-starts** with saved configuration (no manual config needed)
 
 ---

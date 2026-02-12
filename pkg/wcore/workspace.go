@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/a5af/wavemux/pkg/eventbus"
-	"github.com/a5af/wavemux/pkg/telemetry"
-	"github.com/a5af/wavemux/pkg/telemetry/telemetrydata"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wconfig"
-	"github.com/a5af/wavemux/pkg/wps"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/eventbus"
+	"github.com/a5af/agentmux/pkg/telemetry"
+	"github.com/a5af/agentmux/pkg/telemetry/telemetrydata"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wconfig"
+	"github.com/a5af/agentmux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wstore"
 )
 
 var WorkspaceColors = [...]string{

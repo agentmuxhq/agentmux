@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/wsl"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/wsl"
 	"golang.org/x/crypto/ssh"
 )
 

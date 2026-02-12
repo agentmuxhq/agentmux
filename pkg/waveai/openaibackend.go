@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	openaiapi "github.com/sashabaranov/go-openai"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 type OpenAIBackend struct{}

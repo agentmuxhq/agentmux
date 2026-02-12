@@ -93,7 +93,7 @@ The `fullConfigAtom` loads settings asynchronously. If settings still have `WAVE
 I cleared `node_modules/electron/dist/wave-data/db/` which is the **development** database used by `task dev`.
 
 But the portable build uses a **different data directory**:
-- Windows: `%APPDATA%/WaveMux/` or wherever the portable is extracted
+- Windows: `%APPDATA%/AgentMux/` or wherever the portable is extracted
 
 ## Verification Steps Needed
 
@@ -104,7 +104,7 @@ But the portable build uses a **different data directory**:
 
 2. **Find production data directory:**
    ```
-   Check where portable WaveMux stores its data
+   Check where portable AgentMux stores its data
    ```
 
 3. **Check production settings.json:**
@@ -164,7 +164,7 @@ This requires changes to:
 
 ```
 <extracted_zip>/
-├── WaveMux.exe
+├── AgentMux.exe
 ├── wave-data/           <-- ALL DATA HERE
 │   ├── config/
 │   │   └── settings.json   <-- May have WAVEMUX_AGENT_ID
@@ -191,7 +191,7 @@ I've been clearing:
 - `~/.config/waveterm/settings.json` (legacy location)
 
 But the **portable build** uses:
-- `<extracted_folder>/wave-data/` (next to WaveMux.exe)
+- `<extracted_folder>/wave-data/` (next to AgentMux.exe)
 
 The portable's data has:
 1. `settings.json` with `WAVEMUX_AGENT_ID=AgentA`
@@ -244,15 +244,15 @@ Launched 0.15.10 with deleted `wave-data/`:
 1. **Did user test fresh instance?** - If testing old extracted folder with cached `wave-data/`, AgentA would persist
 2. **What exactly shows twice?** - Need screenshot or more specific description:
    - Is it `viewName` ("Terminal"/"AgentA") showing twice?
-   - Is it the path ("wavemux") showing twice?
+   - Is it the path ("agentmux") showing twice?
    - Is it TitleBar + header both showing same thing?
 
 ### Test Instruction for User
 
 To verify fix, please:
-1. Extract a **fresh** copy of `WaveMux-win32-x64-0.15.10.zip`
+1. Extract a **fresh** copy of `AgentMux-win32-x64-0.15.10.zip`
 2. Delete `wave-data/` folder if it exists in the extracted location
-3. Launch WaveMux.exe
+3. Launch AgentMux.exe
 4. Observe the terminal pane header - should show "Terminal" in black
 
 If still shows "AgentA", check:

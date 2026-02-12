@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-The WaveMux Go backend (`wavemuxsrv`, ~48K LOC across 39 packages) currently runs as a sidecar process. This spec defines the phased port of that backend into Rust, directly inside `src-tauri/src/backend/`. The goal is a **single binary** — no sidecar, no Go runtime, no IPC bridge overhead.
+The AgentMux Go backend (`agentmuxsrv`, ~48K LOC across 39 packages) currently runs as a sidecar process. This spec defines the phased port of that backend into Rust, directly inside `src-tauri/src/backend/`. The goal is a **single binary** — no sidecar, no Go runtime, no IPC bridge overhead.
 
 **Why:** Single binary distribution, ~5x less memory, no GC pauses, shared types with Tauri, one language stack.
 
@@ -315,7 +315,7 @@ Port `pkg/vdom/`:
 - VDom element types and rendering
 - React-like hooks system
 - HTML component serialization
-- Only needed if WaveMux uses custom Wave Apps (Go SDK widgets)
+- Only needed if AgentMux uses custom Wave Apps (Go SDK widgets)
 
 ### 7.3 Suggestion Engine (`backend/suggestion.rs`, ~400 lines)
 
@@ -500,7 +500,7 @@ Each phase includes in-memory tests with zero external dependencies:
 
 ## Conflict Avoidance with AgentA
 
-AgentA owns the Tauri shell (Phases 0-12 of `specs/wavemux-tauri-migration.md`):
+AgentA owns the Tauri shell (Phases 0-12 of `specs/agentmux-tauri-migration.md`):
 - `src-tauri/src/lib.rs`, `commands/`, `state.rs`, `sidecar.rs`, `menu.rs`, `tray.rs`
 
 Agent3 owns the backend module:

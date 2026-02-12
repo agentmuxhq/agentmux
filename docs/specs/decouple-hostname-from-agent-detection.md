@@ -131,7 +131,7 @@ if (!agentId) {
 
 ## Test Plan
 
-1. Fresh WaveMux launch → should show "Terminal" with black border
+1. Fresh AgentMux launch → should show "Terminal" with black border
 2. Launch Claude via claw → should show agent name with color
 3. Exit Claude → should revert to "Terminal" (requires OSC sequence on exit)
 4. SSH to agent machine → should detect from hostname (if preserved)

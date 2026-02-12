@@ -1,16 +1,16 @@
-# WaveMux Tauri v2 Migration - Status & Progress
+# AgentMux Tauri v2 Migration - Status & Progress
 
 **Version:** 0.18.2
 **Last Updated:** 2026-02-08 (Post-Sprint 2)
 **Original Spec:** Agent3 (2026-02-07)
 **Current Lead:** AgentA
-**Original Spec Location:** `claudius:C:\Users\asafe\.claw\workspaces\agent3\wavemux-tauri\specs\wavemux-tauri-migration.md`
+**Original Spec Location:** `claudius:C:\Users\asafe\.claw\workspaces\agent3\agentmux-tauri\specs\agentmux-tauri-migration.md`
 
 ---
 
 ## Executive Summary
 
-WaveMux is migrating from Electron to Tauri v2 to achieve significant performance and size improvements:
+AgentMux is migrating from Electron to Tauri v2 to achieve significant performance and size improvements:
 - **Installer size:** 120-150MB → 10-15MB (10x reduction)
 - **Idle memory:** 150-300MB → 30-50MB (5x reduction)
 - **Startup time:** 1-2s → <0.5s (3x faster)
@@ -83,7 +83,7 @@ Agent3's original spec defined 12 phases (0-11). During implementation, the phas
 - [x] Backend state management
 
 **Technical Achievement:**
-Go backend (`wavemuxsrv`) successfully spawns as Tauri sidecar with zero changes to Go code. Frontend connects via WebSocket exactly as before.
+Go backend (`agentmuxsrv`) successfully spawns as Tauri sidecar with zero changes to Go code. Frontend connects via WebSocket exactly as before.
 
 **Key Code:**
 ```rust
@@ -351,7 +351,7 @@ task package:tauri    # Release packaging
 
 **Status:** Not Implemented
 **Original Spec:** Agent3 Phase 11
-**Reason:** Currently disabled in WaveMux fork. Will implement when needed.
+**Reason:** Currently disabled in AgentMux fork. Will implement when needed.
 
 **Planned Implementation:**
 - tauri-plugin-updater
@@ -389,7 +389,7 @@ task package:tauri    # Release packaging
            │ child_process.spawn()
            ▼
 ┌────────────────────────────────────┐
-│    Go Backend (wavemuxsrv)        │ 25MB
+│    Go Backend (agentmuxsrv)        │ 25MB
 │  - WebSocket server                │
 │  - SQLite database                 │
 │  - Terminal PTY                    │
@@ -415,7 +415,7 @@ task package:tauri    # Release packaging
            │ Tauri sidecar
            ▼
 ┌────────────────────────────────────┐
-│    Go Backend (wavemuxsrv)        │ 25MB
+│    Go Backend (agentmuxsrv)        │ 25MB
 │  - UNCHANGED                       │
 └──────────┬─────────────────────────┘
            │ WebSocket/HTTP (same)
@@ -434,7 +434,7 @@ task package:tauri    # Release packaging
 
 From Agent3's original spec:
 
-- [x] WaveMux launches and displays React frontend via Tauri
+- [x] AgentMux launches and displays React frontend via Tauri
 - [x] Go backend spawns as sidecar, frontend connects via WebSocket
 - [x] Terminal (xterm.js) works on Windows, macOS, Linux
 - [x] Tab creation, switching, closing works (frontend-managed)
@@ -465,7 +465,7 @@ From Agent3's original risk assessment:
 | Cross-platform rendering | Medium/High | ⚠️ Testing needed | Needs validation on all platforms |
 | Go sidecar startup race | Medium/Low | ✅ Resolved | Retry logic + health check working |
 | Auth header injection | Medium/Low | ✅ Resolved | Frontend injection works |
-| `<webview>` tag removal | High/Certain | N/A | Not used in WaveMux |
+| `<webview>` tag removal | High/Certain | N/A | Not used in AgentMux |
 | Linux WebKitGTK version | Medium/Medium | ⚠️ Untested | Needs Linux testing |
 | Screen API gaps | Low/Medium | ⚠️ Partial | Cursor position implemented, multi-monitor untested |
 
@@ -641,9 +641,9 @@ Agile approach beats linear execution.
 ## References
 
 ### Documentation
-- [Agent3's Original Spec](claudius:C:\Users\asafe\.claw\workspaces\agent3\wavemux-tauri\specs\wavemux-tauri-migration.md) (1,186 lines)
+- [Agent3's Original Spec](claudius:C:\Users\asafe\.claw\workspaces\agent3\agentmux-tauri\specs\agentmux-tauri-migration.md) (1,186 lines)
 - [Tauri Initialization Analysis](./TAURI_INITIALIZATION_ANALYSIS.md) (738 lines)
-- [WaveMux Build Guide](../BUILD.md)
+- [AgentMux Build Guide](../BUILD.md)
 
 ### External Resources
 - [Tauri v2 Documentation](https://v2.tauri.app/)
@@ -651,8 +651,8 @@ Agile approach beats linear execution.
 - [xterm.js WebGL2 Tauri Issues](https://github.com/tauri-apps/tauri/issues/2866)
 
 ### GitHub
-- [WaveMux Repository](https://github.com/a5af/wavemux)
-- [Tauri Migration PRs](https://github.com/a5af/wavemux/pulls?q=is%3Apr+tauri)
+- [AgentMux Repository](https://github.com/a5af/agentmux)
+- [Tauri Migration PRs](https://github.com/a5af/agentmux/pulls?q=is%3Apr+tauri)
 
 ---
 

@@ -18,10 +18,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/a5af/wavemux/pkg/util/colprint"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/util/colprint"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
 	"golang.org/x/term"
 )
 

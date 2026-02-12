@@ -3,10 +3,10 @@ package wavefileutil
 import (
 	"fmt"
 
-	"github.com/a5af/wavemux/pkg/filestore"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/fsutil"
-	"github.com/a5af/wavemux/pkg/util/fileutil"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/filestore"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/fsutil"
+	"github.com/a5af/agentmux/pkg/util/fileutil"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 const (

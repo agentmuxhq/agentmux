@@ -1,4 +1,4 @@
-# WaveMux Webhook Infrastructure - Deployment Outputs
+# AgentMux Webhook Infrastructure - Deployment Outputs
 
 Deployed: October 29, 2025 at 10:03 AM EDT
 
@@ -6,7 +6,7 @@ Deployed: October 29, 2025 at 10:03 AM EDT
 
 ## Stack Information
 
-- **Stack Name:** wavemux-webhook-prod
+- **Stack Name:** agentmux-webhook-prod
 - **Region:** us-east-1
 - **Account:** 050544946291
 - **Status:** CREATE_COMPLETE
@@ -43,7 +43,7 @@ wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com/prod?workspaceId=<workspace
 ## DynamoDB Tables
 
 ### Webhook Configuration Table
-- **Name:** `WaveMuxWebhookConfig-prod`
+- **Name:** `AgentMuxWebhookConfig-prod`
 - **Purpose:** Store webhook subscriptions and routing rules
 - **Primary Key:** `subscriptionId` (String)
 - **GSIs:**
@@ -51,7 +51,7 @@ wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com/prod?workspaceId=<workspace
   - `WorkspaceIndex` - Query by workspaceId
 
 ### Connection Table
-- **Name:** `WaveMuxConnections-prod`
+- **Name:** `AgentMuxConnections-prod`
 - **Purpose:** Track active WebSocket connections
 - **Primary Key:** `connectionId` (String)
 - **TTL:** 24 hours (automatic cleanup)
@@ -61,19 +61,19 @@ wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com/prod?workspaceId=<workspace
 
 ## Lambda Function
 
-- **ARN:** `arn:aws:lambda:us-east-1:050544946291:function:wavemux-webhook-router-prod`
-- **Name:** `wavemux-webhook-router-prod`
+- **ARN:** `arn:aws:lambda:us-east-1:050544946291:function:agentmux-webhook-router-prod`
+- **Name:** `agentmux-webhook-router-prod`
 - **Runtime:** Python 3.12
 - **Memory:** 512 MB
 - **Timeout:** 30 seconds
-- **Log Group:** `/aws/lambda/wavemux-webhook-router-prod`
+- **Log Group:** `/aws/lambda/agentmux-webhook-router-prod`
 
 ---
 
 ## Secrets
 
 - **Name:** `services/prod`
-- **Project Key:** `wavemux`
+- **Project Key:** `agentmux`
 - **Secrets:**
   - `GITHUB_WEBHOOK_SECRET`: 4c9409e245302f804fcab3a849186cde1612a1277a8f130d2e468f25a24197a1
   - `CUSTOM_WEBHOOK_SECRET`: 84b35097110e1e40363d806b82d55ba1f4b384886f76c362510f53dbd84dd0ff
@@ -105,7 +105,7 @@ Expected response:
 ```json
 {
   "status": "healthy",
-  "service": "wavemux-webhook-router",
+  "service": "agentmux-webhook-router",
   "environment": "prod",
   "timestamp": "2025-10-29T14:03:00Z"
 }
@@ -113,7 +113,7 @@ Expected response:
 
 ### 3. Generate Workspace Auth Token
 
-For WaveMux client authentication:
+For AgentMux client authentication:
 
 ```bash
 # Get the default auth secret
@@ -126,9 +126,9 @@ AUTH_TOKEN=$(echo -n "$WORKSPACE_ID" | openssl dgst -sha256 -hmac "$DEFAULT_SECR
 echo "Auth Token for $WORKSPACE_ID: $AUTH_TOKEN"
 ```
 
-### 4. Update WaveMux Configuration
+### 4. Update AgentMux Configuration
 
-Create or update `~/.wavemux/webhook-config.json`:
+Create or update `~/.agentmux/webhook-config.json`:
 
 ```json
 {
@@ -167,17 +167,17 @@ curl -X POST https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com/register \
 
 ```bash
 # View Lambda logs
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow --profile Agent2
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow --profile Agent2
 ```
 
 ### DynamoDB Console
 
-- [WebhookConfigTable](https://console.aws.amazon.com/dynamodbv2/home?region=us-east-1#table?name=WaveMuxWebhookConfig-prod)
-- [ConnectionTable](https://console.aws.amazon.com/dynamodbv2/home?region=us-east-1#table?name=WaveMuxConnections-prod)
+- [WebhookConfigTable](https://console.aws.amazon.com/dynamodbv2/home?region=us-east-1#table?name=AgentMuxWebhookConfig-prod)
+- [ConnectionTable](https://console.aws.amazon.com/dynamodbv2/home?region=us-east-1#table?name=AgentMuxConnections-prod)
 
 ### Lambda Console
 
-- [WebhookRouterFunction](https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/wavemux-webhook-router-prod)
+- [WebhookRouterFunction](https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/agentmux-webhook-router-prod)
 
 ---
 
@@ -202,12 +202,12 @@ Based on expected usage (100 webhooks/day, 5 active terminals):
 
 Export names for cross-stack references:
 
-- `wavemux-webhook-prod-WebhookConfigTable`: WaveMuxWebhookConfig-prod
-- `wavemux-webhook-prod-ConnectionTable`: WaveMuxConnections-prod
-- `wavemux-webhook-prod-WebhookRouterArn`: arn:aws:lambda:us-east-1:050544946291:function:wavemux-webhook-router-prod
-- `wavemux-webhook-prod-HttpApiEndpoint`: https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com
-- `wavemux-webhook-prod-WebSocketApiEndpoint`: wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com/prod
-- `wavemux-webhook-prod-SecretName`: services/prod
+- `agentmux-webhook-prod-WebhookConfigTable`: AgentMuxWebhookConfig-prod
+- `agentmux-webhook-prod-ConnectionTable`: AgentMuxConnections-prod
+- `agentmux-webhook-prod-WebhookRouterArn`: arn:aws:lambda:us-east-1:050544946291:function:agentmux-webhook-router-prod
+- `agentmux-webhook-prod-HttpApiEndpoint`: https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com
+- `agentmux-webhook-prod-WebSocketApiEndpoint`: wss://oft9nfu83k.execute-api.us-east-1.amazonaws.com/prod
+- `agentmux-webhook-prod-SecretName`: services/prod
 
 ---
 
@@ -216,7 +216,7 @@ Export names for cross-stack references:
 To delete the entire stack:
 
 ```bash
-cd /d/Code/agent-workspaces/agent2/wavemux/infra/cdk
+cd /d/Code/agent-workspaces/agent2/agentmux/infra/cdk
 cdk destroy --profile Agent2
 ```
 

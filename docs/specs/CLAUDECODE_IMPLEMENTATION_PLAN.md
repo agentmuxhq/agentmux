@@ -10,14 +10,14 @@
 
 ## Overview
 
-Implement a native Claude Code pane in WaveMux using `--output-format stream-json` to parse Claude Code's structured output and render it in a **terminal-native UI** - not a chat app. The pane should feel like a terminal with enhanced rendering: monospace font, dark background, sequential full-width content blocks, but with the benefit of proper markdown rendering, collapsible tool sections, and inline diffs.
+Implement a native Claude Code pane in AgentMux using `--output-format stream-json` to parse Claude Code's structured output and render it in a **terminal-native UI** - not a chat app. The pane should feel like a terminal with enhanced rendering: monospace font, dark background, sequential full-width content blocks, but with the benefit of proper markdown rendering, collapsible tool sections, and inline diffs.
 
 ---
 
 ## Phase 1: Skeleton Setup (Day 1)
 
 ### Goal
-Create the basic pane infrastructure and verify it appears in WaveMux.
+Create the basic pane infrastructure and verify it appears in AgentMux.
 
 ### Files to Create
 ```
@@ -998,7 +998,7 @@ The default view is the enhanced terminal log. Toggle `[term]` in the status bar
 ## Phase 8: Styling & Polish (Day 12-14)
 
 ### Goal
-Make it look professional and match WaveMux's theme.
+Make it look professional and match AgentMux's theme.
 
 ### Implementation Steps
 
@@ -1327,7 +1327,7 @@ Add smooth transitions:
 Ensure the pane works at different sizes (small, medium, large).
 
 ### Validation
-- [ ] Matches WaveMux visual style
+- [ ] Matches AgentMux visual style
 - [ ] Works in light and dark themes
 - [ ] Animations are smooth
 - [ ] No visual glitches or layout breaks
@@ -1479,7 +1479,7 @@ describe("ClaudeCodeViewModel", () => {
 - [ ] Input area works (Enter to send, multiline support)
 - [ ] Interrupt and reset functions work
 - [ ] Terminal toggle works for debugging
-- [ ] Styling matches WaveMux theme
+- [ ] Styling matches AgentMux theme
 - [ ] No crashes or critical bugs
 - [ ] Performance is acceptable (no lag)
 

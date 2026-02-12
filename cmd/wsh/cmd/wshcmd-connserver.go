@@ -17,15 +17,15 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/wshfs"
-	"github.com/a5af/wavemux/pkg/util/packetparser"
-	"github.com/a5af/wavemux/pkg/util/sigutil"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshremote"
-	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/wshfs"
+	"github.com/a5af/agentmux/pkg/util/packetparser"
+	"github.com/a5af/agentmux/pkg/util/sigutil"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshremote"
+	"github.com/a5af/agentmux/pkg/wshutil"
 )
 
 var serverCmd = &cobra.Command{

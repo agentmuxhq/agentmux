@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="./assets/wave-logo_icon-solid.svg" alt="WaveMux Logo" width="120">
+  <img src="./assets/wave-logo_icon-solid.svg" alt="AgentMux Logo" width="120">
 </p>
 
-# WaveMux
+# AgentMux
 
 **AI-Native Terminal Multiplexer** - Fork of Wave Terminal
 
@@ -18,7 +18,7 @@ npm install --legacy-peer-deps
 .\scripts\build-release.ps1 -Clean
 ```
 
-Output: `make\win-unpacked\WaveMux.exe`
+Output: `make\win-unpacked\AgentMux.exe`
 
 ## Build Commands
 
@@ -51,8 +51,8 @@ The build script automatically verifies:
 ## Architecture
 
 ```
-WaveMux.exe (Electron)
-    └── wavemuxsrv.x64.exe (Go backend - spawned automatically)
+AgentMux.exe (Electron)
+    └── agentmuxsrv.x64.exe (Go backend - spawned automatically)
         └── wsh (shell integration - deployed to remotes)
 ```
 
@@ -74,7 +74,7 @@ npm test
 
 ```powershell
 $Version = (Get-Content package.json | ConvertFrom-Json).version
-xcopy /E /Y /I make\win-unpacked "C:\Users\asafe\Desktop\WaveMux-$Version\"
+xcopy /E /Y /I make\win-unpacked "C:\Users\asafe\Desktop\AgentMux-$Version\"
 ```
 
 ## Prerequisites

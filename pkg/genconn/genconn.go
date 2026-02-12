@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/a5af/wavemux/pkg/util/shellutil"
-	"github.com/a5af/wavemux/pkg/util/syncbuf"
+	"github.com/a5af/agentmux/pkg/util/shellutil"
+	"github.com/a5af/agentmux/pkg/util/syncbuf"
 )
 
 type connContextKeyType struct{}

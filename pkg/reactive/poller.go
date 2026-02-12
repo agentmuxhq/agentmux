@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/wavebase"
 )
 
 // PendingInjection represents an injection waiting for delivery from AgentMux.

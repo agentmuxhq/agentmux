@@ -1,10 +1,10 @@
-# @a5af/sandbox - WaveMux Development Tools
+# @a5af/sandbox - AgentMux Development Tools
 
-WaveMux development sandbox setup and management tools.
+AgentMux development sandbox setup and management tools.
 
 ## Overview
 
-This package provides automation scripts to configure a remote Windows machine as an isolated WaveMux development environment. This allows you to develop and test WaveMux without risking crashes on your main workstation.
+This package provides automation scripts to configure a remote Windows machine as an isolated AgentMux development environment. This allows you to develop and test AgentMux without risking crashes on your main workstation.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ This package provides automation scripts to configure a remote Windows machine a
 ┌─────────────────────────────────────────────────────────────┐
 │                    MAIN WORKSTATION                          │
 │                                                              │
-│  WaveMux (--instance=main)  ←──→  Parsec Client             │
+│  AgentMux (--instance=main)  ←──→  Parsec Client             │
 │  Production agent interaction        Low-latency remote      │
 └──────────────────────────────────────│───────────────────────┘
                                        │
@@ -22,7 +22,7 @@ This package provides automation scripts to configure a remote Windows machine a
 ┌─────────────────────────────────────────────────────────────┐
 │                    SANDBOX HOST                              │
 │                                                              │
-│  WaveMux (--instance=dev)   ←──→  Parsec Host               │
+│  AgentMux (--instance=dev)   ←──→  Parsec Host               │
 │  Development & testing              Always-connected VDA     │
 │                                                              │
 │  Tools: Node.js, Go, Zig, Task, Git, VS Code                │
@@ -43,8 +43,8 @@ setup-sandbox-host -SkipParsec
 # Skip dev tools if already installed
 setup-sandbox-host -SkipDevTools
 
-# Clone specific WaveMux branch
-setup-sandbox-host -WaveMuxBranch agentx/feature
+# Clone specific AgentMux branch
+setup-sandbox-host -AgentMuxBranch agentx/feature
 ```
 
 ### Health Check
@@ -75,25 +75,25 @@ sandbox-health -OutputFormat json  # For automation
 | Parsec | Low-latency remote desktop (4-8ms) |
 | Parsec VDA | Virtual display for headless operation |
 
-### WaveMux
+### AgentMux
 
-- Cloned to `D:\Code\sandbox\wavemux`
+- Cloned to `D:\Code\sandbox\agentmux`
 - Configured with `--instance=dev` for isolation
-- Data stored in `~/.wavemux-dev/` (separate from production)
+- Data stored in `~/.agentmux-dev/` (separate from production)
 
 ## Daily Workflow
 
 ```powershell
 # 1. Connect to sandbox via Parsec from main workstation
 
-# 2. Navigate to WaveMux
-cd D:\Code\sandbox\wavemux
+# 2. Navigate to AgentMux
+cd D:\Code\sandbox\agentmux
 
 # 3. Start development server
 task dev
 
-# 4. Launch WaveMux with dev instance
-wavemux --instance=dev
+# 4. Launch AgentMux with dev instance
+agentmux --instance=dev
 
 # 5. Make changes, test, repeat
 # Frontend changes hot-reload automatically
@@ -111,7 +111,7 @@ Main entry point for sandbox setup. Wrapper that finds and executes the implemen
 - `-SkipDevTools` - Skip development tools installation
 - `-Force` - Reinstall even if already present
 - `-Verbose` - Enable detailed output
-- `-WaveMuxBranch <branch>` - Clone specific branch (default: main)
+- `-AgentMuxBranch <branch>` - Clone specific branch (default: main)
 
 ### bin/sandbox-health.ps1
 
@@ -135,14 +135,14 @@ Parsec host configuration template for headless operation:
 }
 ```
 
-### config/wavemux-instance.json
+### config/agentmux-instance.json
 
-WaveMux instance configuration:
+AgentMux instance configuration:
 
 ```json
 {
   "instance": "dev",
-  "dataDir": "~/.wavemux-dev"
+  "dataDir": "~/.agentmux-dev"
 }
 ```
 
@@ -171,12 +171,12 @@ Enable virtual display in Parsec settings:
 1. Settings → Host → "Fallback To Virtual Display" → ON
 2. Or use HDMI dummy plug
 
-### WaveMux crashes on startup
+### AgentMux crashes on startup
 
 Check if correct instance is being used:
 ```powershell
 # Should use --instance=dev
-wavemux --instance=dev
+agentmux --instance=dev
 ```
 
 ### Build errors
@@ -195,7 +195,7 @@ sandbox-health -Verbose
 
 ## Development
 
-**Location:** `wavemux/tools/sandbox`
+**Location:** `agentmux/tools/sandbox`
 
 **Structure:**
 ```
@@ -207,11 +207,11 @@ sandbox/
 │   ├── setup-sandbox-impl.ps1  # Main orchestrator
 │   ├── install-dev-tools.ps1   # Tool installer
 │   ├── install-parsec.ps1      # Parsec setup
-│   ├── clone-wavemux.ps1       # WaveMux setup
+│   ├── clone-agentmux.ps1       # AgentMux setup
 │   └── sandbox-health-impl.ps1 # Health checks
 ├── config/
 │   ├── parsec-config.json      # Parsec template
-│   └── wavemux-instance.json   # Instance config
+│   └── agentmux-instance.json   # Instance config
 ├── tests/
 │   └── Sandbox.Tests.ps1       # Pester tests
 ├── package.json

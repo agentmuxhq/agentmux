@@ -239,7 +239,7 @@ Tauri may add webview component support in future.
 ### Architecture
 
 ```
-Main Window (WaveMux UI)
+Main Window (AgentMux UI)
 ├── TabBar
 ├── Blocks
 │   ├── Terminal Block
@@ -761,7 +761,7 @@ C. **Use WebView2 API directly** (Windows only)
 - [Tauri v2 WebviewWindow Docs](https://beta.tauri.app/references/v2/js/webviewwindow/)
 - [Tauri Window Management](https://beta.tauri.app/guides/window-management/)
 - [Electron WebView Migration Guide](https://www.electronjs.org/docs/latest/api/webview-tag)
-- Original WaveMux webview implementation: `frontend/app/view/webview/webview.tsx`
+- Original AgentMux webview implementation: `frontend/app/view/webview/webview.tsx`
 
 ## Approvals
 

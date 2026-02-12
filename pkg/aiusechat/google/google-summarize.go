@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
 	"google.golang.org/api/option"
 )
 

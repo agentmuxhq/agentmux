@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 func GenerateBoilerplate(buf *strings.Builder, pkgName string, imports []string) {

@@ -1,4 +1,4 @@
-# WaveMux Tauri v2 Migration — Implementation Plan
+# AgentMux Tauri v2 Migration — Implementation Plan
 
 > **Status:** SPEC
 > **Date:** 2026-02-07
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-WaveMux is a three-tier desktop application: Electron main process (TypeScript) → Go backend server (`wavemuxsrv`) → React frontend. The Tauri migration replaces only the Electron layer with Rust, while the Go backend and React frontend remain largely intact.
+AgentMux is a three-tier desktop application: Electron main process (TypeScript) → Go backend server (`agentmuxsrv`) → React frontend. The Tauri migration replaces only the Electron layer with Rust, while the Go backend and React frontend remain largely intact.
 
 **Key benefits:**
 - Installer size: ~120-150MB → ~10-15MB (10x reduction)
@@ -38,7 +38,7 @@ WaveMux is a three-tier desktop application: Electron main process (TypeScript) 
 │  emain/platform.ts       — Path resolution, platform │
 │  emain/updater.ts        — Auto-updater (disabled)   │
 │  emain/authkey.ts        — Auth key + header inject  │
-│  emain/emain-wavemuxsrv.ts — Go backend spawning     │
+│  emain/emain-agentmuxsrv.ts — Go backend spawning     │
 │  emain/emain-wsh.ts      — WSH RPC client            │
 │  + 10 more files (crash, log, heartbeat, utils)      │
 └──────────────────┬───────────────────────────────────┘
@@ -46,7 +46,7 @@ WaveMux is a three-tier desktop application: Electron main process (TypeScript) 
                    │ stdio (WAVESRV-ESTART/WAVESRV-EVENT)
                    ▼
 ┌──────────────────────────────────────────────────────┐
-│              Go Backend (wavemuxsrv)                  │
+│              Go Backend (agentmuxsrv)                  │
 │  cmd/server/     — Main server entry                  │
 │  pkg/web/        — HTTP + WebSocket server            │
 │  pkg/wshrpc/     — RPC type definitions               │
@@ -101,7 +101,7 @@ WaveMux is a three-tier desktop application: Electron main process (TypeScript) 
                    │ stdio (WAVESRV-ESTART/WAVESRV-EVENT)
                    ▼
 ┌──────────────────────────────────────────────────────┐
-│          Go Backend (wavemuxsrv) — UNCHANGED          │
+│          Go Backend (agentmuxsrv) — UNCHANGED          │
 │  (Identical to current — zero changes needed)         │
 └──────────────────┬───────────────────────────────────┘
                    │ WebSocket + HTTP (localhost)
@@ -119,10 +119,10 @@ WaveMux is a three-tier desktop application: Electron main process (TypeScript) 
 
 ## Phase 0: Project Scaffolding
 
-### 0.1 Initialize Tauri in WaveMux repo
+### 0.1 Initialize Tauri in AgentMux repo
 
 ```bash
-# From wavemux root
+# From agentmux root
 cargo install create-tauri-app
 npm install @tauri-apps/cli @tauri-apps/api
 npx tauri init
@@ -139,9 +139,9 @@ This creates `src-tauri/` with:
 
 ```json
 {
-  "productName": "WaveMux",
+  "productName": "AgentMux",
   "version": "0.1.0",
-  "identifier": "com.a5af.wavemux",
+  "identifier": "com.a5af.agentmux",
   "build": {
     "devUrl": "http://localhost:8190",
     "frontendDist": "../frontend/dist"
@@ -149,7 +149,7 @@ This creates `src-tauri/` with:
   "app": {
     "windows": [
       {
-        "title": "WaveMux",
+        "title": "AgentMux",
         "width": 1200,
         "height": 800,
         "minWidth": 400,
@@ -165,7 +165,7 @@ This creates `src-tauri/` with:
   "bundle": {
     "active": true,
     "targets": ["nsis", "dmg", "deb", "appimage"],
-    "externalBin": ["binaries/wavemuxsrv", "binaries/wsh"],
+    "externalBin": ["binaries/agentmuxsrv", "binaries/wsh"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -207,10 +207,10 @@ tracing-appender = "0.2"
 
 ```
 src-tauri/binaries/
-├── wavemuxsrv-x86_64-unknown-linux-gnu
-├── wavemuxsrv-x86_64-pc-windows-msvc.exe
-├── wavemuxsrv-aarch64-apple-darwin
-├── wavemuxsrv-x86_64-apple-darwin
+├── agentmuxsrv-x86_64-unknown-linux-gnu
+├── agentmuxsrv-x86_64-pc-windows-msvc.exe
+├── agentmuxsrv-aarch64-apple-darwin
+├── agentmuxsrv-x86_64-apple-darwin
 ├── wsh-x86_64-unknown-linux-gnu
 ├── wsh-x86_64-pc-windows-msvc.exe
 ├── wsh-aarch64-apple-darwin
@@ -225,7 +225,7 @@ Tauri requires binary names to include the target triple suffix. The existing `T
 // src-tauri/capabilities/default.json
 {
   "identifier": "default",
-  "description": "Default capabilities for WaveMux",
+  "description": "Default capabilities for AgentMux",
   "windows": ["*"],
   "permissions": [
     "core:default",
@@ -233,7 +233,7 @@ Tauri requires binary names to include the target triple suffix. The existing `T
     {
       "identifier": "shell:allow-spawn",
       "allow": [
-        { "name": "binaries/wavemuxsrv", "sidecar": true },
+        { "name": "binaries/agentmuxsrv", "sidecar": true },
         { "name": "binaries/wsh", "sidecar": true }
       ]
     },
@@ -253,13 +253,13 @@ Tauri requires binary names to include the target triple suffix. The existing `T
 
 ---
 
-## Phase 1: Go Backend Sidecar (Replace `emain/emain-wavemuxsrv.ts`)
+## Phase 1: Go Backend Sidecar (Replace `emain/emain-agentmuxsrv.ts`)
 
 The Go backend is **completely independent** of Electron — it communicates via HTTP/WebSocket/Unix sockets. This is the easiest and highest-value phase.
 
 ### 1.1 Implement `src-tauri/src/sidecar.rs`
 
-Port the logic from `emain/emain-wavemuxsrv.ts` (~5KB):
+Port the logic from `emain/emain-agentmuxsrv.ts` (~5KB):
 
 ```rust
 use tauri::Manager;
@@ -275,7 +275,7 @@ pub struct BackendState {
 pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendState, String> {
     let shell = app.shell();
     let (mut rx, child) = shell
-        .sidecar("binaries/wavemuxsrv")
+        .sidecar("binaries/agentmuxsrv")
         .map_err(|e| format!("Failed to find sidecar: {}", e))?
         .args(&["--wavedata", &data_dir(app)])
         .spawn()
@@ -346,7 +346,7 @@ fn main() {
 ### 1.3 Graceful shutdown
 
 ```rust
-// On app close, send SIGTERM to wavemuxsrv
+// On app close, send SIGTERM to agentmuxsrv
 app.on_window_event(|window, event| {
     if let tauri::WindowEvent::CloseRequested { .. } = event {
         if let Some(state) = window.app_handle().try_state::<BackendState>() {
@@ -358,7 +358,7 @@ app.on_window_event(|window, event| {
 });
 ```
 
-**Deliverable:** WaveMux launches with Go backend as Tauri sidecar, frontend connects via WebSocket.
+**Deliverable:** AgentMux launches with Go backend as Tauri sidecar, frontend connects via WebSocket.
 
 ---
 
@@ -582,7 +582,7 @@ Tauri Window (single webview)
     └── Tab state managed in React/Zustand store
 ```
 
-**Key insight:** WaveMux's tabs already render their content via WebSocket data from the Go backend. The frontend receives block data (terminal output, file content, AI responses) through the existing `wos` (Wave Object Store) system. The current per-tab `WebContentsView` is largely unnecessary — the React frontend already has all the state it needs to render any tab.
+**Key insight:** AgentMux's tabs already render their content via WebSocket data from the Go backend. The frontend receives block data (terminal output, file content, AI responses) through the existing `wos` (Wave Object Store) system. The current per-tab `WebContentsView` is largely unnecessary — the React frontend already has all the state it needs to render any tab.
 
 ### 3.3 Implementation strategy
 
@@ -647,7 +647,7 @@ use tauri::{WebviewWindowBuilder, WebviewUrl, Manager};
 async fn open_new_window(app: tauri::AppHandle) -> Result<(), String> {
     let label = format!("window-{}", uuid::Uuid::new_v4());
     WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()))
-        .title("WaveMux")
+        .title("AgentMux")
         .inner_size(1200.0, 800.0)
         .min_inner_size(400.0, 300.0)
         .decorations(false)  // Custom titlebar
@@ -660,7 +660,7 @@ async fn open_new_window(app: tauri::AppHandle) -> Result<(), String> {
 
 ### 4.2 Custom titlebar
 
-Since `decorations: false`, the frontend renders its own titlebar (WaveMux already does this). Tauri provides `data-tauri-drag-region` attribute for drag areas:
+Since `decorations: false`, the frontend renders its own titlebar (AgentMux already does this). Tauri provides `data-tauri-drag-region` attribute for drag areas:
 
 ```html
 <div data-tauri-drag-region class="titlebar">
@@ -913,11 +913,11 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 use tracing_appender::rolling;
 
 pub fn init_logging(log_dir: &std::path::Path) {
-    let file_appender = rolling::daily(log_dir, "wavemux.log");
+    let file_appender = rolling::daily(log_dir, "agentmux.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env().add_directive("wavemux=info".parse().unwrap()))
+        .with(EnvFilter::from_default_env().add_directive("agentmux=info".parse().unwrap()))
         .with(fmt::layer().with_writer(non_blocking))
         .with(fmt::layer().with_writer(std::io::stderr))
         .init();
@@ -947,7 +947,7 @@ pub fn init_crash_handler() {
 use tokio::time::{interval, Duration};
 
 pub async fn heartbeat_loop(data_dir: std::path::PathBuf) {
-    let heartbeat_file = data_dir.join("wavemux.heartbeat");
+    let heartbeat_file = data_dir.join("agentmux.heartbeat");
     let mut ticker = interval(Duration::from_secs(5));
     loop {
         ticker.tick().await;
@@ -975,7 +975,7 @@ tasks:
   tauri:build:
     desc: Build Tauri application for current platform
     cmds:
-      - task: go:build         # Build wavemuxsrv + wsh
+      - task: go:build         # Build agentmuxsrv + wsh
       - task: frontend:build   # Build React frontend
       - task: tauri:copy-sidecars
       - npx tauri build
@@ -985,7 +985,7 @@ tasks:
     cmds:
       - |
         TRIPLE=$(rustc -vV | grep host | awk '{print $2}')
-        cp build/wavemuxsrv src-tauri/binaries/wavemuxsrv-$TRIPLE
+        cp build/agentmuxsrv src-tauri/binaries/agentmuxsrv-$TRIPLE
         cp build/wsh src-tauri/binaries/wsh-$TRIPLE
 
   tauri:dev:
@@ -1029,7 +1029,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: "WaveMux v__VERSION__"
+          releaseName: "AgentMux v__VERSION__"
           releaseBody: "See the assets for download links."
 ```
 
@@ -1041,7 +1041,7 @@ jobs:
 | macOS (.dmg) | ~140 MB | ~12-18 MB |
 | Linux (.AppImage) | ~130 MB | ~15-20 MB |
 
-Note: The Go sidecar binaries (`wavemuxsrv` ~25MB + `wsh` ~5MB) are the dominant size contributor in Tauri builds. The Tauri shell itself adds only ~2-5MB.
+Note: The Go sidecar binaries (`agentmuxsrv` ~25MB + `wsh` ~5MB) are the dominant size contributor in Tauri builds. The Tauri shell itself adds only ~2-5MB.
 
 **Deliverable:** Cross-platform builds via Taskfile + GitHub Actions.
 
@@ -1049,7 +1049,7 @@ Note: The Go sidecar binaries (`wavemuxsrv` ~25MB + `wsh` ~5MB) are the dominant
 
 ## Phase 11: Auto-Updater (Replace `emain/updater.ts`)
 
-Currently disabled in the WaveMux fork. When enabled:
+Currently disabled in the AgentMux fork. When enabled:
 
 ```json
 // tauri.conf.json
@@ -1057,7 +1057,7 @@ Currently disabled in the WaveMux fork. When enabled:
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://releases.a5af.com/wavemux/{{target}}/{{arch}}/{{current_version}}"
+        "https://releases.a5af.com/agentmux/{{target}}/{{arch}}/{{current_version}}"
       ],
       "pubkey": "YOUR_PUBLIC_KEY_HERE"
     }
@@ -1148,7 +1148,7 @@ Phase 11: Auto-updater ─────── (last, currently off) ──┘
 
 ## Acceptance Criteria
 
-- [ ] WaveMux launches and displays the React frontend via Tauri
+- [ ] AgentMux launches and displays the React frontend via Tauri
 - [ ] Go backend spawns as sidecar and frontend connects via WebSocket
 - [ ] Terminal (xterm.js) works on Windows, macOS, and Linux
 - [ ] Tab creation, switching, and closing works (frontend-managed)

@@ -1,4 +1,4 @@
-# WaveMux Cross-Host Messaging: Poller vs WebSocket Analysis
+# AgentMux Cross-Host Messaging: Poller vs WebSocket Analysis
 
 **Date:** 2026-01-16
 **Author:** AgentA
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This report analyzes the current HTTP polling approach vs WebSocket for cross-host reactive messaging in WaveMux. The key finding: **WaveMux already has a sophisticated WebSocket infrastructure** that could be leveraged, but the complexity of extending it to AgentMux cloud relay makes polling the pragmatic choice for v1.
+This report analyzes the current HTTP polling approach vs WebSocket for cross-host reactive messaging in AgentMux. The key finding: **AgentMux already has a sophisticated WebSocket infrastructure** that could be leveraged, but the complexity of extending it to AgentMux cloud relay makes polling the pragmatic choice for v1.
 
 ---
 
@@ -16,11 +16,11 @@ This report analyzes the current HTTP polling approach vs WebSocket for cross-ho
 
 ### Current Architecture
 
-The poller runs **inside wavemuxsrv** (the Go backend process), not as a separate OS process.
+The poller runs **inside agentmuxsrv** (the Go backend process), not as a separate OS process.
 
 ```
-WaveMux.exe (Electron)
-    └── spawns wavemuxsrv (Go backend)
+AgentMux.exe (Electron)
+    └── spawns agentmuxsrv (Go backend)
             └── runs Poller goroutine
                     └── HTTP polls AgentMux every 5s
 ```
@@ -28,11 +28,11 @@ WaveMux.exe (Electron)
 **Code Location:** `pkg/reactive/poller.go`
 
 **Lifecycle:**
-1. `wavemuxsrv` starts during WaveMux launch
+1. `agentmuxsrv` starts during AgentMux launch
 2. `StartGlobalPoller()` called during server initialization
 3. Poller runs as a background goroutine with `go p.pollLoop()`
 4. Polls every 5 seconds using `time.Ticker`
-5. Stops gracefully when WaveMux closes
+5. Stops gracefully when AgentMux closes
 
 **Pros of this approach:**
 - No separate process to manage
@@ -129,7 +129,7 @@ func routeInjection(injection) {
 }
 ```
 
-**3. WaveMux Poller → WebSocket Client**
+**3. AgentMux Poller → WebSocket Client**
 ```go
 // Replace poller.go with wsclient.go
 func (c *WSClient) Connect() error {
@@ -168,7 +168,7 @@ func (c *WSClient) reconnectLoop() {
 |-----------|--------|-------|
 | AgentMux WebSocket server | 1 day | Need always-on infrastructure |
 | Connection management | 0.5 day | Map of agent → connection |
-| WaveMux WebSocket client | 0.5 day | Replace poller with WS client |
+| AgentMux WebSocket client | 0.5 day | Replace poller with WS client |
 | Reconnection/resilience | 0.5 day | Backoff, heartbeat, error handling |
 | Testing | 0.5 day | Multi-agent, disconnect scenarios |
 | **Total** | **2-3 days** | |
@@ -184,15 +184,15 @@ func (c *WSClient) reconnectLoop() {
 
 ---
 
-## Question 4: Existing WebSocket Infrastructure in WaveMux
+## Question 4: Existing WebSocket Infrastructure in AgentMux
 
-### Yes! WaveMux has extensive WebSocket support.
+### Yes! AgentMux has extensive WebSocket support.
 
 **Architecture:**
 ```
 Electron Frontend (TypeScript)
          ↓ WebSocket (/ws endpoint)
-Go Backend (wavemuxsrv)
+Go Backend (agentmuxsrv)
          ↓ RPC Router
 Command Handlers + Event Broker
 ```
@@ -244,9 +244,9 @@ wshrouter.RegisterRoute("agentmux", agentmuxWSConn)
 ```
 
 However, this would require:
-- AgentMux to speak the WaveMux RPC protocol
+- AgentMux to speak the AgentMux RPC protocol
 - Managing a separate outbound WebSocket connection
-- Coordinating auth differently (bearer token vs WaveMux auth)
+- Coordinating auth differently (bearer token vs AgentMux auth)
 
 ---
 
@@ -271,7 +271,7 @@ However, this would require:
 1. Add API Gateway WebSocket API to AgentMux
 2. Keep Lambda for injection storage/retrieval
 3. Add WebSocket notification when injection arrives
-4. WaveMux connects via WebSocket, receives push notifications
+4. AgentMux connects via WebSocket, receives push notifications
 5. Falls back to polling if WebSocket disconnects
 
 ### Hybrid Approach (Best of Both)
@@ -281,7 +281,7 @@ AgentMux Cloud
     ├── WebSocket: Push notifications ("you have a message")
     └── HTTP API: Fetch actual message content
 
-WaveMux
+AgentMux
     ├── WebSocket client: Receives push notifications
     ├── HTTP client: Fetches messages on notification
     └── Polling fallback: If WebSocket disconnects
@@ -295,7 +295,7 @@ This gives instant notifications without requiring WebSocket to handle message p
 
 The current polling approach is **pragmatic and cost-effective** for the current scale. WebSocket would be more efficient but requires infrastructure changes to AgentMux (Lambda → always-on or API Gateway WebSocket).
 
-**WaveMux already has all the WebSocket infrastructure needed** on the client side. The bottleneck is AgentMux cloud architecture, not WaveMux capability.
+**AgentMux already has all the WebSocket infrastructure needed** on the client side. The bottleneck is AgentMux cloud architecture, not AgentMux capability.
 
 If real-time delivery becomes critical, the hybrid approach (WebSocket notifications + HTTP fetch) offers the best balance of efficiency and implementation simplicity.
 

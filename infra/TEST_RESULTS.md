@@ -1,4 +1,4 @@
-# WaveMux Webhook Infrastructure - Test Results
+# AgentMux Webhook Infrastructure - Test Results
 
 **Date:** 2025-10-29
 **Status:** ✅ All Tests Passing

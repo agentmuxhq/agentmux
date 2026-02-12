@@ -10,16 +10,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/a5af/wavemux/pkg/blockcontroller"
-	"github.com/a5af/wavemux/pkg/filestore"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/telemetry"
-	"github.com/a5af/wavemux/pkg/telemetry/telemetrydata"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wps"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/blockcontroller"
+	"github.com/a5af/agentmux/pkg/filestore"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/telemetry"
+	"github.com/a5af/agentmux/pkg/telemetry/telemetrydata"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wstore"
 )
 
 func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
@@ -194,7 +194,7 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 	// Note: We no longer auto-delete the tab when all blocks are removed.
 	// This was causing issues where the tab would be unexpectedly deleted.
 	// Users can manually close empty tabs if desired.
-	// See: https://github.com/a5af/wavemux/issues/xxx
+	// See: https://github.com/a5af/agentmux/issues/xxx
 	if recursive && parentORef != nil && parentORef.OType == waveobj.OType_Tab && parentBlockCount == 0 {
 		log.Printf("DeleteBlock: parent tab %s has no blocks remaining, but not auto-deleting", parentORef.OID)
 	}

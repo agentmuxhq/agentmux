@@ -1,16 +1,16 @@
-# WaveMux Tauri Migration - Phase 12: Production Ready
+# AgentMux Tauri Migration - Phase 12: Production Ready
 
 **Version:** 0.18.4
 **Date:** 2026-02-08
 **Lead:** AgentA
 **Status:** Planning
-**Original Spec Reference:** `claudius:C:\Users\asafe\.claw\workspaces\agent3\wavemux-tauri\specs\wavemux-tauri-migration.md`
+**Original Spec Reference:** `claudius:C:\Users\asafe\.claw\workspaces\agent3\agentmux-tauri\specs\agentmux-tauri-migration.md`
 
 ---
 
 ## Executive Summary
 
-With **14/15 acceptance criteria complete (93%)**, WaveMux Tauri migration has exceeded expectations in implementation speed and feature completeness. Phase 12 focuses on **production readiness** through validation, testing, and polish.
+With **14/15 acceptance criteria complete (93%)**, AgentMux Tauri migration has exceeded expectations in implementation speed and feature completeness. Phase 12 focuses on **production readiness** through validation, testing, and polish.
 
 ### Key Achievements So Far
 
@@ -42,7 +42,7 @@ With **14/15 acceptance criteria complete (93%)**, WaveMux Tauri migration has e
 ## Phase 12 Objectives
 
 ### Primary Goal
-**Make WaveMux Tauri production-ready for initial beta release**
+**Make AgentMux Tauri production-ready for initial beta release**
 
 ### Success Criteria
 - [ ] All acceptance criteria met (15/15 = 100%)
@@ -64,7 +64,7 @@ With **14/15 acceptance criteria complete (93%)**, WaveMux Tauri migration has e
 
 #### Objectives
 
-Validate WaveMux Tauri on all target platforms to complete the final acceptance criterion.
+Validate AgentMux Tauri on all target platforms to complete the final acceptance criterion.
 
 #### Tasks
 
@@ -353,7 +353,7 @@ Provide comprehensive documentation for users and developers.
 
 #### Objectives
 
-Prepare for initial beta release of WaveMux Tauri.
+Prepare for initial beta release of AgentMux Tauri.
 
 #### Tasks
 
@@ -373,27 +373,27 @@ Prepare for initial beta release of WaveMux Tauri.
 ##### 5.3 Release Artifacts
 
 **Windows:**
-- `WaveMux-0.19.0-beta.1-x64-setup.exe` (NSIS installer)
-- `WaveMux-0.19.0-beta.1-x64.msi` (MSI installer)
+- `AgentMux-0.19.0-beta.1-x64-setup.exe` (NSIS installer)
+- `AgentMux-0.19.0-beta.1-x64.msi` (MSI installer)
 
 **macOS:**
-- `WaveMux-0.19.0-beta.1-aarch64.dmg` (Apple Silicon)
-- `WaveMux-0.19.0-beta.1-x64.dmg` (Intel)
+- `AgentMux-0.19.0-beta.1-aarch64.dmg` (Apple Silicon)
+- `AgentMux-0.19.0-beta.1-x64.dmg` (Intel)
 
 **Linux:**
-- `WaveMux-0.19.0-beta.1-x86_64.AppImage`
-- `WaveMux-0.19.0-beta.1-amd64.deb` (Debian/Ubuntu)
+- `AgentMux-0.19.0-beta.1-x86_64.AppImage`
+- `AgentMux-0.19.0-beta.1-amd64.deb` (Debian/Ubuntu)
 
 ##### 5.4 Release Notes
 
 Create comprehensive release notes:
 
 ```markdown
-# WaveMux 0.19.0-beta.1 - Tauri Migration
+# AgentMux 0.19.0-beta.1 - Tauri Migration
 
 ## 🚀 Major Changes
 
-WaveMux has been migrated from Electron to Tauri v2, resulting in:
+AgentMux has been migrated from Electron to Tauri v2, resulting in:
 - **89% smaller installer** (15MB vs 142MB)
 - **5x less memory** (~45MB vs 200MB idle)
 - **3x faster startup** (~350ms vs 1.5s)
@@ -616,7 +616,7 @@ Implement auto-update functionality using Tauri's built-in updater.
 
 ## Conclusion
 
-Phase 12 transforms WaveMux from a successful migration to a production-ready application. With 93% of original acceptance criteria complete and numerous enhancements beyond the original spec, the focus now shifts to validation, polish, and user-facing readiness.
+Phase 12 transforms AgentMux from a successful migration to a production-ready application. With 93% of original acceptance criteria complete and numerous enhancements beyond the original spec, the focus now shifts to validation, polish, and user-facing readiness.
 
 **Key Achievements:**
 - 3-4x faster implementation than estimated
@@ -639,7 +639,7 @@ Phase 12 transforms WaveMux from a successful migration to a production-ready ap
 
 ## References
 
-- **Original Spec:** `claudius:C:\Users\asafe\.claw\workspaces\agent3\wavemux-tauri\specs\wavemux-tauri-migration.md`
+- **Original Spec:** `claudius:C:\Users\asafe\.claw\workspaces\agent3\agentmux-tauri\specs\agentmux-tauri-migration.md`
 - **Migration Status:** [TAURI_MIGRATION_STATUS.md](../TAURI_MIGRATION_STATUS.md)
 - **Performance Benchmarking:** [scripts/benchmarks/README.md](../../scripts/benchmarks/README.md)
 - **Notification API:** [NOTIFICATIONS.md](../NOTIFICATIONS.md)

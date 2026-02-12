@@ -39,29 +39,29 @@ tasks:
         internal: true
         platforms: [windows]
         cmds:
-            - powershell Copy-Item -Force dist/bin/wavemuxsrv.x64.exe src-tauri/target/debug/wavemuxsrv.exe -ErrorAction SilentlyContinue
-            - powershell Copy-Item -Force dist/bin/wavemuxsrv.x64.exe src-tauri/target/release/wavemuxsrv.exe -ErrorAction SilentlyContinue
-            - echo "✓ Synced wavemuxsrv to Tauri dev/release cache (Windows)"
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv.x64.exe src-tauri/target/debug/agentmuxsrv.exe -ErrorAction SilentlyContinue
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv.x64.exe src-tauri/target/release/agentmuxsrv.exe -ErrorAction SilentlyContinue
+            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (Windows)"
 
     sync:dev:binaries:darwin:
         internal: true
         platforms: [darwin]
         cmds:
             - mkdir -p src-tauri/target/debug src-tauri/target/release
-            - cp -f dist/bin/wavemuxsrv.arm64 src-tauri/target/debug/wavemuxsrv || true
-            - cp -f dist/bin/wavemuxsrv.arm64 src-tauri/target/release/wavemuxsrv || true
-            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/debug/wavemuxsrv || true
-            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/release/wavemuxsrv || true
-            - echo "✓ Synced wavemuxsrv to Tauri dev/release cache (macOS)"
+            - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/debug/agentmuxsrv || true
+            - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/release/agentmuxsrv || true
+            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/debug/agentmuxsrv || true
+            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/release/agentmuxsrv || true
+            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (macOS)"
 
     sync:dev:binaries:linux:
         internal: true
         platforms: [linux]
         cmds:
             - mkdir -p src-tauri/target/debug src-tauri/target/release
-            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/debug/wavemuxsrv || true
-            - cp -f dist/bin/wavemuxsrv.x64 src-tauri/target/release/wavemuxsrv || true
-            - echo "✓ Synced wavemuxsrv to Tauri dev/release cache (Linux)"
+            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/debug/agentmuxsrv || true
+            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/release/agentmuxsrv || true
+            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (Linux)"
 
     start:
         desc: Build and run the Tauri application in production mode (no installer).
@@ -161,12 +161,13 @@ tasks:
     package:
         desc: Package the application for the current platform (Tauri).
         cmds:
+            - task: build:backend
+            - task: tauri:copy-sidecars
             - npm run tauri build {{.CLI_ARGS}}
         deps:
             - clean
             - npm:install
             - docsite:build:embedded
-            - build:backend
 
     build:frontend:dev:
         desc: Build the frontend in development mode.
@@ -175,13 +176,13 @@ tasks:
             - npm:install
 
     build:backend:
-        desc: Build the wavemuxsrv and wsh components.
+        desc: Build the agentmuxsrv and wsh components.
         cmds:
             - task: build:server
             - task: build:wsh
 
     build:backend:quickdev:
-        desc: Build only the wavemuxsrv component for quickdev (arm64 macOS only, no generate, no wsh).
+        desc: Build only the agentmuxsrv component for quickdev (arm64 macOS only, no generate, no wsh).
         cmds:
             - task: build:server:quickdev
         sources:
@@ -208,7 +209,7 @@ tasks:
             - task: copyfiles:'schema':'dist/schema'
 
     build:server:
-        desc: Build the wavemuxsrv component.
+        desc: Build the agentmuxsrv component.
         cmds:
             - task: build:server:linux
             - task: build:server:macos
@@ -224,20 +225,20 @@ tasks:
             - "pkg/**/*.sh"
             - tsunami/**/*.go
         generates:
-            - dist/bin/wavemuxsrv.*
+            - dist/bin/agentmuxsrv.*
 
     build:server:macos:
-        desc: Build the wavemuxsrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
+        desc: Build the agentmuxsrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavemuxsrv*"
+            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
                   ARCHS: arm64,amd64
 
     build:server:quickdev:
-        desc: Build the wavemuxsrv component for quickdev (arm64 macOS only, no generate).
+        desc: Build the agentmuxsrv component for quickdev (arm64 macOS only, no generate).
         platforms: [darwin]
         cmds:
             - task: build:server:internal
@@ -252,13 +253,13 @@ tasks:
             - "pkg/**/*.sh"
             - "tsunami/**/*.go"
         generates:
-            - dist/bin/wavemuxsrv.*
+            - dist/bin/agentmuxsrv.*
 
     build:server:windows:
-        desc: Build the wavemuxsrv component for Windows platforms (only generates artifacts for the current architecture).
+        desc: Build the agentmuxsrv component for Windows platforms (only generates artifacts for the current architecture).
         platforms: [windows]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavemuxsrv*"
+            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -268,10 +269,10 @@ tasks:
                       sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-windows-gnu\"{{else}}CC=\"zig cc -target aarch64-windows-gnu\"{{end}}"
 
     build:server:linux:
-        desc: Build the wavemuxsrv component for Linux platforms (only generates artifacts for the current architecture).
+        desc: Build the agentmuxsrv component for Linux platforms (only generates artifacts for the current architecture).
         platforms: [linux]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavemuxsrv*"
+            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -285,7 +286,7 @@ tasks:
             vars:
                 - ARCHS
         cmd:
-            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavemuxsrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
+            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/agentmuxsrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
             for:
                 var: ARCHS
                 split: ","
@@ -632,14 +633,14 @@ tasks:
             - powershell -Command "New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null"
             - |
                 {{if eq OS "windows"}}
-                powershell -Command "Copy-Item dist/bin/wavemuxsrv.x64.exe src-tauri/binaries/wavemuxsrv-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"
+                powershell -Command "Copy-Item dist/bin/agentmuxsrv.x64.exe src-tauri/binaries/agentmuxsrv-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"
                 {{else}}
                 TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
                 {{if eq OS "darwin"}}
-                cp dist/bin/wavemuxsrv.arm64 src-tauri/binaries/wavemuxsrv-$TRIPLE 2>/dev/null || cp dist/bin/wavemuxsrv.x64 src-tauri/binaries/wavemuxsrv-$TRIPLE;
+                cp dist/bin/agentmuxsrv.arm64 src-tauri/binaries/agentmuxsrv-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/binaries/wsh-$TRIPLE 2>/dev/null || cp dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{else}}
-                cp dist/bin/wavemuxsrv.x64 src-tauri/binaries/wavemuxsrv-$TRIPLE;
+                cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-linux.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{end}}
                 echo "Copied binaries for $TRIPLE"

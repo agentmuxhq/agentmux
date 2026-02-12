@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
 	"golang.org/x/sync/singleflight"
 )
 

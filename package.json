@@ -1,16 +1,16 @@
 {
-    "name": "wavemux",
+    "name": "agentmux",
     "author": {
         "name": "Command Line Inc",
         "email": "info@commandline.dev"
     },
-    "productName": "WaveMux",
+    "productName": "AgentMux",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.24.16",
-    "homepage": "https://github.com/a5af/wavemux",
+    "version": "0.25.0",
+    "homepage": "https://github.com/a5af/agentmux",
     "build": {
-        "appId": "com.a5af.wavemux"
+        "appId": "com.a5af.agentmux"
     },
     "private": true,
     "main": "./dist/main/index.js",
@@ -21,6 +21,7 @@
     "scripts": {
         "dev": "tauri dev",
         "build": "tauri build",
+        "tauri": "tauri",
         "coverage": "vitest run --coverage",
         "test": "vitest"
     },
@@ -78,8 +79,8 @@
         "@radix-ui/react-label": "^2.1.8",
         "@radix-ui/react-slot": "^1.2.3",
         "@react-hook/resize-observer": "^2.0.2",
-        "@table-nav/core": "^0.0.8",
-        "@table-nav/react": "^0.0.7",
+        "@table-nav/core": "^0.0.9",
+        "@table-nav/react": "^0.0.9",
         "@tanstack/react-table": "^8.21.3",
         "@tauri-apps/api": "^2.5.0",
         "@tauri-apps/plugin-notification": "^2.3.3",

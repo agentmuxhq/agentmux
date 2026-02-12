@@ -1,12 +1,12 @@
-# WaveMux Webhook Infrastructure
+# AgentMux Webhook Infrastructure
 
 **Status:** 🚀 Deployed and Operational (October 29, 2025)
 
-Independent AWS CDK infrastructure for WaveMux webhook-based reactive agent communication.
+Independent AWS CDK infrastructure for AgentMux webhook-based reactive agent communication.
 
 ## Overview
 
-This infrastructure enables external webhooks (from GitHub, CI/CD, monitoring systems, etc.) to inject commands into specific WaveMux terminal panes in real-time.
+This infrastructure enables external webhooks (from GitHub, CI/CD, monitoring systems, etc.) to inject commands into specific AgentMux terminal panes in real-time.
 
 **Key Features:**
 - ✅ Real-time webhook → terminal command injection
@@ -18,7 +18,7 @@ This infrastructure enables external webhooks (from GitHub, CI/CD, monitoring sy
 
 ## Deployment Status
 
-**Stack:** wavemux-webhook-prod
+**Stack:** agentmux-webhook-prod
 **Region:** us-east-1
 **Resources:** 33/33 created successfully
 **Health Check:** ✅ Passing
@@ -53,18 +53,18 @@ GitHub/CI/CD Webhook
     │       ├─> Lambda (webhook-router)
     │       │       ├─> DynamoDB (subscriptions)
     │       │       └─> API Gateway (WebSocket)
-    │       │               └─> WaveMux Client
+    │       │               └─> AgentMux Client
     │       │                       └─> Terminal PTY
 ```
 
 **Components:**
 
 1. **HTTP API Gateway:** Receives webhooks from external services
-2. **WebSocket API Gateway:** Real-time connection to WaveMux instances
+2. **WebSocket API Gateway:** Real-time connection to AgentMux instances
 3. **Lambda Function:** Routes webhooks and transforms payloads
 4. **DynamoDB Tables:**
-   - `WaveMuxWebhookConfig-{env}` - Webhook subscriptions
-   - `WaveMuxConnections-{env}` - Active WebSocket connections
+   - `AgentMuxWebhookConfig-{env}` - Webhook subscriptions
+   - `AgentMuxConnections-{env}` - Active WebSocket connections
 5. **Secrets Manager:** Stores webhook authentication secrets
 
 ## Directory Structure
@@ -74,7 +74,7 @@ infra/
 ├── cdk/                          # CDK infrastructure code
 │   ├── bin/cdk.ts               # CDK app entry point
 │   ├── lib/
-│   │   └── wavemux-webhook-stack.ts  # Main stack definition
+│   │   └── agentmux-webhook-stack.ts  # Main stack definition
 │   ├── package.json             # Dependencies
 │   ├── tsconfig.json            # TypeScript config
 │   └── README.md                # CDK-specific docs
@@ -106,7 +106,7 @@ cdk deploy --profile Agent2
 
 After deployment, you'll get:
 - **HttpApiEndpoint:** For webhooks and registration
-- **WebSocketApiEndpoint:** For WaveMux client connections
+- **WebSocketApiEndpoint:** For AgentMux client connections
 - **WebhookSecretArn:** For storing webhook secrets
 
 ## Configuration
@@ -115,7 +115,7 @@ After deployment, you'll get:
 
 ```bash
 aws secretsmanager put-secret-value \
-  --secret-id wavemux/webhook-secret-prod \
+  --secret-id agentmux/webhook-secret-prod \
   --secret-string '{
     "github": "your-github-webhook-secret",
     "custom": "your-custom-secret",
@@ -130,9 +130,9 @@ Add webhook in repository settings:
 - **Secret:** (from Secrets Manager)
 - **Events:** Pull requests, Issues, etc.
 
-### 3. Configure WaveMux Client
+### 3. Configure AgentMux Client
 
-Create `~/.wavemux/webhook-config.json`:
+Create `~/.agentmux/webhook-config.json`:
 
 ```json
 {
@@ -160,7 +160,7 @@ curl -X POST https://{api-id}.execute-api.us-east-1.amazonaws.com/register \
       "events": ["pull_request"],
       "filters": {
         "action": ["opened", "synchronize", "closed"],
-        "repository.name": "wavemux"
+        "repository.name": "agentmux"
       },
       "commandTemplate": "echo \"[GitHub] PR #{{pull_request.number}}: {{action}}\"\n",
       "enabled": true
@@ -192,19 +192,19 @@ Templates use `{{path.to.value}}` syntax to extract data from webhooks:
 ### View Lambda Logs
 
 ```bash
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow
 ```
 
 ### Check Active Connections
 
 ```bash
-aws dynamodb scan --table-name WaveMuxConnections-prod
+aws dynamodb scan --table-name AgentMuxConnections-prod
 ```
 
 ### View Webhook Subscriptions
 
 ```bash
-aws dynamodb scan --table-name WaveMuxWebhookConfig-prod
+aws dynamodb scan --table-name AgentMuxWebhookConfig-prod
 ```
 
 ## Cost Estimation
@@ -256,11 +256,11 @@ curl -X POST \
 
 ```bash
 # View logs
-aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow
+aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow
 
 # Test directly
 aws lambda invoke \
-  --function-name wavemux-webhook-router-prod \
+  --function-name agentmux-webhook-router-prod \
   --payload '{"requestContext":{"http":{"method":"GET","path":"/health"}}}' \
   response.json
 ```
@@ -270,7 +270,7 @@ aws lambda invoke \
 ```bash
 # Check if connection exists
 aws dynamodb query \
-  --table-name WaveMuxConnections-prod \
+  --table-name AgentMuxConnections-prod \
   --index-name WorkspaceIndex \
   --key-condition-expression "workspaceId = :wid" \
   --expression-attribute-values '{":wid":{"S":"agent2-workspace"}}'
@@ -285,7 +285,7 @@ aws dynamodb query \
 - [x] API Gateway (HTTP + WebSocket)
 - [x] Deployment documentation
 
-### Phase 2: WaveMux Integration (Next)
+### Phase 2: AgentMux Integration (Next)
 - [ ] Go WebSocket client (`pkg/webhookinjector/`)
 - [ ] Terminal registration
 - [ ] PTY command injection
@@ -313,8 +313,8 @@ aws dynamodb query \
 
 ## Support
 
-- **Issues:** https://github.com/a5af/wavemux/issues
-- **Logs:** `aws logs tail /aws/lambda/wavemux-webhook-router-prod --follow`
+- **Issues:** https://github.com/a5af/agentmux/issues
+- **Logs:** `aws logs tail /aws/lambda/agentmux-webhook-router-prod --follow`
 - **Docs:** See `SPEC_REACTIVE_AGENT_COMMUNICATION.md`
 
 ---

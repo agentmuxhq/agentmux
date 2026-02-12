@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/util/iochan"
+	"github.com/a5af/agentmux/pkg/util/iochan"
 )
 
 const (

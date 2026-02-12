@@ -7,13 +7,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/a5af/wavemux/pkg/remote/connparse"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/fstype"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/fsutil"
-	"github.com/a5af/wavemux/pkg/util/iochan/iochantypes"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
-	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/agentmux/pkg/remote/connparse"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/fstype"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/fsutil"
+	"github.com/a5af/agentmux/pkg/util/iochan/iochantypes"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshutil"
 )
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver

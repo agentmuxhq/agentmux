@@ -1,4 +1,4 @@
-# WaveMux Workspace & Tab System Modernization
+# AgentMux Workspace & Tab System Modernization
 
 > **Status:** SPEC
 > **Date:** 2026-02-08
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-WaveMux currently uses an Electron-based multi-WebContentsView architecture where each tab runs in a separate Chromium renderer process. With the Tauri v2 migration, this architecture is incompatible - Tauri provides **one webview per window**, requiring a complete redesign of the workspace and tab system to be **frontend-managed** instead of main-process-managed.
+AgentMux currently uses an Electron-based multi-WebContentsView architecture where each tab runs in a separate Chromium renderer process. With the Tauri v2 migration, this architecture is incompatible - Tauri provides **one webview per window**, requiring a complete redesign of the workspace and tab system to be **frontend-managed** instead of main-process-managed.
 
 **Current State:**
 - ❌ Electron WebContentsView per tab (not available in Tauri)
@@ -346,7 +346,7 @@ pub async fn update_tab_layout(
 
 **Files to CREATE:**
 - `src-tauri/src/commands/workspace.rs` - Workspace Tauri commands
-- `src-tauri/src/backend_client.rs` - HTTP client to wavemuxsrv
+- `src-tauri/src/backend_client.rs` - HTTP client to agentmuxsrv
 
 **Files to MODIFY:**
 - `src-tauri/src/lib.rs` - Register workspace commands
@@ -397,7 +397,7 @@ async function syncToBackend(workspace: Workspace) {
 **Goal:** Drag tabs to reorder in tab bar.
 
 **Libraries:**
-- `@dnd-kit/core` - React drag-drop (already used in WaveMux?)
+- `@dnd-kit/core` - React drag-drop (already used in AgentMux?)
 - `@dnd-kit/sortable` - List reordering
 
 ```tsx

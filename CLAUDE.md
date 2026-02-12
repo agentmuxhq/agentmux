@@ -1,4 +1,4 @@
-# Claude Agent Development Guide - WaveMux
+# Claude Agent Development Guide - AgentMux
 
 ---
 
@@ -19,15 +19,15 @@
 
 ## Repository
 
-- **Name:** WaveMux
-- **GitHub:** https://github.com/a5af/wavemux
+- **Name:** AgentMux
+- **GitHub:** https://github.com/a5af/agentmux
 - **Type:** Tauri v2 terminal application
 - **Version:** 0.19.0
 
 ## Git & Pull Requests
 
-- Push branches to https://github.com/a5af/wavemux
-- Open PRs against a5af/wavemux main branch
+- Push branches to https://github.com/a5af/agentmux
+- Open PRs against a5af/agentmux main branch
 - Branch naming: `agent[X]/feature-name` (e.g., `agentx/fix-version`)
 
 ---
@@ -42,7 +42,7 @@
 | `task start` | Standalone testing (rare) | ❌ No |
 | `task package` | **Final release builds ONLY** | ❌ No |
 
-**CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "wavemuxsrv.x64.exe ENOENT"
+**CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "agentmuxsrv.x64.exe ENOENT"
 
 ### After Code Changes
 
@@ -52,10 +52,10 @@
 
 ### Architecture
 
-WaveMux is built on **Tauri v2** (NOT Electron):
+AgentMux is built on **Tauri v2** (NOT Electron):
 
-- **wavemux.exe** = Tauri app (Rust + single webview)
-- **wavemuxsrv** = Go backend sidecar (auto-spawned, don't run manually)
+- **agentmux.exe** = Tauri app (Rust + single webview)
+- **agentmuxsrv** = Go backend sidecar (auto-spawned, don't run manually)
 - **wsh** = Shell integration binary (must be versioned correctly)
 
 **Important:** All Electron code has been removed (Phase 14). Only Tauri is supported.
@@ -90,13 +90,13 @@ git push origin <branch> --tags
 
 ### Bare Repository
 
-- **Location:** `D:\Code\projects\wavemux.git`
+- **Location:** `D:\Code\projects\agentmux.git`
 - **Type:** Git bare repository (no working directory)
-- **Remote:** https://github.com/a5af/wavemux
+- **Remote:** https://github.com/a5af/agentmux
 
 ### Agent Worktrees
 
-- **Location:** `D:\Code\agent-workspaces\agent[X]\wavemux\`
+- **Location:** `D:\Code\agent-workspaces\agent[X]\agentmux\`
 - **Branch:** `agent[X]/feature-name`
 - **Setup:** Created on-demand via `git worktree add`
 
@@ -140,7 +140,7 @@ npm run coverage
 ### Backend (Go)
 
 ```bash
-# Build all binaries (wavemuxsrv, wsh for all platforms)
+# Build all binaries (agentmuxsrv, wsh for all platforms)
 task build:backend
 
 # Build specific platform

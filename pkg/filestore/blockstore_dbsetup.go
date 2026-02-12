@@ -13,14 +13,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/util/migrateutil"
-	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/util/migrateutil"
+	"github.com/a5af/agentmux/pkg/wavebase"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sawka/txwrap"
 
-	dbfs "github.com/a5af/wavemux/db"
+	dbfs "github.com/a5af/agentmux/db"
 )
 
 const FilestoreDBName = "filestore.db"

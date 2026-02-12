@@ -14,8 +14,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 type PerplexityBackend struct{}

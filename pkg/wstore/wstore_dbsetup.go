@@ -12,14 +12,14 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sawka/txwrap"
-	"github.com/a5af/wavemux/pkg/util/migrateutil"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/util/migrateutil"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/waveobj"
 
-	dbfs "github.com/a5af/wavemux/db"
+	dbfs "github.com/a5af/agentmux/db"
 )
 
-const WStoreDBName = "waveterm.db"
+const WStoreDBName = "agentmux.db"
 
 type TxWrap = txwrap.TxWrap
 

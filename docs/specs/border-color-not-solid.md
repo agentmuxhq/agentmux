@@ -111,7 +111,7 @@ This overlays on top and won't show underlying colors.
 
 ## Testing Plan
 
-1. Open WaveMux with 2+ panes in a split layout
+1. Open AgentMux with 2+ panes in a split layout
 2. Click each pane - verify solid green border appears
 3. Check corners for any white showing through
 4. Check edges between adjacent panes

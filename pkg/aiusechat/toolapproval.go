@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/aiusechat/uctypes"
+	"github.com/a5af/agentmux/pkg/aiusechat/uctypes"
 )
 
 const (

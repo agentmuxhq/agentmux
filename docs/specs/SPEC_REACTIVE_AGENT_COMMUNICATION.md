@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This specification defines a system for enabling reactive agent communication in WaveMux through webhook-based shell injection. The system allows external agents (via webhooks) to inject text commands directly into specific WaveMux terminal panes, enabling bidirectional communication between cloud-based agents and local terminal sessions.
+This specification defines a system for enabling reactive agent communication in AgentMux through webhook-based shell injection. The system allows external agents (via webhooks) to inject text commands directly into specific AgentMux terminal panes, enabling bidirectional communication between cloud-based agents and local terminal sessions.
 
 **Key Use Cases:**
 - GitHub webhook notifications injecting git commands
@@ -34,7 +34,7 @@ This specification defines a system for enabling reactive agent communication in
 │                    AWS API Gateway + Lambda                      │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  WaveMuxWebhookRouter Lambda                              │  │
+│  │  AgentMuxWebhookRouter Lambda                              │  │
 │  │  - Validates webhook signature                            │  │
 │  │  - Routes to correct terminal by terminalId               │  │
 │  │  - Transforms webhook payload to shell command            │  │
@@ -51,8 +51,8 @@ This specification defines a system for enabling reactive agent communication in
                               │ WebSocket/SSE
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         WaveMux Backend                          │
-│                       (wavemuxsrv - Go)                          │
+│                         AgentMux Backend                          │
+│                       (agentmuxsrv - Go)                          │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  Webhook Injection Service                                │  │
@@ -72,7 +72,7 @@ This specification defines a system for enabling reactive agent communication in
                               │ Terminal Input
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      WaveMux Frontend                            │
+│                      AgentMux Frontend                            │
 │                    (TypeScript + React)                          │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -90,7 +90,7 @@ This specification defines a system for enabling reactive agent communication in
 
 ### 1. Persistent Terminal Identity
 
-**Problem:** WaveMux blocks (terminals) are identified by UUIDs that change on each restart, making it impossible for webhooks to target specific terminals across sessions.
+**Problem:** AgentMux blocks (terminals) are identified by UUIDs that change on each restart, making it impossible for webhooks to target specific terminals across sessions.
 
 **Solution:** Add a persistent `terminalId` to each terminal block's metadata.
 
@@ -136,7 +136,7 @@ function ensureTerminalId(blockId: string): string {
 
 ### 2. Webhook Configuration Management
 
-**Location:** `~/.wavemux/webhook-config.json`
+**Location:** `~/.agentmux/webhook-config.json`
 
 **Schema:**
 
@@ -154,7 +154,7 @@ function ensureTerminalId(blockId: string): string {
           "provider": "github",
           "events": ["pull_request", "issue_comment"],
           "filters": {
-            "repository": "a5af/wavemux",
+            "repository": "a5af/agentmux",
             "action": ["opened", "synchronize", "closed"]
           },
           "commandTemplate": "echo '[GitHub] {{event.action}} on PR #{{event.pull_request.number}}'\n",
@@ -180,7 +180,7 @@ function ensureTerminalId(blockId: string): string {
       ]
     }
   ],
-  "webhookSecret": "${SECRET_REF:wavemux/webhook-secret}",
+  "webhookSecret": "${SECRET_REF:agentmux/webhook-secret}",
   "cloudEndpoint": "wss://webhook-router.a5af.dev/connect"
 }
 ```
@@ -228,11 +228,11 @@ func RegisterTerminal(terminalId string, subscriptions []WebhookSubscription) er
 
 ### 3. AWS Lambda Infrastructure
 
-**Repository:** `shared-infrastructure/lambdas/wavemux-webhook-router/`
+**Repository:** `shared-infrastructure/lambdas/agentmux-webhook-router/`
 
-#### Lambda Function: `WaveMuxWebhookRouter`
+#### Lambda Function: `AgentMuxWebhookRouter`
 
-**Purpose:** Route incoming webhooks to appropriate WaveMux terminal instances.
+**Purpose:** Route incoming webhooks to appropriate AgentMux terminal instances.
 
 **Handler:** `handler.py`
 
@@ -248,8 +248,8 @@ apigateway = boto3.client('apigatewaymanagementapi')
 secrets = boto3.client('secretsmanager')
 
 # DynamoDB tables
-webhook_config_table = dynamodb.Table('WaveMuxWebhookConfig')
-connection_table = dynamodb.Table('WaveMuxConnections')
+webhook_config_table = dynamodb.Table('AgentMuxWebhookConfig')
+connection_table = dynamodb.Table('AgentMuxConnections')
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -259,7 +259,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     - POST /webhook/{provider} - Receive webhook from external service
     - POST /register - Register terminal subscription
     - POST /unregister - Remove terminal subscription
-    - WebSocket $connect - Establish connection from WaveMux instance
+    - WebSocket $connect - Establish connection from AgentMux instance
     - WebSocket $disconnect - Clean up connection
     """
 
@@ -319,7 +319,7 @@ def handle_webhook_delivery(event: Dict[str, Any]) -> Dict[str, Any]:
                 body
             )
 
-            # Send to WaveMux instance via WebSocket
+            # Send to AgentMux instance via WebSocket
             success = send_to_terminal(
                 subscription['workspaceId'],
                 subscription['terminalId'],
@@ -452,7 +452,7 @@ def handle_registration(event: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def handle_websocket_connect(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle WebSocket connection from WaveMux instance."""
+    """Handle WebSocket connection from AgentMux instance."""
 
     connection_id = event['requestContext']['connectionId']
 
@@ -490,10 +490,10 @@ def handle_websocket_disconnect(event: Dict[str, Any]) -> Dict[str, Any]:
 
 #### DynamoDB Tables
 
-**Table 1: `WaveMuxWebhookConfig`**
+**Table 1: `AgentMuxWebhookConfig`**
 
 ```yaml
-TableName: WaveMuxWebhookConfig
+TableName: AgentMuxWebhookConfig
 KeySchema:
   - AttributeName: subscriptionId
     KeyType: HASH
@@ -517,10 +517,10 @@ GlobalSecondaryIndexes:
         KeyType: RANGE
 ```
 
-**Table 2: `WaveMuxConnections`**
+**Table 2: `AgentMuxConnections`**
 
 ```yaml
-TableName: WaveMuxConnections
+TableName: AgentMuxConnections
 KeySchema:
   - AttributeName: connectionId
     KeyType: HASH
@@ -541,21 +541,21 @@ GlobalSecondaryIndexes:
 Add to `shared-infrastructure/lambdas/template.yaml`:
 
 ```yaml
-  # ==================== WaveMux Webhook Router ====================
-  WaveMuxWebhookRouterFunction:
+  # ==================== AgentMux Webhook Router ====================
+  AgentMuxWebhookRouterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub wavemux-webhook-router-${Environment}
-      CodeUri: wavemux-webhook-router/
+      FunctionName: !Sub agentmux-webhook-router-${Environment}
+      CodeUri: agentmux-webhook-router/
       Handler: handler.lambda_handler
-      Description: Route webhooks to WaveMux terminal instances
+      Description: Route webhooks to AgentMux terminal instances
       Runtime: python3.12
       Timeout: 30
       MemorySize: 512
       Environment:
         Variables:
-          WEBHOOK_CONFIG_TABLE: !Ref WaveMuxWebhookConfigTable
-          CONNECTION_TABLE: !Ref WaveMuxConnectionTable
+          WEBHOOK_CONFIG_TABLE: !Ref AgentMuxWebhookConfigTable
+          CONNECTION_TABLE: !Ref AgentMuxConnectionTable
           ENVIRONMENT: !Ref Environment
       Events:
         WebhookApi:
@@ -578,9 +578,9 @@ Add to `shared-infrastructure/lambdas/template.yaml`:
             Route: $disconnect
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref WaveMuxWebhookConfigTable
+            TableName: !Ref AgentMuxWebhookConfigTable
         - DynamoDBCrudPolicy:
-            TableName: !Ref WaveMuxConnectionTable
+            TableName: !Ref AgentMuxConnectionTable
         - Statement:
             - Effect: Allow
               Action:
@@ -589,12 +589,12 @@ Add to `shared-infrastructure/lambdas/template.yaml`:
             - Effect: Allow
               Action:
                 - secretsmanager:GetSecretValue
-              Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:wavemux/*"
+              Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:agentmux/*"
 
-  WaveMuxWebhookConfigTable:
+  AgentMuxWebhookConfigTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub WaveMuxWebhookConfig-${Environment}
+      TableName: !Sub AgentMuxWebhookConfig-${Environment}
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: subscriptionId
@@ -616,10 +616,10 @@ Add to `shared-infrastructure/lambdas/template.yaml`:
           Projection:
             ProjectionType: ALL
 
-  WaveMuxConnectionTable:
+  AgentMuxConnectionTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub WaveMuxConnections-${Environment}
+      TableName: !Sub AgentMuxConnections-${Environment}
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: connectionId
@@ -643,7 +643,7 @@ Add to `shared-infrastructure/lambdas/template.yaml`:
 
 ---
 
-### 4. WaveMux Backend Integration
+### 4. AgentMux Backend Integration
 
 **Location:** `pkg/webhookinjector/webhookinjector.go`
 
@@ -659,8 +659,8 @@ import (
     "time"
 
     "github.com/gorilla/websocket"
-    "github.com/a5af/wavemux/pkg/blockcontroller"
-    "github.com/a5af/wavemux/pkg/webhookconfig"
+    "github.com/a5af/agentmux/pkg/blockcontroller"
+    "github.com/a5af/agentmux/pkg/webhookconfig"
 )
 
 type InjectionMessage struct {
@@ -930,7 +930,7 @@ export const WebhookConfigModal: React.FC<WebhookConfigModalProps> = ({
 ### 1. Authentication
 
 - **Webhook Signature Validation:** All incoming webhooks MUST be validated using HMAC signatures
-- **WebSocket Authentication:** WaveMux instances authenticate via time-limited JWT tokens
+- **WebSocket Authentication:** AgentMux instances authenticate via time-limited JWT tokens
 - **Terminal Access Control:** Only registered terminals can receive injections
 
 ### 2. Authorization
@@ -973,21 +973,21 @@ sam build
 
 # Deploy to AWS
 sam deploy \
-  --stack-name wavemux-webhook-router-prod \
+  --stack-name agentmux-webhook-router-prod \
   --parameter-overrides Environment=prod \
   --capabilities CAPABILITY_IAM \
   --region us-east-1
 ```
 
-#### 2. Configure WaveMux
+#### 2. Configure AgentMux
 
-Add to `~/.wavemux/webhook-config.json`:
+Add to `~/.agentmux/webhook-config.json`:
 
 ```json
 {
   "version": "1.0",
   "workspaceId": "agent2-workspace",
-  "webhookSecret": "${SECRET_REF:wavemux/webhook-secret}",
+  "webhookSecret": "${SECRET_REF:agentmux/webhook-secret}",
   "cloudEndpoint": "wss://your-api-id.execute-api.us-east-1.amazonaws.com/prod",
   "terminals": []
 }
@@ -997,7 +997,7 @@ Add to `~/.wavemux/webhook-config.json`:
 
 ```bash
 aws secretsmanager create-secret \
-  --name wavemux/webhook-secret \
+  --name agentmux/webhook-secret \
   --secret-string '{"github":"your-github-webhook-secret"}'
 ```
 
@@ -1031,7 +1031,7 @@ curl -X POST \
 
 ### Integration Test
 
-1. Start WaveMux with webhook config enabled
+1. Start AgentMux with webhook config enabled
 2. Create terminal and note terminalId
 3. Register webhook subscription via UI
 4. Trigger webhook from GitHub
@@ -1052,7 +1052,7 @@ curl -X POST \
 
 ## References
 
-- WaveMux Block Architecture: `pkg/wcore/block.go`
+- AgentMux Block Architecture: `pkg/wcore/block.go`
 - Terminal Implementation: `frontend/app/view/term/term.tsx`
 - Shared Infrastructure: `shared-infrastructure/lambdas/README.md`
 - AWS SAM Documentation: https://docs.aws.amazon.com/serverless-application-model/

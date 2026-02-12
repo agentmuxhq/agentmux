@@ -1,4 +1,4 @@
-# WaveMux Component Architecture
+# AgentMux Component Architecture
 
 ## High-Level Block Diagram
 
@@ -51,7 +51,7 @@
                             WebSocket (ws://)
                                     │
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           GO BACKEND (wavemuxsrv)                           │
+│                           GO BACKEND (agentmuxsrv)                           │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │                         RPC Server (wshserver)                        │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                   │   │

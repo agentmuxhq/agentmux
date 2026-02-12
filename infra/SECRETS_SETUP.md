@@ -1,4 +1,4 @@
-# WaveMux Webhook Secrets Setup
+# AgentMux Webhook Secrets Setup
 
 Guide for configuring webhook secrets in AWS Secrets Manager using the standard `services/prod` encoding scheme.
 
@@ -6,15 +6,15 @@ Guide for configuring webhook secrets in AWS Secrets Manager using the standard 
 
 ## Secret Structure
 
-All WaveMux webhook secrets are stored in the existing **`services/prod`** secret under the **`wavemux`** project key.
+All AgentMux webhook secrets are stored in the existing **`services/prod`** secret under the **`agentmux`** project key.
 
-**Path:** `services/prod["wavemux"]`
+**Path:** `services/prod["agentmux"]`
 
 ---
 
 ## Required Secrets
 
-The following secrets need to be added to the `wavemux` key:
+The following secrets need to be added to the `agentmux` key:
 
 | Secret Name | Purpose | Example Value |
 |------------|---------|---------------|
@@ -40,7 +40,7 @@ CURRENT=$(aws secretsmanager get-secret-value \
 echo "$CURRENT" | jq .
 ```
 
-### 2. Add WaveMux Secrets
+### 2. Add AgentMux Secrets
 
 ```bash
 # Generate secure secrets (optional)
@@ -48,12 +48,12 @@ GITHUB_SECRET=$(openssl rand -hex 32)
 CUSTOM_SECRET=$(openssl rand -hex 32)
 DEFAULT_SECRET=$(openssl rand -hex 32)
 
-# Add wavemux secrets to the structure
+# Add agentmux secrets to the structure
 UPDATED=$(echo "$CURRENT" | jq --arg github "$GITHUB_SECRET" \
   --arg custom "$CUSTOM_SECRET" \
   --arg default "$DEFAULT_SECRET" \
   '. + {
-    "wavemux": {
+    "agentmux": {
       "GITHUB_WEBHOOK_SECRET": $github,
       "CUSTOM_WEBHOOK_SECRET": $custom,
       "DEFAULT_AUTH_SECRET": $default
@@ -70,12 +70,12 @@ echo "$UPDATED" | aws secretsmanager put-secret-value \
 ### 3. Verify Secrets
 
 ```bash
-# View wavemux secrets
+# View agentmux secrets
 aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq '.wavemux'
+  --output text | jq '.agentmux'
 ```
 
 **Expected output:**
@@ -98,7 +98,7 @@ After setup, `services/prod` will have this structure:
   "pulse": { ... },
   "askbase": { ... },
   "stratum": { ... },
-  "wavemux": {
+  "agentmux": {
     "GITHUB_WEBHOOK_SECRET": "your-github-webhook-secret",
     "CUSTOM_WEBHOOK_SECRET": "your-custom-secret",
     "DEFAULT_AUTH_SECRET": "shared-secret-for-workspace-auth"
@@ -118,7 +118,7 @@ After CDK deployment:
 ```bash
 # Get HTTP API endpoint
 HTTP_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2 \
   --query 'Stacks[0].Outputs[?OutputKey==`HttpApiEndpoint`].OutputValue' \
   --output text)
@@ -144,18 +144,18 @@ aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq -r '.wavemux.GITHUB_WEBHOOK_SECRET'
+  --output text | jq -r '.agentmux.GITHUB_WEBHOOK_SECRET'
 ```
 
 Copy this value to GitHub webhook configuration.
 
 ---
 
-## WaveMux Client Authentication
+## AgentMux Client Authentication
 
 ### Generate Workspace Auth Token
 
-Each WaveMux workspace needs an authentication token to connect via WebSocket.
+Each AgentMux workspace needs an authentication token to connect via WebSocket.
 
 ```bash
 # Get the default auth secret
@@ -163,7 +163,7 @@ DEFAULT_SECRET=$(aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq -r '.wavemux.DEFAULT_AUTH_SECRET')
+  --output text | jq -r '.agentmux.DEFAULT_AUTH_SECRET')
 
 # Generate token for a workspace
 WORKSPACE_ID="agent2-workspace"
@@ -172,9 +172,9 @@ AUTH_TOKEN=$(echo -n "$WORKSPACE_ID" | openssl dgst -sha256 -hmac "$DEFAULT_SECR
 echo "Auth Token for $WORKSPACE_ID: $AUTH_TOKEN"
 ```
 
-### Add to WaveMux Config
+### Add to AgentMux Config
 
-Update `~/.wavemux/webhook-config.json`:
+Update `~/.agentmux/webhook-config.json`:
 
 ```json
 {
@@ -198,7 +198,7 @@ GITHUB_SECRET=$(aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq -r '.wavemux.GITHUB_WEBHOOK_SECRET')
+  --output text | jq -r '.agentmux.GITHUB_WEBHOOK_SECRET')
 
 # Create test payload
 PAYLOAD='{"action":"opened","pull_request":{"number":123}}'
@@ -208,7 +208,7 @@ SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$GITHUB_SECRET" | s
 
 # Get HTTP endpoint
 HTTP_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2 \
   --query 'Stacks[0].Outputs[?OutputKey==`HttpApiEndpoint`].OutputValue' \
   --output text)
@@ -226,7 +226,7 @@ curl -X POST "$HTTP_ENDPOINT/webhook/github" \
 ```bash
 # Get WebSocket endpoint
 WS_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name wavemux-webhook-prod \
+  --stack-name agentmux-webhook-prod \
   --profile Agent2 \
   --query 'Stacks[0].Outputs[?OutputKey==`WebSocketApiEndpoint`].OutputValue' \
   --output text)
@@ -256,7 +256,7 @@ CURRENT=$(aws secretsmanager get-secret-value \
 
 UPDATED=$(echo "$CURRENT" | jq \
   --arg secret "$NEW_GITHUB_SECRET" \
-  '.wavemux.GITHUB_WEBHOOK_SECRET = $secret')
+  '.agentmux.GITHUB_WEBHOOK_SECRET = $secret')
 
 echo "$UPDATED" | aws secretsmanager put-secret-value \
   --secret-id services/prod \
@@ -282,7 +282,7 @@ CURRENT=$(aws secretsmanager get-secret-value \
 
 UPDATED=$(echo "$CURRENT" | jq \
   --arg secret "$NEW_DEFAULT_SECRET" \
-  '.wavemux.DEFAULT_AUTH_SECRET = $secret')
+  '.agentmux.DEFAULT_AUTH_SECRET = $secret')
 
 echo "$UPDATED" | aws secretsmanager put-secret-value \
   --secret-id services/prod \
@@ -298,18 +298,18 @@ echo "$UPDATED" | aws secretsmanager put-secret-value \
 
 ### Secret Not Found
 
-**Error:** `KeyError: 'wavemux'` or secrets not loading
+**Error:** `KeyError: 'agentmux'` or secrets not loading
 
 **Solution:**
 ```bash
-# Check if wavemux key exists
+# Check if agentmux key exists
 aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq 'has("wavemux")'
+  --output text | jq 'has("agentmux")'
 
-# If false, add the wavemux key (see Setup Instructions)
+# If false, add the agentmux key (see Setup Instructions)
 ```
 
 ### Invalid Signature
@@ -327,7 +327,7 @@ aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq -r '.wavemux.GITHUB_WEBHOOK_SECRET'
+  --output text | jq -r '.agentmux.GITHUB_WEBHOOK_SECRET'
 
 # Update GitHub webhook settings with correct secret
 ```
@@ -347,12 +347,12 @@ DEFAULT_SECRET=$(aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq -r '.wavemux.DEFAULT_AUTH_SECRET')
+  --output text | jq -r '.agentmux.DEFAULT_AUTH_SECRET')
 
 WORKSPACE_ID="agent2-workspace"
 AUTH_TOKEN=$(echo -n "$WORKSPACE_ID" | openssl dgst -sha256 -hmac "$DEFAULT_SECRET" | sed 's/^.* //')
 
-# Update ~/.wavemux/webhook-config.json with new token
+# Update ~/.agentmux/webhook-config.json with new token
 ```
 
 ---
@@ -390,10 +390,10 @@ AUTH_TOKEN=$(echo -n "$WORKSPACE_ID" | openssl dgst -sha256 -hmac "$DEFAULT_SECR
 ## Reference
 
 - **Secret Name:** `services/prod`
-- **Project Key:** `wavemux`
+- **Project Key:** `agentmux`
 - **Lambda Environment Variables:**
   - `SECRET_NAME=services/prod`
-  - `PROJECT_NAME=wavemux`
+  - `PROJECT_NAME=agentmux`
 
 **Related Documentation:**
 - [DEPLOYMENT.md](DEPLOYMENT.md) - Infrastructure deployment

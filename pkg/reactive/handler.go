@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wstore"
 	"github.com/google/uuid"
 )
 

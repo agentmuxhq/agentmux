@@ -2,7 +2,7 @@
 
 ## Overview
 
-Display Claude Code's activity summaries in WaveMux terminal pane title bars, providing real-time visibility into what Claude is doing.
+Display Claude Code's activity summaries in AgentMux terminal pane title bars, providing real-time visibility into what Claude is doing.
 
 ## Current State
 
@@ -144,7 +144,7 @@ function handleOscTitleCommand(data: string, blockId: string, loaded: boolean): 
 ## Data Flow
 
 ```
-Claude Code                    WaveMux
+Claude Code                    AgentMux
     |                              |
     |--OSC 0: "Reading files..."-->|
     |                              |

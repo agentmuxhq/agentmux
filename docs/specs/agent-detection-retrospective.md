@@ -12,7 +12,7 @@
 **"feat: per-pane agent colors via shell environment variables"**
 
 - Implemented OSC 16162 command "E" for shell-to-frontend communication
-- Shell integration script (`wavemux-agent.sh`) sends env vars via OSC
+- Shell integration script (`agentmux-agent.sh`) sends env vars via OSC
 - `termwrap.ts` receives OSC and updates block's `cmd:env` metadata
 - `blockframe.tsx` reads from `blockData.meta["cmd:env"]` for agent identity
 - **Result:** Per-pane agent detection worked correctly
@@ -113,7 +113,7 @@ When agent exits, shell should:
 3. Block's `cmd:env` gets updated to remove agent identity
 4. Pane reverts to showing "Terminal"
 
-This requires updating `wavemux-agent.sh` to handle agent exit, NOT changing where we read agent identity from.
+This requires updating `agentmux-agent.sh` to handle agent exit, NOT changing where we read agent identity from.
 
 ---
 
@@ -134,7 +134,7 @@ NOT from settings (global) or process.env (process-wide).
 ## Future Work
 
 1. **Fix stale agent identity properly**
-   - Update `wavemux-agent.sh` to clear agent on exit
+   - Update `agentmux-agent.sh` to clear agent on exit
    - Or implement a timeout/heartbeat mechanism
    - Or use `term:activity` as signal (if "Idle" for X seconds, clear agent)
 

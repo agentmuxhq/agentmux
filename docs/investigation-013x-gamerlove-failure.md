@@ -6,7 +6,7 @@
 
 ## Problem Statement
 
-WaveMux versions 0.13.0, 0.13.1, and 0.13.2 fail to run on gamerlove Windows sandbox, while v0.12.18 works correctly.
+AgentMux versions 0.13.0, 0.13.1, and 0.13.2 fail to run on gamerlove Windows sandbox, while v0.12.18 works correctly.
 
 ## Investigation Findings
 
@@ -68,13 +68,13 @@ git log v0.12.18-fork..a406fc9 --oneline
 The change from 1 terminal to 4 terminals at startup likely causes:
 
 1. **Resource Exhaustion**
-   - 4 simultaneous shell spawns (wavemuxsrv spawns 4 shell processes)
+   - 4 simultaneous shell spawns (agentmuxsrv spawns 4 shell processes)
    - Each shell initializes separately (reads .bashrc, etc.)
    - Windows sandbox may have resource limits
 
 2. **Race Conditions**
    - Multiple terminals requesting shell controllers simultaneously
-   - Potential wavemuxsrv connection pool issues
+   - Potential agentmuxsrv connection pool issues
    - Synchronization problems during parallel initialization
 
 3. **Timeout Issues**

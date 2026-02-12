@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/a5af/wavemux/pkg/wconfig/settings-type",
+  "$id": "https://github.com/a5af/agentmux/pkg/wconfig/settings-type",
   "$ref": "#/$defs/SettingsType",
   "$defs": {
     "SettingsType": {

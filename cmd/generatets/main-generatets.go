@@ -11,10 +11,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/service"
-	"github.com/a5af/wavemux/pkg/tsgen"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/service"
+	"github.com/a5af/agentmux/pkg/tsgen"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 func generateTypesFile(tsTypesMap map[reflect.Type]string) error {

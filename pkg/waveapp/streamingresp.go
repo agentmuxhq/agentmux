@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"net/http"
 
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 const maxChunkSize = 64 * 1024 // 64KB maximum chunk size

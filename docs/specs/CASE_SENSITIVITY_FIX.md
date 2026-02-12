@@ -9,7 +9,7 @@
 AgentX had `WAVEMUX_AGENT_ID="AgentX"` but injections sent to `"agentx"` weren't delivered.
 
 **Root cause:** Case mismatch between:
-- WaveMux poller polling for `"AgentX"` (as registered locally)
+- AgentMux poller polling for `"AgentX"` (as registered locally)
 - AgentMux cloud storing injections under `"agentx"` (normalized)
 
 ## Current State
@@ -19,7 +19,7 @@ AgentX had `WAVEMUX_AGENT_ID="AgentX"` but injections sent to `"agentx"` weren't
 - Query for `"AgentX"`, `"AGENTX"`, `"agentx"` all return same results
 - ✅ Case insensitive
 
-### WaveMux Poller (Bug)
+### AgentMux Poller (Bug)
 - Polls using exact agent ID from local registration
 - If registered as `"AgentX"`, polls `/reactive/pending/AgentX`
 - AgentMux returns injections for `"agentx"` but URL mismatch may cause issues
@@ -42,9 +42,9 @@ AgentX had `WAVEMUX_AGENT_ID="AgentX"` but injections sent to `"agentx"` weren't
 
 | Component | Location | Action |
 |-----------|----------|--------|
-| WaveMux Handler | `RegisterAgent()` | Normalize agentID to lowercase |
-| WaveMux Poller | `pollForAgent()` | Normalize agentID to lowercase |
-| WaveMux Poller | `acknowledgeDelivery()` | Normalize agentID to lowercase |
+| AgentMux Handler | `RegisterAgent()` | Normalize agentID to lowercase |
+| AgentMux Poller | `pollForAgent()` | Normalize agentID to lowercase |
+| AgentMux Poller | `acknowledgeDelivery()` | Normalize agentID to lowercase |
 | Shell Integration | OSC handler | Normalize before registration |
 
 ### Implementation
@@ -95,7 +95,7 @@ import (
     "sync"
     "time"
 
-    "github.com/a5af/wavemux/pkg/wavebase"
+    "github.com/a5af/agentmux/pkg/wavebase"
 )
 ```
 
@@ -107,7 +107,7 @@ import (
 ### Testing
 
 1. Set `WAVEMUX_AGENT_ID="AgentX"` (mixed case)
-2. Start WaveMux, verify registration logs show `"agentx"`
+2. Start AgentMux, verify registration logs show `"agentx"`
 3. Send injection to `"agentx"` from another agent
 4. Verify injection delivered within 5 seconds
 

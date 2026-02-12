@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-WaveMux has successfully migrated to Tauri v2. The Electron codebase is no longer needed and is causing confusion for agents working on the project. This phase removes all Electron code and updates documentation to reflect the current Tauri architecture.
+AgentMux has successfully migrated to Tauri v2. The Electron codebase is no longer needed and is causing confusion for agents working on the project. This phase removes all Electron code and updates documentation to reflect the current Tauri architecture.
 
 **What We're Deleting:**
 - ❌ `emain/` directory (entire Electron main process)
@@ -67,9 +67,9 @@ WaveMux has successfully migrated to Tauri v2. The Electron codebase is no longe
 | `CLAUDE.md` | References Electron architecture | Update to Tauri |
 | `BUILD.md` | Electron build instructions | Replace with Tauri |
 | `CONTRIBUTING.md` | Mentions Electron dev setup | Update |
-| `docs/architecture/wavemux-components.md` | Electron architecture diagram | Rewrite |
+| `docs/architecture/agentmux-components.md` | Electron architecture diagram | Rewrite |
 | `.roo/rules/overview.md` | Electron references | Update |
-| `specs/wavemux-tauri-migration.md` | Migration spec (historical) | Archive or delete |
+| `specs/agentmux-tauri-migration.md` | Migration spec (historical) | Archive or delete |
 | `BENCHMARK_REPORT.md` | Compares Electron vs Tauri | Keep (historical data) |
 
 ---
@@ -96,7 +96,7 @@ git status
 - `emain/menu.ts` - Application menu
 - `emain/platform.ts` - Platform utilities
 - `emain/authkey.ts` - Auth key injection
-- `emain/emain-wavemuxsrv.ts` - Backend spawning
+- `emain/emain-agentmuxsrv.ts` - Backend spawning
 - `emain/updater.ts` - Auto-updater
 - `emain/*.ts` - All other Electron files
 
@@ -206,8 +206,8 @@ npm uninstall electron electron-builder electron-vite electron-updater
 
 ## Architecture
 
-- **WaveMux.exe** = Electron app (UI)
-- **wavemuxsrv** = Go backend (auto-spawned)
+- **AgentMux.exe** = Electron app (UI)
+- **agentmuxsrv** = Go backend (auto-spawned)
 - **wsh** = Shell integration
 
 ## Development
@@ -220,16 +220,16 @@ task dev          # Hot reload - USE THIS FOR DEVELOPMENT
 
 ## Architecture
 
-WaveMux is a **Tauri v2** desktop application with:
-- **wavemux.exe** = Tauri app (Rust + single webview)
-- **wavemuxsrv** = Go backend sidecar (auto-spawned)
+AgentMux is a **Tauri v2** desktop application with:
+- **agentmux.exe** = Tauri app (Rust + single webview)
+- **agentmuxsrv** = Go backend sidecar (auto-spawned)
 - **wsh** = Shell integration binary
 
 ## Development
 
 task dev          # Tauri hot reload - USE THIS FOR DEVELOPMENT
 task build        # Production Tauri build
-task build:backend # Rebuild Go binaries (wavemuxsrv, wsh)
+task build:backend # Rebuild Go binaries (agentmuxsrv, wsh)
 ```
 
 **Files to update:**
@@ -288,9 +288,9 @@ task build            # Package installer
 #### 2.3 Rewrite Architecture Documentation
 
 ```markdown
-# docs/architecture/wavemux-components.md (NEW)
+# docs/architecture/agentmux-components.md (NEW)
 
-# WaveMux Architecture (Tauri v2)
+# AgentMux Architecture (Tauri v2)
 
 ## System Overview
 
@@ -300,7 +300,7 @@ task build            # Package installer
 │  src-tauri/src/                                          │
 │  ├── main.rs          - Entry point                      │
 │  ├── commands/        - Tauri commands (#[tauri::command])│
-│  ├── sidecar.rs       - wavemuxsrv lifecycle            │
+│  ├── sidecar.rs       - agentmuxsrv lifecycle            │
 │  ├── state.rs         - App state (Mutex)               │
 │  ├── menu.rs          - Native menus                     │
 │  ├── tray.rs          - System tray                      │
@@ -309,7 +309,7 @@ task build            # Package installer
                    │ Tauri sidecar (stdio)
                    ▼
 ┌─────────────────────────────────────────────────────────┐
-│              Go Backend (wavemuxsrv)                     │
+│              Go Backend (agentmuxsrv)                     │
 │  cmd/server/         - Main server entry                │
 │  pkg/web/            - HTTP + WebSocket server          │
 │  pkg/wstore/         - SQLite data store                │
@@ -333,10 +333,10 @@ task build            # Package installer
 ### Tauri Rust Layer
 - **Single webview per window** (no multi-WebContentsView)
 - **Native OS integration** (menus, tray, notifications)
-- **Sidecar management** (spawn/monitor wavemuxsrv)
+- **Sidecar management** (spawn/monitor agentmuxsrv)
 - **IPC bridge** (Tauri commands for frontend ↔ Rust)
 
-### Go Backend (wavemuxsrv)
+### Go Backend (agentmuxsrv)
 - **Terminal management** (PTY, shell execution)
 - **Data persistence** (SQLite via wstore)
 - **WebSocket server** (real-time frontend ↔ backend)
@@ -379,7 +379,7 @@ React
 ### 4. Tauri → Backend (Sidecar)
 ```
 Tauri
-  → Command::new_sidecar("wavemuxsrv")
+  → Command::new_sidecar("agentmuxsrv")
   → Spawn process with stdio
   → Monitor stderr for "WAVESRV-ESTART"
   → Parse endpoints (WS, HTTP)
@@ -393,7 +393,7 @@ Tauri
 task dev
   ├─ cargo watch (Rust hot reload)
   ├─ vite dev server (React HMR)
-  └─ wavemuxsrv (auto-restart on crash)
+  └─ agentmuxsrv (auto-restart on crash)
 ```
 
 ### Production
@@ -402,14 +402,14 @@ task build
   ├─ vite build (React → dist/)
   ├─ cargo build --release (Rust)
   ├─ Embed frontend in binary
-  ├─ Bundle sidecars (wavemuxsrv, wsh)
+  ├─ Bundle sidecars (agentmuxsrv, wsh)
   └─ Create installer (NSIS, DMG, DEB, AppImage)
 ```
 
 ## File Structure
 
 ```
-wavemux/
+agentmux/
 ├── src-tauri/              # Tauri Rust app
 │   ├── src/
 │   │   ├── main.rs
@@ -425,7 +425,7 @@ wavemux/
 │   │   └── aipanel/        # AI chat
 │   └── wave.ts
 ├── cmd/                    # Go binaries
-│   ├── server/             # wavemuxsrv
+│   ├── server/             # agentmuxsrv
 │   └── wsh/                # wsh
 ├── pkg/                    # Go packages
 │   ├── web/
@@ -451,17 +451,17 @@ wavemux/
 ```
 
 **Files to create/update:**
-- `docs/architecture/wavemux-components.md` - Complete rewrite
+- `docs/architecture/agentmux-components.md` - Complete rewrite
 
 ---
 
 #### 2.4 Update README.md
 
 ```diff
-  # WaveMux
+  # AgentMux
 
-- WaveMux is an AI-native terminal built on Electron and Go.
-+ WaveMux is an AI-native terminal built on Tauri v2 and Go.
+- AgentMux is an AI-native terminal built on Electron and Go.
++ AgentMux is an AI-native terminal built on Tauri v2 and Go.
 
   ## Features
 
@@ -500,8 +500,8 @@ wavemux/
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/a5af/wavemux.git
-   cd wavemux
+   git clone https://github.com/a5af/agentmux.git
+   cd agentmux
    ```
 
 2. Install dependencies
@@ -516,12 +516,12 @@ wavemux/
 
 ### Architecture
 
-WaveMux uses **Tauri v2** (not Electron) with:
+AgentMux uses **Tauri v2** (not Electron) with:
 - **Rust** frontend (Tauri, single webview)
-- **Go** backend (wavemuxsrv sidecar)
+- **Go** backend (agentmuxsrv sidecar)
 - **React** UI (Vite + TypeScript)
 
-See [docs/architecture/wavemux-components.md](docs/architecture/wavemux-components.md) for details.
+See [docs/architecture/agentmux-components.md](docs/architecture/agentmux-components.md) for details.
 
 ### Making Changes
 
@@ -547,14 +547,14 @@ npm run coverage      # Generate coverage report
 **Option A: Archive**
 ```bash
 mkdir -p docs/archive/
-mv specs/wavemux-tauri-migration.md docs/archive/
-git add docs/archive/wavemux-tauri-migration.md
+mv specs/agentmux-tauri-migration.md docs/archive/
+git add docs/archive/agentmux-tauri-migration.md
 git commit -m "docs: archive Electron→Tauri migration spec (historical)"
 ```
 
 **Option B: Delete**
 ```bash
-rm specs/wavemux-tauri-migration.md
+rm specs/agentmux-tauri-migration.md
 git commit -m "docs: remove outdated migration spec"
 ```
 
@@ -565,12 +565,12 @@ git commit -m "docs: remove outdated migration spec"
 #### 2.7 Update .roo/rules/overview.md (AI Agent Rules)
 
 ```diff
-  # WaveMux Codebase Overview
+  # AgentMux Codebase Overview
 
   ## Architecture
 
-- WaveMux is a desktop application built with **Electron** and **Go**.
-+ WaveMux is a desktop application built with **Tauri v2** and **Go**.
+- AgentMux is a desktop application built with **Electron** and **Go**.
++ AgentMux is a desktop application built with **Tauri v2** and **Go**.
 
   ## Key Directories
 
@@ -633,7 +633,7 @@ tasks:
 ```yaml
 # .github/workflows/build.yml (UPDATE)
 
-name: Build WaveMux
+name: Build AgentMux
 
 on:
   push:
@@ -818,7 +818,7 @@ npm run type-check  # TypeScript compilation
 ```
 chore: remove Electron code, update docs to Tauri-only
 
-WaveMux has fully migrated to Tauri v2. This commit removes all
+AgentMux has fully migrated to Tauri v2. This commit removes all
 Electron code and updates documentation to prevent agent confusion.
 
 Changes:
@@ -853,7 +853,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ✅ package.json                           # Remove deps, update scripts
 ✅ CLAUDE.md                              # Update architecture
 ✅ BUILD.md                               # Replace build instructions
-✅ docs/architecture/wavemux-components.md # Rewrite
+✅ docs/architecture/agentmux-components.md # Rewrite
 ✅ CONTRIBUTING.md                        # Update dev setup
 ✅ .roo/rules/overview.md                 # Update agent rules
 ```
@@ -870,7 +870,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ### Files to ARCHIVE
 
 ```
-✅ specs/wavemux-tauri-migration.md → docs/archive/
+✅ specs/agentmux-tauri-migration.md → docs/archive/
 ```
 
 ### Files to KEEP (Historical)

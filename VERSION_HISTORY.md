@@ -1,6 +1,6 @@
-# WaveMux Version History
+# AgentMux Version History
 
-This document tracks the version history of the a5af/wavemux fork (formerly a5af/waveterm).
+This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
 ## Latest Version: 0.16.7
 
@@ -28,7 +28,7 @@ This document tracks the version history of the a5af/wavemux fork (formerly a5af
   - Add HTTP endpoints: /wave/reactive/poller/config, /status
   - Add OSC 16162 "X" command for agentmux config
   - New wsh commands: `wsh agentmux config`, `wsh agentmux status`
-  - Allows configuring AgentMux without restarting WaveMux
+  - Allows configuring AgentMux without restarting AgentMux
 
 ### v0.16.5 (2026-01-16)
 - **Agent:** AgentA
@@ -59,7 +59,7 @@ This document tracks the version history of the a5af/wavemux fork (formerly a5af
 - **Agent:** AgentA
 - **Changes:**
   - Feat: Cross-host reactive messaging poller (#144)
-  - WaveMux polls AgentMux for pending injections from remote agents
+  - AgentMux polls AgentMux for pending injections from remote agents
   - New endpoint: /wave/reactive/poller/stats for monitoring
   - Configurable via AGENTMUX_URL, AGENTMUX_TOKEN env vars
   - Enables agent-to-agent messaging across different machines
@@ -85,7 +85,7 @@ This document tracks the version history of the a5af/wavemux fork (formerly a5af
 - **Agent:** AgentA
 - **Changes:**
   - Refactor: remove AGENTMUX_AGENT_ID coupling (#135)
-  - WaveMux now only uses WAVEMUX_AGENT_ID for agent identity
+  - AgentMux now only uses WAVEMUX_AGENT_ID for agent identity
   - Shell integration scripts cleaned of AGENTMUX fallbacks
 
 ### v0.15.13 (2026-01-15)
@@ -233,7 +233,7 @@ This document tracks the version history of the a5af/wavemux fork (formerly a5af
 ## Development Setup
 
 **Primary Development Machine:** area54 (192.168.1.26)
-**Repository:** `C:\Systems\wavemux`
+**Repository:** `C:\Systems\agentmux`
 
 ### Agent Workspaces
 
@@ -248,7 +248,7 @@ Agents work on feature branches from `main`:
 
 - **Upstream repository:** https://github.com/wavetermdev/waveterm
 - **Base Upstream Version:** v0.12.0
-- **Fork repository:** https://github.com/a5af/wavemux
+- **Fork repository:** https://github.com/a5af/agentmux
 - **Latest Fork:** v0.15.15
 - **Commits Ahead of Upstream:** 100+ commits with custom features
 
@@ -261,7 +261,7 @@ Agents work on feature branches from `main`:
 3. **Claude activity display** - Shows Claude Code activity summaries in title bar
 4. **Environment-based agent detection** - WAVEMUX_AGENT_ID env var
 5. **OSC 16162 shell integration** - Shell can send agent identity via escape sequences
-6. **Multi-instance support** - Multiple WaveMux instances can run simultaneously
+6. **Multi-instance support** - Multiple AgentMux instances can run simultaneously
 7. **Portable mode** - Persistent settings across instances
 8. **High-contrast borders** - Visual improvements for terminal blocks
 9. **Version management** - Automated version bump scripts

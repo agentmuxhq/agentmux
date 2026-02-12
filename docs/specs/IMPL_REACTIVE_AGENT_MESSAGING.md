@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Enable real-time, reactive messaging between Claude Code instances running in WaveMux panes. When Agent A sends a message to Agent B, the message is injected directly into Agent B's terminal stdin, causing Claude Code to process it as user input and respond immediately.
+Enable real-time, reactive messaging between Claude Code instances running in AgentMux panes. When Agent A sends a message to Agent B, the message is injected directly into Agent B's terminal stdin, causing Claude Code to process it as user input and respond immediately.
 
 This is a **first-in-industry feature** - no existing tool provides true reactive agent-to-agent communication for Claude Code.
 
@@ -19,7 +19,7 @@ This is a **first-in-industry feature** - no existing tool provides true reactiv
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                              WaveMux                                     │
+│                              AgentMux                                     │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                  │
 │  │   Pane 1    │    │   Pane 2    │    │   Pane 3    │                  │
 │  │  Claude A   │    │  Claude B   │    │  Claude C   │                  │
@@ -30,7 +30,7 @@ This is a **first-in-industry feature** - no existing tool provides true reactiv
 │         │                  │                  │                          │
 │  ┌──────┴──────────────────┴──────────────────┴──────┐                  │
 │  │                   PTY Manager                      │                  │
-│  │           (wavemuxsrv - Go backend)               │                  │
+│  │           (agentmuxsrv - Go backend)               │                  │
 │  └──────────────────────┬────────────────────────────┘                  │
 │                         │                                                │
 │  ┌──────────────────────┴────────────────────────────┐                  │
@@ -64,7 +64,7 @@ This is a **first-in-industry feature** - no existing tool provides true reactiv
 ### 1. AgentMux: New `inject_terminal` Capability
 
 **Location:** AgentMux MCP server
-**Purpose:** Accept reactive message requests and forward to WaveMux
+**Purpose:** Accept reactive message requests and forward to AgentMux
 
 #### New MCP Tool: `inject_terminal`
 
@@ -108,16 +108,16 @@ Agent A calls inject_terminal(target="AgentX", message="Review PR #135")
 AgentMux receives request
     │
     ├── Validates target agent exists and is online
-    ├── Checks agent is in a WaveMux pane (has PTY)
+    ├── Checks agent is in a AgentMux pane (has PTY)
     │
     ▼
-AgentMux forwards to WaveMux backend via:
-    Option A: WebSocket connection (if WaveMux connects to AgentMux)
+AgentMux forwards to AgentMux backend via:
+    Option A: WebSocket connection (if AgentMux connects to AgentMux)
     Option B: Unix socket / named pipe
-    Option C: HTTP endpoint on wavemuxsrv
+    Option C: HTTP endpoint on agentmuxsrv
     │
     ▼
-WaveMux receives injection request
+AgentMux receives injection request
     │
     ├── Looks up pane by WAVEMUX_AGENT_ID
     ├── Gets PTY master file descriptor
@@ -135,7 +135,7 @@ Response visible in pane (and optionally captured back)
 
 ---
 
-### 2. WaveMux: PTY Injection Endpoint
+### 2. AgentMux: PTY Injection Endpoint
 
 **Location:** `pkg/wshutil/` or new `pkg/reactive/`
 **Purpose:** Accept injection requests and write to PTY
@@ -205,7 +205,7 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
         return InjectionResponse{
             Success:   false,
             RequestID: req.RequestID,
-            Error:     fmt.Sprintf("agent %s not found or not in a WaveMux pane", req.TargetAgentID),
+            Error:     fmt.Sprintf("agent %s not found or not in a AgentMux pane", req.TargetAgentID),
         }
     }
 
@@ -242,7 +242,7 @@ func (h *Handler) InjectMessage(req InjectionRequest) InjectionResponse {
 
 #### Integration Point: Shell/PTY Management
 
-The existing PTY management in WaveMux needs to expose write access:
+The existing PTY management in AgentMux needs to expose write access:
 
 **File:** `pkg/shellexec/shellexec.go` (or similar)
 
@@ -260,7 +260,7 @@ func (s *ShellProc) GetStdinWriter() func([]byte) error {
 
 ### 3. Agent Registration via OSC 16162
 
-When a Claude Code instance starts with `WAVEMUX_AGENT_ID` set, the shell integration already sends this via OSC 16162. WaveMux frontend receives this and updates block metadata.
+When a Claude Code instance starts with `WAVEMUX_AGENT_ID` set, the shell integration already sends this via OSC 16162. AgentMux frontend receives this and updates block metadata.
 
 **Enhancement needed:** Backend must also track agent-to-pane mapping for injection routing.
 
@@ -269,7 +269,7 @@ When a Claude Code instance starts with `WAVEMUX_AGENT_ID` set, the shell integr
 ```
 1. Shell starts with WAVEMUX_AGENT_ID=AgentX
 2. Shell integration sends: \033]16162;E;{"WAVEMUX_AGENT_ID":"AgentX"}\007
-3. WaveMux frontend receives OSC, updates block metadata
+3. AgentMux frontend receives OSC, updates block metadata
 4. Frontend notifies backend: "Block abc123 has agent AgentX"
 5. Backend registers: agentToPane["AgentX"] = "abc123"
 6. Backend stores PTY writer for block abc123
@@ -291,28 +291,28 @@ type AgentRegistration struct {
 
 ---
 
-### 4. Communication Channel: AgentMux <-> WaveMux
+### 4. Communication Channel: AgentMux <-> AgentMux
 
 #### Option A: WebSocket (Recommended)
 
-WaveMux backend connects to AgentMux as a client, subscribing to injection requests.
+AgentMux backend connects to AgentMux as a client, subscribing to injection requests.
 
 ```
 AgentMux WebSocket Server (port 8765)
     │
     ├── Agent connections (existing)
     │
-    └── WaveMux connection (new)
+    └── AgentMux connection (new)
         - Subscribes to: injection_requests
         - Publishes: injection_responses, agent_online/offline
 ```
 
 **Pros:** Bidirectional, real-time, existing AgentMux WebSocket infrastructure
-**Cons:** Requires WaveMux to maintain connection to AgentMux
+**Cons:** Requires AgentMux to maintain connection to AgentMux
 
-#### Option B: HTTP Endpoint on wavemuxsrv
+#### Option B: HTTP Endpoint on agentmuxsrv
 
-AgentMux calls HTTP endpoint on WaveMux when injection is requested.
+AgentMux calls HTTP endpoint on AgentMux when injection is requested.
 
 ```
 POST http://localhost:1729/api/reactive/inject
@@ -327,11 +327,11 @@ Content-Type: application/json
 ```
 
 **Pros:** Simple, stateless, easy to implement
-**Cons:** Requires WaveMux to expose HTTP endpoint, firewall considerations
+**Cons:** Requires AgentMux to expose HTTP endpoint, firewall considerations
 
 #### Option C: Unix Socket / Named Pipe
 
-Direct IPC between AgentMux and WaveMux on same machine.
+Direct IPC between AgentMux and AgentMux on same machine.
 
 **Pros:** Fast, no network overhead, secure
 **Cons:** Only works locally, more complex setup
@@ -393,9 +393,9 @@ Or simpler, just prepend source:
 
 ## Implementation Phases
 
-### Phase 1: Backend Infrastructure (wavemuxsrv) ✅ COMPLETE
+### Phase 1: Backend Infrastructure (agentmuxsrv) ✅ COMPLETE
 
-**PR:** [#140](https://github.com/a5af/wavemux/pull/140) - Merged
+**PR:** [#140](https://github.com/a5af/agentmux/pull/140) - Merged
 
 **Files created:**
 - `pkg/reactive/types.go` - Request/response types
@@ -420,7 +420,7 @@ Or simpler, just prepend source:
 
 ### Phase 2: Frontend Agent Tracking ✅ COMPLETE
 
-**PR:** [#141](https://github.com/a5af/wavemux/pull/141) - In Review
+**PR:** [#141](https://github.com/a5af/agentmux/pull/141) - In Review
 
 **Files modified:**
 - `frontend/app/view/term/termwrap.ts` - OSC 16162 handler calls registration API
@@ -445,11 +445,11 @@ The HTTP API is ready for AgentMux to consume. When AgentMux source becomes avai
 
 **Files to create/modify:**
 - `agentmux/src/tools/inject_terminal.ts` - New MCP tool
-- `agentmux/src/wavemux_client.ts` - HTTP client for WaveMux
+- `agentmux/src/agentmux_client.ts` - HTTP client for AgentMux
 
 **Tasks:**
 1. [ ] Add `inject_terminal` MCP tool
-2. [ ] Implement HTTP client to call WaveMux endpoint
+2. [ ] Implement HTTP client to call AgentMux endpoint
 3. [ ] Add response handling and error reporting
 4. [ ] Update agent list to show injection capability
 
@@ -464,7 +464,7 @@ Until AgentMux integration is complete, agents can call the HTTP API directly us
 
 ### API Endpoints
 
-All endpoints are served by wavemuxsrv on the same port as other wave services (typically 1729).
+All endpoints are served by agentmuxsrv on the same port as other wave services (typically 1729).
 
 #### POST /wave/reactive/inject
 
@@ -495,7 +495,7 @@ curl -X POST http://localhost:1729/wave/reactive/inject \
 ```json
 {
   "success": false,
-  "error": "agent AgentX not found or not in a WaveMux pane"
+  "error": "agent AgentX not found or not in a AgentMux pane"
 }
 ```
 
@@ -617,14 +617,14 @@ curl -s -X POST http://localhost:1729/wave/reactive/inject \
 | `pkg/wshutil/wshserver.go` | Add HTTP endpoint |
 | `pkg/shellexec/shellexec.go` | Expose PTY writer |
 | `frontend/app/block/blockframe.tsx` | Agent registration |
-| `cmd/wavemuxsrv/main.go` | Initialize reactive handler |
+| `cmd/agentmuxsrv/main.go` | Initialize reactive handler |
 
 ### AgentMux Files (Separate Repo)
 
 | File | Changes |
 |------|---------|
 | `src/tools/inject_terminal.ts` | New MCP tool |
-| `src/wavemux_client.ts` | HTTP client |
+| `src/agentmux_client.ts` | HTTP client |
 | `src/index.ts` | Register new tool |
 
 ---
@@ -635,7 +635,7 @@ curl -s -X POST http://localhost:1729/wave/reactive/inject \
 
 - Only registered agents can inject messages
 - AgentMux validates source agent identity
-- WaveMux validates request comes from trusted AgentMux
+- AgentMux validates request comes from trusted AgentMux
 
 ### 2. Authorization
 
@@ -714,7 +714,7 @@ func TestInjectMessage(t *testing.T) {
 
 ### Manual Testing Checklist
 
-- [ ] Start WaveMux with two panes (AgentA, AgentX)
+- [ ] Start AgentMux with two panes (AgentA, AgentX)
 - [ ] From AgentA, call `inject_terminal` to AgentX
 - [ ] Verify message appears in AgentX pane
 - [ ] Verify Claude Code processes and responds
@@ -743,9 +743,9 @@ func TestInjectMessage(t *testing.T) {
    - Option B: Inject immediately (may confuse Claude)
    - Option C: Return error, retry later
 
-3. **Multi-WaveMux support?**
-   - Currently assumes single WaveMux instance
-   - Future: AgentMux routes to correct WaveMux instance
+3. **Multi-AgentMux support?**
+   - Currently assumes single AgentMux instance
+   - Future: AgentMux routes to correct AgentMux instance
 
 4. **Permission model?**
    - Any agent can inject to any agent?
@@ -758,7 +758,7 @@ func TestInjectMessage(t *testing.T) {
 
 - [GitHub Issue #2929: Programmatically Drive Claude Instances](https://github.com/anthropics/claude-code/issues/2929)
 - [GitHub Issue #4993: Agent-to-Agent Communication](https://github.com/anthropics/claude-code/issues/4993)
-- [WaveMux OSC 16162 Shell Integration](../pkg/util/shellutil/shellintegration/)
+- [AgentMux OSC 16162 Shell Integration](../pkg/util/shellutil/shellintegration/)
 - [AgentMux MCP Server](../../agentmux/)
 
 ---

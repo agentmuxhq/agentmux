@@ -1,4 +1,4 @@
-# WaveMux Go Module Independence Refactor Plan
+# AgentMux Go Module Independence Refactor Plan
 
 **Created:** 2025-10-20
 **Status:** Planned
@@ -8,9 +8,9 @@
 
 ## 🎯 Objective
 
-Make WaveMux truly independent from the upstream Wave Terminal by:
-1. Changing Go module path from `github.com/wavetermdev/waveterm` to `github.com/a5af/wavemux`
-2. Building all Go binaries (wavemuxsrv + wsh) from source with proper module resolution
+Make AgentMux truly independent from the upstream Wave Terminal by:
+1. Changing Go module path from `github.com/wavetermdev/waveterm` to `github.com/a5af/agentmux`
+2. Building all Go binaries (agentmuxsrv + wsh) from source with proper module resolution
 3. Ensuring all tests pass and the application runs correctly
 
 ---
@@ -18,9 +18,9 @@ Make WaveMux truly independent from the upstream Wave Terminal by:
 ## 📋 Current State (v0.12.16)
 
 ### ✅ Completed
-- [x] Renamed all `wavesrv` references to `wavemuxsrv` in TypeScript/JS code
-- [x] Renamed `wavesrv` to `wavemuxsrv` in documentation
-- [x] Updated electron-builder config to expect `wavemuxsrv.x64.exe`
+- [x] Renamed all `wavesrv` references to `agentmuxsrv` in TypeScript/JS code
+- [x] Renamed `wavesrv` to `agentmuxsrv` in documentation
+- [x] Updated electron-builder config to expect `agentmuxsrv.x64.exe`
 - [x] Rebranded product name, app ID, and homepage
 
 ### ❌ Blockers
@@ -43,7 +43,7 @@ go.sum                          # Will regenerate
 **Change:**
 ```diff
 - module github.com/wavetermdev/waveterm
-+ module github.com/a5af/wavemux
++ module github.com/a5af/agentmux
 ```
 
 ### Phase 2: Update All Import Paths
@@ -53,7 +53,7 @@ go.sum                          # Will regenerate
 **Pattern:**
 ```diff
 - import "github.com/wavetermdev/waveterm/pkg/waveobj"
-+ import "github.com/a5af/wavemux/pkg/waveobj"
++ import "github.com/a5af/agentmux/pkg/waveobj"
 ```
 
 **Key directories:**
@@ -67,7 +67,7 @@ go.sum                          # Will regenerate
 find . -name "*.go" -exec grep -l "github.com/wavetermdev/waveterm" {} \;
 
 # Replace all imports
-find . -name "*.go" -exec sed -i 's|github.com/wavetermdev/waveterm|github.com/a5af/wavemux|g' {} +
+find . -name "*.go" -exec sed -i 's|github.com/wavetermdev/waveterm|github.com/a5af/agentmux|g' {} +
 ```
 
 ### Phase 3: Update Build Scripts
@@ -81,7 +81,7 @@ build-wavesrv.sh               # Unix build script (if exists)
 
 **Key changes:**
 - Ensure build scripts reference correct module path
-- Update output binary names (`wavesrv.x64.exe` → `wavemuxsrv.x64.exe`)
+- Update output binary names (`wavesrv.x64.exe` → `agentmuxsrv.x64.exe`)
 
 ### Phase 4: Update Documentation
 
@@ -124,7 +124,7 @@ go mod download
 **Build commands:**
 ```bash
 # Build backend server
-go build -o dist/bin/wavemuxsrv.x64.exe ./cmd/server
+go build -o dist/bin/agentmuxsrv.x64.exe ./cmd/server
 
 # Build wsh for all platforms
 task build:wsh
@@ -150,7 +150,7 @@ GOOS=darwin GOARCH=arm64 go build -o dist/bin/wsh-${VERSION}-darwin.arm64 ./cmd/
 
 3. **Smoke test:**
    - Build package
-   - Extract and run WaveMux.exe
+   - Extract and run AgentMux.exe
    - Verify:
      - Application launches
      - wave-data directory created
@@ -169,11 +169,11 @@ GOOS=darwin GOARCH=arm64 go build -o dist/bin/wsh-${VERSION}-darwin.arm64 ./cmd/
 **Checklist:**
 - [ ] All Go files compile without errors
 - [ ] All tests pass (unit + E2E)
-- [ ] `wavemuxsrv.x64.exe` built from source
+- [ ] `agentmuxsrv.x64.exe` built from source
 - [ ] All `wsh-${VERSION}-*` binaries built from source
 - [ ] Smoke test passes
 - [ ] No references to `github.com/wavetermdev/waveterm` in code
-- [ ] No references to `wavesrv` (should be `wavemuxsrv`)
+- [ ] No references to `wavesrv` (should be `agentmuxsrv`)
 - [ ] Package builds successfully
 - [ ] Documentation updated
 
@@ -201,9 +201,9 @@ GOOS=darwin GOARCH=arm64 go build -o dist/bin/wsh-${VERSION}-darwin.arm64 ./cmd/
 
 ### v0.12.17 Release Artifacts
 1. **Binaries (all built from source):**
-   - `wavemuxsrv.x64.exe` (Windows)
-   - `wavemuxsrv.arm64` (macOS)
-   - `wavemuxsrv.x64` (macOS)
+   - `agentmuxsrv.x64.exe` (Windows)
+   - `agentmuxsrv.arm64` (macOS)
+   - `agentmuxsrv.x64` (macOS)
    - `wsh-0.12.17-windows.x64.exe`
    - `wsh-0.12.17-windows.arm64.exe`
    - `wsh-0.12.17-darwin.arm64`
@@ -214,10 +214,10 @@ GOOS=darwin GOARCH=arm64 go build -o dist/bin/wsh-${VERSION}-darwin.arm64 ./cmd/
    - `wsh-0.12.17-linux.mips64`
 
 2. **Packages:**
-   - `WaveMux-win32-x64-0.12.17.zip` (Windows)
-   - `WaveMux-darwin-arm64-0.12.17.zip` (macOS ARM)
-   - `WaveMux-darwin-x64-0.12.17.zip` (macOS Intel)
-   - `WaveMux-linux-x64-0.12.17.AppImage` (Linux)
+   - `AgentMux-win32-x64-0.12.17.zip` (Windows)
+   - `AgentMux-darwin-arm64-0.12.17.zip` (macOS ARM)
+   - `AgentMux-darwin-x64-0.12.17.zip` (macOS Intel)
+   - `AgentMux-linux-x64-0.12.17.AppImage` (Linux)
 
 3. **Documentation:**
    - Updated BUILD.md with new module path
@@ -231,16 +231,16 @@ GOOS=darwin GOARCH=arm64 go build -o dist/bin/wsh-${VERSION}-darwin.arm64 ./cmd/
 ### For v0.12.16 (Current)
 ```bash
 # Working directory
-cd D:/Code/agent-workspaces/agentx/wavemux
+cd D:/Code/agent-workspaces/agentx/agentmux
 
 # Using pre-built binaries from waveterm fork
-# Just rename wavesrv → wavemuxsrv
+# Just rename wavesrv → agentmuxsrv
 ```
 
 ### For v0.12.17 (After Refactor)
 ```bash
 # Clean build from source
-task build:backend    # Builds wavemuxsrv + wsh from source
+task build:backend    # Builds agentmuxsrv + wsh from source
 npm run build:prod    # Builds frontend
 task package          # Creates distributable
 
@@ -268,7 +268,7 @@ task dev              # Hot reload + live backend
 
 ## ✅ Success Criteria
 
-1. ✅ Module path is `github.com/a5af/wavemux`
+1. ✅ Module path is `github.com/a5af/agentmux`
 2. ✅ All binaries built from source (no copied files)
 3. ✅ All tests pass (unit + E2E + smoke)
 4. ✅ Application runs without errors
@@ -290,9 +290,9 @@ If refactor fails:
 
 ## 📝 Notes
 
-- This refactor makes WaveMux **truly independent** from Wave Terminal
+- This refactor makes AgentMux **truly independent** from Wave Terminal
 - After completion, no upstream dependencies or binaries needed
-- All future development happens purely in `github.com/a5af/wavemux`
+- All future development happens purely in `github.com/a5af/agentmux`
 - Upstream sync becomes a manual merge process (import Wave features as desired)
 
 ---
@@ -314,9 +314,9 @@ When implementing this refactor:
 
 5. **Commit frequently** with clear messages:
    ```
-   refactor(go): update module path to github.com/a5af/wavemux
+   refactor(go): update module path to github.com/a5af/agentmux
    refactor(go): replace all import paths
-   refactor(build): update Taskfile for wavemuxsrv
+   refactor(build): update Taskfile for agentmuxsrv
    test(e2e): verify all tests pass with new module
    ```
 

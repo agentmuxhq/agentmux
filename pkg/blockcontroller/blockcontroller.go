@@ -13,15 +13,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/blocklogger"
-	"github.com/a5af/wavemux/pkg/filestore"
-	"github.com/a5af/wavemux/pkg/remote"
-	"github.com/a5af/wavemux/pkg/remote/conncontroller"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wps"
-	"github.com/a5af/wavemux/pkg/wslconn"
-	"github.com/a5af/wavemux/pkg/wstore"
+	"github.com/a5af/agentmux/pkg/blocklogger"
+	"github.com/a5af/agentmux/pkg/filestore"
+	"github.com/a5af/agentmux/pkg/remote"
+	"github.com/a5af/agentmux/pkg/remote/conncontroller"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/wslconn"
+	"github.com/a5af/agentmux/pkg/wstore"
 )
 
 const (

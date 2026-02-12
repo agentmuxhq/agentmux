@@ -1,4 +1,4 @@
-module github.com/a5af/wavemux
+module github.com/a5af/agentmux
 
 go 1.24.6
 

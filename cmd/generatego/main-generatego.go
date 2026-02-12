@@ -9,11 +9,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/gogen"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wconfig"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/gogen"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wconfig"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 const WshClientFileName = "pkg/wshrpc/wshclient/wshclient.go"
@@ -24,15 +24,15 @@ func GenerateWshClient() error {
 	fmt.Fprintf(os.Stderr, "generating wshclient file to %s\n", WshClientFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wshclient", []string{
-		"github.com/a5af/wavemux/pkg/telemetry/telemetrydata",
-		"github.com/a5af/wavemux/pkg/wshutil",
-		"github.com/a5af/wavemux/pkg/wshrpc",
-		"github.com/a5af/wavemux/pkg/wconfig",
-		"github.com/a5af/wavemux/pkg/waveobj",
-		"github.com/a5af/wavemux/pkg/wps",
-		"github.com/a5af/wavemux/pkg/vdom",
-		"github.com/a5af/wavemux/pkg/util/iochan/iochantypes",
-		"github.com/a5af/wavemux/pkg/aiusechat/uctypes",
+		"github.com/a5af/agentmux/pkg/telemetry/telemetrydata",
+		"github.com/a5af/agentmux/pkg/wshutil",
+		"github.com/a5af/agentmux/pkg/wshrpc",
+		"github.com/a5af/agentmux/pkg/wconfig",
+		"github.com/a5af/agentmux/pkg/waveobj",
+		"github.com/a5af/agentmux/pkg/wps",
+		"github.com/a5af/agentmux/pkg/vdom",
+		"github.com/a5af/agentmux/pkg/util/iochan/iochantypes",
+		"github.com/a5af/agentmux/pkg/aiusechat/uctypes",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {

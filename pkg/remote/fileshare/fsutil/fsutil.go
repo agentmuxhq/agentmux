@@ -12,13 +12,13 @@ import (
 	"log"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/remote/connparse"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/fspath"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/fstype"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/pathtree"
-	"github.com/a5af/wavemux/pkg/util/tarcopy"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/remote/connparse"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/fspath"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/fstype"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/pathtree"
+	"github.com/a5af/agentmux/pkg/util/tarcopy"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 func GetParentPath(conn *connparse.Connection) string {

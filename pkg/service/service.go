@@ -9,16 +9,16 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/a5af/wavemux/pkg/service/blockservice"
-	"github.com/a5af/wavemux/pkg/service/clientservice"
-	"github.com/a5af/wavemux/pkg/service/objectservice"
-	"github.com/a5af/wavemux/pkg/service/userinputservice"
-	"github.com/a5af/wavemux/pkg/service/windowservice"
-	"github.com/a5af/wavemux/pkg/service/workspaceservice"
-	"github.com/a5af/wavemux/pkg/tsgen/tsgenmeta"
-	"github.com/a5af/wavemux/pkg/util/utilfn"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/web/webcmd"
+	"github.com/a5af/agentmux/pkg/service/blockservice"
+	"github.com/a5af/agentmux/pkg/service/clientservice"
+	"github.com/a5af/agentmux/pkg/service/objectservice"
+	"github.com/a5af/agentmux/pkg/service/userinputservice"
+	"github.com/a5af/agentmux/pkg/service/windowservice"
+	"github.com/a5af/agentmux/pkg/service/workspaceservice"
+	"github.com/a5af/agentmux/pkg/tsgen/tsgenmeta"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/web/webcmd"
 )
 
 var ServiceMap = map[string]any{

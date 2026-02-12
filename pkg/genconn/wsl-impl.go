@@ -9,7 +9,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/a5af/wavemux/pkg/wsl"
+	"github.com/a5af/agentmux/pkg/wsl"
 )
 
 var _ ShellClient = (*WSLShellClient)(nil)

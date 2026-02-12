@@ -9,7 +9,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/a5af/wavemux/pkg/util/dbutil"
+	"github.com/a5af/agentmux/pkg/util/dbutil"
 )
 
 // can return fs.ErrExist

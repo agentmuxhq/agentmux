@@ -11,10 +11,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/filestore"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/util/dbutil"
-	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/filestore"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/util/dbutil"
+	"github.com/a5af/agentmux/pkg/waveobj"
 )
 
 var ErrNotFound = fmt.Errorf("not found")

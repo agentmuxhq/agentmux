@@ -7,16 +7,16 @@
 
 ## Overview
 
-Extend the WaveMux reactive messaging system to support:
+Extend the AgentMux reactive messaging system to support:
 1. **Cross-host agent communication** - Agents on different machines can inject messages into each other's terminals
 2. **Async event ingestion** - External events (GitHub webhooks, CI/CD, monitoring alerts) can route messages to agents
 
 ## Current Architecture
 
-### WaveMux (Localhost)
+### AgentMux (Localhost)
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ WaveMux Instance (area54)                                   │
+│ AgentMux Instance (area54)                                   │
 │                                                             │
 │  ┌─────────┐   OSC 16162   ┌──────────────┐                │
 │  │ Agent1  │──────────────►│ termwrap.ts  │                │
@@ -36,7 +36,7 @@ Extend the WaveMux reactive messaging system to support:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Limitation:** Injection only works within the same WaveMux instance.
+**Limitation:** Injection only works within the same AgentMux instance.
 
 ### AgentMux (Cloud)
 ```
@@ -62,13 +62,13 @@ Extend the WaveMux reactive messaging system to support:
 
 ### Background
 
-During infrastructure exploration, found a separate `wavemux-webhook-prod` CloudFormation stack deployed Oct 2025:
-- `WaveMuxConnections-prod` table (empty)
-- `WaveMuxWebhookConfig-prod` table (empty)
-- `wavemux-webhook-router-prod` Lambda (unused)
+During infrastructure exploration, found a separate `agentmux-webhook-prod` CloudFormation stack deployed Oct 2025:
+- `AgentMuxConnections-prod` table (empty)
+- `AgentMuxWebhookConfig-prod` table (empty)
+- `agentmux-webhook-router-prod` Lambda (unused)
 - HTTP + WebSocket API Gateways
 
-**Decision:** Discard the separate wavemux stack and build all cloud functionality in AgentMux.
+**Decision:** Discard the separate agentmux stack and build all cloud functionality in AgentMux.
 
 ### Rationale
 
@@ -82,7 +82,7 @@ During infrastructure exploration, found a separate `wavemux-webhook-prod` Cloud
 
 ### Action Items
 
-1. ~~Delete `wavemux-webhook-prod` CloudFormation stack~~ ✅ Deleted
+1. ~~Delete `agentmux-webhook-prod` CloudFormation stack~~ ✅ Deleted
 2. Add `/reactive/*` endpoints to `agentmux-server` Lambda
 3. Add `/webhook/*` endpoints to `agentmux-server` Lambda
 4. Port webhook validation logic from Python to Node.js
@@ -102,7 +102,7 @@ During infrastructure exploration, found a separate `wavemux-webhook-prod` Cloud
 
 ```
 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│ WaveMux (area54)│         │ AgentMux Lambda │         │ WaveMux (claud.)│
+│ AgentMux (area54)│         │ AgentMux Lambda │         │ AgentMux (claud.)│
 │                 │         │                 │         │                 │
 │ AgentA ─────────┼──inject─┼►Pending Queue   │         │                 │
 │                 │         │  (DynamoDB)     │◄──poll──┼─ AgentX         │
@@ -115,14 +115,14 @@ During infrastructure exploration, found a separate `wavemux-webhook-prod` Cloud
 2. agentmux-client detects AgentX is not local
 3. Injection request is sent to AgentMux Lambda
 4. Lambda stores in `agentmux-injections-prod` table
-5. WaveMux (claudius) polls for pending injections
-6. WaveMux executes local injection to AgentX's terminal
+5. AgentMux (claudius) polls for pending injections
+6. AgentMux executes local injection to AgentX's terminal
 
 ### Phase 2: Real-Time Delivery (WebSocket)
 
 ```
 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│ WaveMux (area54)│         │ Bastion Host    │         │ WaveMux (claud.)│
+│ AgentMux (area54)│         │ Bastion Host    │         │ AgentMux (claud.)│
 │                 │   WS    │ (wss://8443)    │   WS    │                 │
 │ AgentA ─────────┼────────►│                 │────────►│ AgentX          │
 │                 │         │ WebSocket Hub   │         │                 │
@@ -141,17 +141,17 @@ During infrastructure exploration, found a separate `wavemux-webhook-prod` Cloud
 
 ```
 ┌──────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ GitHub       │    │ AgentMux Lambda │    │ WaveMux         │
+│ GitHub       │    │ AgentMux Lambda │    │ AgentMux         │
 │ Webhook      │───►│ /webhook/github │───►│ (target agent)  │
 └──────────────┘    └─────────────────┘    └─────────────────┘
 
 ┌──────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ CI/CD        │    │ AgentMux Lambda │    │ WaveMux         │
+│ CI/CD        │    │ AgentMux Lambda │    │ AgentMux         │
 │ (Jenkins/GH) │───►│ /webhook/ci     │───►│ (target agent)  │
 └──────────────┘    └─────────────────┘    └─────────────────┘
 
 ┌──────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ Monitoring   │    │ AgentMux Lambda │    │ WaveMux         │
+│ Monitoring   │    │ AgentMux Lambda │    │ AgentMux         │
 │ (PagerDuty)  │───►│ /webhook/alert  │───►│ (on-call agent) │
 └──────────────┘    └─────────────────┘    └─────────────────┘
 ```
@@ -213,7 +213,7 @@ interface RoutingRule {
 ### Lambda Endpoints
 
 #### POST /reactive/inject
-Relay injection to remote WaveMux instance.
+Relay injection to remote AgentMux instance.
 
 ```typescript
 // Request
@@ -233,7 +233,7 @@ Relay injection to remote WaveMux instance.
 ```
 
 #### GET /reactive/pending/{agent_id}
-Poll for pending injections (used by WaveMux).
+Poll for pending injections (used by AgentMux).
 
 ```typescript
 // Response
@@ -281,7 +281,7 @@ X-GitHub-Event: pull_request
 }
 ```
 
-### WaveMux Polling Service
+### AgentMux Polling Service
 
 ```go
 // pkg/reactive/poller.go
@@ -335,7 +335,7 @@ func (p *Poller) pollAndInject() {
 | Add `/reactive/inject` to agentmux-server | AgentX | Store injection request, return ID |
 | Add `/reactive/pending/{agent}` to agentmux-server | AgentX | Query pending injections for agent |
 | Add `/reactive/ack` to agentmux-server | AgentX | Mark injections as delivered |
-| Implement WaveMux polling service | AgentA | New `pkg/reactive/poller.go` |
+| Implement AgentMux polling service | AgentA | New `pkg/reactive/poller.go` |
 | Update inject_terminal MCP tool | AgentA | Route to Lambda if target not local |
 | Integration testing | Both | Cross-host injection test |
 
@@ -345,13 +345,13 @@ func (p *Poller) pollAndInject() {
 
 ### Phase 2: WebSocket Real-Time (Optional)
 
-**Note:** `WaveMuxConnections-prod` table already exists.
+**Note:** `AgentMuxConnections-prod` table already exists.
 
 | Task | Owner | Details |
 |------|-------|---------|
 | Design WebSocket protocol | AgentA | Message format, heartbeat, reconnect |
 | Implement bastion WebSocket hub | AgentX | Node.js on port 8443 (already open) |
-| Implement WaveMux WebSocket client | AgentA | Connect on startup, auto-reconnect |
+| Implement AgentMux WebSocket client | AgentA | Connect on startup, auto-reconnect |
 | Fallback to polling when WS unavailable | AgentA | Graceful degradation |
 | Testing and hardening | Both | Connection drops, reconnect, load |
 
@@ -361,7 +361,7 @@ func (p *Poller) pollAndInject() {
 
 ### Phase 3: Webhook Ingestion
 
-**Note:** Build webhook endpoints in `agentmux-server`. Port validation logic from `wavemux/infra/lambda/webhook-router/handler.py`.
+**Note:** Build webhook endpoints in `agentmux-server`. Port validation logic from `agentmux/infra/lambda/webhook-router/handler.py`.
 
 | Task | Owner | Details |
 |------|-------|---------|
@@ -373,7 +373,7 @@ func (p *Poller) pollAndInject() {
 | Create subscription management API | AgentX | `/webhook/subscribe`, `/webhook/unsubscribe` |
 | Documentation and examples | Both | Setup guides for GitHub, etc. |
 
-**Code to Port** (from `wavemux/infra/lambda/webhook-router/handler.py`):
+**Code to Port** (from `agentmux/infra/lambda/webhook-router/handler.py`):
 - `validate_webhook_signature()` - GitHub HMAC validation
 - `render_command_template()` - Template engine
 - `matches_filters()` - Filter matching
@@ -388,7 +388,7 @@ func (p *Poller) pollAndInject() {
 
 ### Authentication
 - **Agent-to-Lambda:** Existing Bearer token auth
-- **WaveMux-to-Lambda:** Same Bearer token (via env var)
+- **AgentMux-to-Lambda:** Same Bearer token (via env var)
 - **Webhooks:** HMAC signature validation per webhook type
 
 ### Authorization
@@ -397,7 +397,7 @@ func (p *Poller) pollAndInject() {
 
 ### Rate Limiting
 - Lambda: API Gateway throttling (if added)
-- WaveMux: Max injections per second per agent
+- AgentMux: Max injections per second per agent
 
 ### Message Sanitization
 - All messages sanitized before injection (existing code)
@@ -405,7 +405,7 @@ func (p *Poller) pollAndInject() {
 
 ## Configuration
 
-### WaveMux Settings
+### AgentMux Settings
 
 ```json
 // ~/.config/waveterm/settings.json
@@ -435,7 +435,7 @@ func (p *Poller) pollAndInject() {
 ### Lambda Invocation Costs
 
 The poller calls the Lambda function at a configurable interval (default 5s). Cost depends on:
-- Number of WaveMux instances polling
+- Number of AgentMux instances polling
 - Number of registered agents per instance
 - Poll frequency
 
@@ -452,7 +452,7 @@ The poller calls the Lambda function at a configurable interval (default 5s). Co
 | 30s | 120 | 2,880 | 86,400 | ~$0.02 |
 | 60s | 60 | 1,440 | 43,200 | ~$0.01 |
 
-**Multi-Agent Example (3 WaveMux instances, 2 agents each = 6 agents polling):**
+**Multi-Agent Example (3 AgentMux instances, 2 agents each = 6 agents polling):**
 
 | Poll Interval | Monthly Requests | Monthly Cost |
 |---------------|------------------|--------------|
@@ -479,7 +479,7 @@ The poller calls the Lambda function at a configurable interval (default 5s). Co
 
 ## References
 
-- [WaveMux Reactive Handler](../pkg/reactive/handler.go)
+- [AgentMux Reactive Handler](../pkg/reactive/handler.go)
 - [AgentMux Infrastructure](https://github.com/a5af/agentmux/tree/main/infrastructure)
 - [AWS WebSocket API Best Practices](https://www.cloudthat.com/resources/blog/scalable-real-time-communication-using-aws-websocket-apis-and-aws-lambda)
 - [Serverless GitHub Webhooks](https://www.serverless.com/blog/serverless-github-webhook-slack)

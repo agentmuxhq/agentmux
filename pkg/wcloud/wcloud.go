@@ -17,10 +17,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/telemetry"
-	"github.com/a5af/wavemux/pkg/telemetry/telemetrydata"
-	"github.com/a5af/wavemux/pkg/util/daystr"
-	"github.com/a5af/wavemux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/telemetry"
+	"github.com/a5af/agentmux/pkg/telemetry/telemetrydata"
+	"github.com/a5af/agentmux/pkg/util/daystr"
+	"github.com/a5af/agentmux/pkg/wavebase"
 )
 
 const WCloudEndpoint = "https://api.waveterm.dev/central"

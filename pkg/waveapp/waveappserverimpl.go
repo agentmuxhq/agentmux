@@ -10,9 +10,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/vdom"
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/vdom"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 type WaveAppServerImpl struct {

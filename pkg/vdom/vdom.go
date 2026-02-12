@@ -13,7 +13,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/a5af/wavemux/pkg/util/utilfn"
+	"github.com/a5af/agentmux/pkg/util/utilfn"
 )
 
 // ReactNode types = nil | string | Elem

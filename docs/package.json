@@ -33,7 +33,8 @@
         "rehype-highlight": "^7.0.2",
         "remark-gfm": "^4.0.1",
         "remark-typescript-code-import": "^1.0.1",
-        "sass": "^1.97.2"
+        "sass": "^1.97.2",
+        "sharp": "^0.34.5"
     },
     "devDependencies": {
         "@docusaurus/module-type-aliases": "^3.9.2",

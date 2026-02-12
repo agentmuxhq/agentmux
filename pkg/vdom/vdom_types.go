@@ -6,7 +6,7 @@ package vdom
 import (
 	"time"
 
-	"github.com/a5af/wavemux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/waveobj"
 )
 
 const TextTag = "#text"

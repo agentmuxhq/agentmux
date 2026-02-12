@@ -4,7 +4,7 @@
 package userinputservice
 
 import (
-	"github.com/a5af/wavemux/pkg/userinput"
+	"github.com/a5af/agentmux/pkg/userinput"
 )
 
 type UserInputService struct {

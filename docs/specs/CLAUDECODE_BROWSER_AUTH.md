@@ -2,7 +2,7 @@
 
 ## Problem
 
-When Claude Code starts for the first time (or when the session/subscription expires), it outputs a URL that the user must open in a browser to authenticate. In a standard terminal, the user can click or copy the URL. In WaveMux's Claude Code pane, the stream-json output may not surface this URL in a clickable way, blocking the user from completing authentication.
+When Claude Code starts for the first time (or when the session/subscription expires), it outputs a URL that the user must open in a browser to authenticate. In a standard terminal, the user can click or copy the URL. In AgentMux's Claude Code pane, the stream-json output may not surface this URL in a clickable way, blocking the user from completing authentication.
 
 ## Background
 
@@ -19,7 +19,7 @@ When Claude Code starts for the first time (or when the session/subscription exp
 5. Claude Code receives the auth token and begins the session
 6. Token is cached in `~/.claude/` for future sessions
 
-### Current WaveMux Behavior
+### Current AgentMux Behavior
 
 - The `claudecode` pane uses `--output-format stream-json`
 - Auth prompts may appear as `system` events with `subtype: "auth"` or as raw text before the stream-json protocol starts
@@ -110,7 +110,7 @@ Add an `AuthBanner` component that renders when `authUrlAtom` is non-empty:
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Open Browser** button: Uses Electron's `shell.openExternal(url)` via the WaveMux RPC bridge. The existing `getApi().openExternalLink(url)` method handles this.
+**Open Browser** button: Uses Electron's `shell.openExternal(url)` via the AgentMux RPC bridge. The existing `getApi().openExternalLink(url)` method handles this.
 
 **Copy URL** button: Copies the URL to clipboard via `navigator.clipboard.writeText(url)`.
 
@@ -159,7 +159,7 @@ For users without a Claude subscription:
 ## Testing
 
 1. Kill any cached auth: `rm -rf ~/.claude/`
-2. Open Claude Code pane in WaveMux
+2. Open Claude Code pane in AgentMux
 3. Verify auth banner appears with the URL
 4. Click "Open Browser" — browser should open to Anthropic auth
 5. Complete auth flow in browser

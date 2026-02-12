@@ -20,17 +20,17 @@ import (
 	"maps"
 
 	"github.com/creack/pty"
-	"github.com/a5af/wavemux/pkg/blocklogger"
-	"github.com/a5af/wavemux/pkg/panichandler"
-	"github.com/a5af/wavemux/pkg/remote/conncontroller"
-	"github.com/a5af/wavemux/pkg/util/pamparse"
-	"github.com/a5af/wavemux/pkg/util/shellutil"
-	"github.com/a5af/wavemux/pkg/wavebase"
-	"github.com/a5af/wavemux/pkg/waveobj"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshrpc/wshclient"
-	"github.com/a5af/wavemux/pkg/wshutil"
-	"github.com/a5af/wavemux/pkg/wslconn"
+	"github.com/a5af/agentmux/pkg/blocklogger"
+	"github.com/a5af/agentmux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/remote/conncontroller"
+	"github.com/a5af/agentmux/pkg/util/pamparse"
+	"github.com/a5af/agentmux/pkg/util/shellutil"
+	"github.com/a5af/agentmux/pkg/wavebase"
+	"github.com/a5af/agentmux/pkg/waveobj"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc/wshclient"
+	"github.com/a5af/agentmux/pkg/wshutil"
+	"github.com/a5af/agentmux/pkg/wslconn"
 )
 
 const DefaultGracefulKillWait = 400 * time.Millisecond

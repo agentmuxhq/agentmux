@@ -81,7 +81,7 @@ const handleBlockClick = (e: React.MouseEvent) => {
 
 ## Testing Plan
 
-1. Open WaveMux with 2+ terminal panes
+1. Open AgentMux with 2+ terminal panes
 2. Click on pane A - verify typing works immediately
 3. Click on pane B - verify typing works immediately
 4. Return to pane A - verify typing works without extra clicks

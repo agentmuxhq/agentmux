@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/a5af/wavemux/pkg/util/iterfn"
+	"github.com/a5af/agentmux/pkg/util/iterfn"
 )
 
 func TestCollectSeqToSorted(t *testing.T) {

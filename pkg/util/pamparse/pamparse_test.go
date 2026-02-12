@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/a5af/wavemux/pkg/util/pamparse"
+	"github.com/a5af/agentmux/pkg/util/pamparse"
 )
 
 // Tests influenced by https://unix.stackexchange.com/questions/748790/where-is-the-syntax-for-etc-environment-documented

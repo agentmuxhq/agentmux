@@ -1,4 +1,4 @@
-# Zoom Functionality Spec - WaveMux
+# Zoom Functionality Spec - AgentMux
 
 **Version:** 1.0
 **Status:** Draft
@@ -7,7 +7,7 @@
 
 ## Problem Statement
 
-Zoom controls in WaveMux are currently broken or incomplete:
+Zoom controls in AgentMux are currently broken or incomplete:
 
 1. **Ctrl+- (Zoom Out) doesn't work** - Used to work, but has stopped functioning
 2. **Ctrl++ (Zoom In) broken/inconsistent** - Keyboard shortcut not reliable
@@ -654,7 +654,7 @@ describe("Zoom Manager", () => {
 - Tauri Window Zoom API: https://tauri.app/v1/api/js/window/#setwebviewzoom
 - Electron Zoom Implementation: https://www.electronjs.org/docs/latest/api/webcontents#contentssetzoomfactorfactor
 - Chrome Zoom Shortcuts: Ctrl+Plus, Ctrl+Minus, Ctrl+0, Ctrl+MouseWheel
-- WaveMux Zoom Discussion: (user feedback: "ctrl+- used to work but stops")
+- AgentMux Zoom Discussion: (user feedback: "ctrl+- used to work but stops")
 
 ## Approvals
 

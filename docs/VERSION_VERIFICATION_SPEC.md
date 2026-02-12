@@ -4,10 +4,10 @@
 
 ### Issue Discovered: 2026-02-12
 
-During development of orphaned layout prevention (PR #270), the dev build loaded a **cached wavemuxsrv v0.24.3** binary instead of the newly built **v0.24.11**, causing the migration code to not run despite successful backend compilation.
+During development of orphaned layout prevention (PR #270), the dev build loaded a **cached agentmuxsrv v0.24.3** binary instead of the newly built **v0.24.11**, causing the migration code to not run despite successful backend compilation.
 
 **Root Cause:**
-Tauri dev builds cache sidecar binaries in `src-tauri/target/debug/` and `src-tauri/target/release/`, which are NOT automatically updated when `task build:backend` rebuilds `dist/bin/wavemuxsrv.x64.exe`.
+Tauri dev builds cache sidecar binaries in `src-tauri/target/debug/` and `src-tauri/target/release/`, which are NOT automatically updated when `task build:backend` rebuilds `dist/bin/agentmuxsrv.x64.exe`.
 
 ### Impact
 
@@ -23,7 +23,7 @@ Tauri dev builds cache sidecar binaries in `src-tauri/target/debug/` and `src-ta
 task: [build:server:internal] ... -X main.WaveVersion=0.24.11
 
 # But runtime shows
-[wavemuxsrv] wave version: 0.24.3 (202602120125)
+[agentmuxsrv] wave version: 0.24.3 (202602120125)
 ```
 
 ## Architecture Analysis
@@ -33,23 +33,23 @@ task: [build:server:internal] ... -X main.WaveVersion=0.24.11
 ```
 agentmux/
 ├── dist/bin/
-│   └── wavemuxsrv.x64.exe          # Built by task build:backend
+│   └── agentmuxsrv.x64.exe          # Built by task build:backend
 ├── src-tauri/target/
 │   ├── debug/
-│   │   └── wavemuxsrv.exe          # ⚠️ CACHED - Used by task dev
+│   │   └── agentmuxsrv.exe          # ⚠️ CACHED - Used by task dev
 │   └── release/
-│       └── wavemuxsrv.exe          # ⚠️ CACHED - Used by packaged builds
+│       └── agentmuxsrv.exe          # ⚠️ CACHED - Used by packaged builds
 ```
 
 ### Current Build Flow
 
 ```
 task build:backend
-  → Builds dist/bin/wavemuxsrv.x64.exe (v0.24.11)
+  → Builds dist/bin/agentmuxsrv.x64.exe (v0.24.11)
 
 task dev
   → Starts Tauri dev server
-  → Tauri spawns sidecar from src-tauri/target/debug/wavemuxsrv.exe (v0.24.3 ❌)
+  → Tauri spawns sidecar from src-tauri/target/debug/agentmuxsrv.exe (v0.24.3 ❌)
   → Never copies from dist/bin!
 ```
 
@@ -83,15 +83,15 @@ dev:
 sync:dev:binaries:
   desc: Sync built binaries to Tauri dev cache
   cmds:
-    - powershell Copy-Item -Force dist/bin/wavemuxsrv.x64.exe src-tauri/target/debug/wavemuxsrv.exe
-    - echo "✓ Synced wavemuxsrv to Tauri dev cache"
+    - powershell Copy-Item -Force dist/bin/agentmuxsrv.x64.exe src-tauri/target/debug/agentmuxsrv.exe
+    - echo "✓ Synced agentmuxsrv to Tauri dev cache"
   platforms: [windows]
 
 sync:dev:binaries:
   desc: Sync built binaries to Tauri dev cache
   cmds:
-    - cp -f dist/bin/wavemuxsrv.* src-tauri/target/debug/
-    - echo "✓ Synced wavemuxsrv to Tauri dev cache"
+    - cp -f dist/bin/agentmuxsrv.* src-tauri/target/debug/
+    - echo "✓ Synced agentmuxsrv to Tauri dev cache"
   platforms: [linux, darwin]
 ```
 
@@ -115,7 +115,7 @@ const ExpectedVersion = "0.24.11" // Auto-updated by bump-version.sh
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.SetPrefix("[wavemuxsrv] ")
+	log.SetPrefix("[agentmuxsrv] ")
 
 	// Verify version consistency
 	if WaveVersion != ExpectedVersion {
@@ -198,10 +198,10 @@ fi
 # ... existing version checks ...
 
 # Check binary versions
-if [ -f "dist/bin/wavemuxsrv.x64.exe" ]; then
-  BINARY_VERSION=$(strings dist/bin/wavemuxsrv.x64.exe | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3)
+if [ -f "dist/bin/agentmuxsrv.x64.exe" ]; then
+  BINARY_VERSION=$(strings dist/bin/agentmuxsrv.x64.exe | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3)
   if [ "$BINARY_VERSION" != "$EXPECTED_VERSION" ]; then
-    echo "❌ wavemuxsrv binary version mismatch"
+    echo "❌ agentmuxsrv binary version mismatch"
     echo "   Expected: $EXPECTED_VERSION"
     echo "   Binary:   $BINARY_VERSION"
     if [ "$STRICT_MODE" = true ]; then
@@ -211,8 +211,8 @@ if [ -f "dist/bin/wavemuxsrv.x64.exe" ]; then
 fi
 
 # Check Tauri cached binary
-if [ -f "src-tauri/target/debug/wavemuxsrv.exe" ]; then
-  CACHED_VERSION=$(strings src-tauri/target/debug/wavemuxsrv.exe | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3)
+if [ -f "src-tauri/target/debug/agentmuxsrv.exe" ]; then
+  CACHED_VERSION=$(strings src-tauri/target/debug/agentmuxsrv.exe | grep -o "wave version: [0-9.]*" | head -1 | cut -d' ' -f3)
   if [ "$CACHED_VERSION" != "$EXPECTED_VERSION" ]; then
     echo "❌ Tauri cached binary is stale!"
     echo "   Expected: $EXPECTED_VERSION"
@@ -247,9 +247,9 @@ fi
 
 - name: Verify binary versions
   run: |
-    echo "Checking wavemuxsrv version..."
+    echo "Checking agentmuxsrv version..."
     VERSION=$(cat package.json | jq -r '.version')
-    BINARY_VERSION=$(strings dist/bin/wavemuxsrv.x64.exe | grep "wave version" | head -1)
+    BINARY_VERSION=$(strings dist/bin/agentmuxsrv.x64.exe | grep "wave version" | head -1)
     echo "Expected: $VERSION"
     echo "Binary: $BINARY_VERSION"
     if [[ ! "$BINARY_VERSION" =~ "$VERSION" ]]; then
@@ -304,7 +304,7 @@ fi
 
 3. **Auto-sync test:**
    ```bash
-   rm src-tauri/target/debug/wavemuxsrv.exe
+   rm src-tauri/target/debug/agentmuxsrv.exe
    task dev
    # Should auto-copy before starting
    ```

@@ -1,14 +1,14 @@
-# Retrospective: WaveMux Gamerlove Deployment
+# Retrospective: AgentMux Gamerlove Deployment
 
 **Date:** 2026-01-01
 **Duration:** ~45 minutes
-**Outcome:** Success - WaveMux running on gamerlove sandbox
+**Outcome:** Success - AgentMux running on gamerlove sandbox
 
 ---
 
 ## Summary
 
-Deployed latest WaveMux (with single-instance lock removal) to gamerlove Windows sandbox for development testing.
+Deployed latest AgentMux (with single-instance lock removal) to gamerlove Windows sandbox for development testing.
 
 ---
 
@@ -25,7 +25,7 @@ Deployed latest WaveMux (with single-instance lock removal) to gamerlove Windows
 
 ### 1. Git Authentication Confusion
 - **Issue:** Initial token (`gh-token-agent2`) returned "Repository not found"
-- **Root cause:** Token didn't have access to private `a5af/wavemux` repo
+- **Root cause:** Token didn't have access to private `a5af/agentmux` repo
 - **Fix:** Used `gh-admin-pat` instead
 - **Time lost:** ~5 minutes
 
@@ -51,7 +51,7 @@ Deployed latest WaveMux (with single-instance lock removal) to gamerlove Windows
 ### 5. Confusing Architecture Explanation
 - **Issue:** Log output showing "web server listening" confused user
 - **Root cause:** Terminology - "web server" sounds like public HTTP
-- **Lesson:** wavemuxsrv's localhost servers are IPC, not web hosting
+- **Lesson:** agentmuxsrv's localhost servers are IPC, not web hosting
 
 ---
 
@@ -60,7 +60,7 @@ Deployed latest WaveMux (with single-instance lock removal) to gamerlove Windows
 | Priority | Item | Owner |
 |----------|------|-------|
 | P1 | Fix docs/package.json peer dependency conflicts | TBD |
-| P2 | Document wavemuxsrv architecture (IPC vs web) | TBD |
+| P2 | Document agentmuxsrv architecture (IPC vs web) | TBD |
 | P2 | Add `--skip-docs` flag to `task dev` | TBD |
 | P3 | Investigate frontend build hanging over SSH | TBD |
 
@@ -82,7 +82,7 @@ Deployed latest WaveMux (with single-instance lock removal) to gamerlove Windows
 │                    gamerlove                         │
 │                                                      │
 │  ┌──────────────┐         ┌──────────────────────┐  │
-│  │   Electron   │  IPC    │     wavemuxsrv       │  │
+│  │   Electron   │  IPC    │     agentmuxsrv       │  │
 │  │   (Native    │◄───────►│     (Go backend)     │  │
 │  │    Window)   │ :58901  │                      │  │
 │  │              │ websocket│  - Terminal mgmt    │  │

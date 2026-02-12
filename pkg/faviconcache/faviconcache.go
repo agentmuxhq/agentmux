@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/panichandler"
+	"github.com/a5af/agentmux/pkg/panichandler"
 )
 
 // --- Constants and Types ---

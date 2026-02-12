@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/a5af/wavemux/pkg/wps"
+	"github.com/a5af/agentmux/pkg/wps"
 )
 
 // event inverter.  converts WaveEvents to a listener.On() API

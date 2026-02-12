@@ -2,13 +2,13 @@
 
 **Status:** ✅ Implemented and Ready for Testing
 
-This package implements Phase 2 of the WaveMux reactive agent communication system, providing WebSocket client integration for webhook-based command injection into terminals.
+This package implements Phase 2 of the AgentMux reactive agent communication system, providing WebSocket client integration for webhook-based command injection into terminals.
 
 ---
 
 ## Overview
 
-The webhook delivery system connects WaveMux terminals to the AWS-hosted webhook infrastructure, enabling real-time command injection from external webhooks (GitHub, CI/CD, monitoring systems, etc.).
+The webhook delivery system connects AgentMux terminals to the AWS-hosted webhook infrastructure, enabling real-time command injection from external webhooks (GitHub, CI/CD, monitoring systems, etc.).
 
 ## Architecture
 
@@ -20,7 +20,7 @@ GitHub/CI/CD Webhook
     │               └─> DynamoDB (subscriptions)
     │                       └─> API Gateway (WebSocket)
     │                               │
-    │                               └─> WaveMux WebSocket Client (this package)
+    │                               └─> AgentMux WebSocket Client (this package)
     │                                       └─> Block Controller
     │                                               └─> Terminal PTY
 ```
@@ -76,7 +76,7 @@ Manages WebSocket connection to AWS API Gateway with automatic reconnection:
 
 ### 3. Integration Layer (`integration.go`)
 
-Integrates webhook delivery with WaveMux block controllers:
+Integrates webhook delivery with AgentMux block controllers:
 
 **Responsibilities:**
 - Initialize webhook service on startup
@@ -129,7 +129,7 @@ DEFAULT_SECRET=$(aws secretsmanager get-secret-value \
   --secret-id services/prod \
   --profile Agent2 \
   --query SecretString \
-  --output text | jq -r '.wavemux.DEFAULT_AUTH_SECRET')
+  --output text | jq -r '.agentmux.DEFAULT_AUTH_SECRET')
 
 # Generate token for workspace
 WORKSPACE_ID="agent2-workspace"
@@ -153,7 +153,7 @@ Create `~/.config/waveterm/webhook-config.json`:
 }
 ```
 
-### 3. Restart WaveMux
+### 3. Restart AgentMux
 
 The webhook service will automatically initialize on startup if `enabled: true`.
 
@@ -214,10 +214,10 @@ curl -X POST https://m6jrh0uo28.execute-api.us-east-1.amazonaws.com/register \
 5. Lambda finds subscription for `terminalId=block-uuid-1`
 6. Lambda renders command template with event data
 
-### 2. Command Delivery to WaveMux
+### 2. Command Delivery to AgentMux
 
 1. Lambda sends WebSocket message to connected client
-2. WaveMux client receives message in `readLoop()`
+2. AgentMux client receives message in `readLoop()`
 3. Client parses `WebhookEvent` JSON
 4. Client calls `handleWebhookEvent(event)`
 5. Service checks terminal subscription
@@ -255,7 +255,7 @@ if service != nil {
 ### Logs
 
 ```bash
-# WaveMux logs (stdout/stderr)
+# AgentMux logs (stdout/stderr)
 [WebhookService] Initializing webhook service
 [WebhookService] Webhook service initialized successfully
 [WebhookClient] Starting webhook client for workspace: agent2-workspace
@@ -347,7 +347,7 @@ func TestCommandInjection(t *testing.T)
 
 ### Integration Testing
 
-1. Start WaveMux with webhook config enabled
+1. Start AgentMux with webhook config enabled
 2. Open terminal and note block UUID
 3. Register subscription via HTTP API
 4. Trigger GitHub webhook
@@ -368,7 +368,7 @@ func TestCommandInjection(t *testing.T)
 
 - `webhookconfig.go` - Configuration types and I/O
 - `client.go` - WebSocket client with reconnection
-- `integration.go` - WaveMux block controller integration
+- `integration.go` - AgentMux block controller integration
 - `README.md` - This file
 
 ---

@@ -1,4 +1,4 @@
-# WaveMux Build Reliability Specification
+# AgentMux Build Reliability Specification
 
 **Date:** 2026-01-02
 **Status:** Draft
@@ -23,7 +23,7 @@ The current build process is fragile and fails unpredictably:
 
 | Component | Build Command | Output | Issues |
 |-----------|--------------|--------|--------|
-| Go backend (wavemuxsrv) | `task build:backend` | `dist/bin/wavemuxsrv.x64.exe` | Version from package.json, task caching |
+| Go backend (agentmuxsrv) | `task build:backend` | `dist/bin/agentmuxsrv.x64.exe` | Version from package.json, task caching |
 | Go wsh binaries | `task build:backend` | `dist/bin/wsh-{version}-*` | 8 platform variants |
 | TypeScript frontend | `npm run build:prod` | `dist/frontend/` | sharp warnings (non-fatal) |
 | Electron main | `npm run build:prod` | `dist/main/` | docs/tsconfig warnings (non-fatal) |
@@ -42,9 +42,9 @@ The current build process is fragile and fails unpredictably:
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue make, .task
 Remove-Item -Force -ErrorAction SilentlyContinue dist/bin/*
 
-# Kill any running WaveMux processes
-taskkill /F /IM WaveMux.exe 2>$null
-taskkill /F /IM wavemuxsrv.x64.exe 2>$null
+# Kill any running AgentMux processes
+taskkill /F /IM AgentMux.exe 2>$null
+taskkill /F /IM agentmuxsrv.x64.exe 2>$null
 
 # Remove stale locks
 Remove-Item -Force -ErrorAction SilentlyContinue node_modules/electron/dist/wave-data/wave.lock
@@ -70,7 +70,7 @@ npm exec electron-builder -- -c electron-builder.config.cjs -p never --win dir
 
 ### Output
 
-- `make/win-unpacked/WaveMux.exe` - Properly packaged with green icon
+- `make/win-unpacked/AgentMux.exe` - Properly packaged with green icon
 
 ---
 
@@ -109,13 +109,13 @@ param(
 $ErrorActionPreference = "Stop"
 $Version = (Get-Content package.json | ConvertFrom-Json).version
 
-Write-Host "Building WaveMux v$Version" -ForegroundColor Green
+Write-Host "Building AgentMux v$Version" -ForegroundColor Green
 
 if ($Clean) {
     Write-Host "Cleaning..." -ForegroundColor Yellow
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue make, .task, dist/bin
-    taskkill /F /IM WaveMux.exe 2>$null
-    taskkill /F /IM wavemuxsrv.x64.exe 2>$null
+    taskkill /F /IM AgentMux.exe 2>$null
+    taskkill /F /IM agentmuxsrv.x64.exe 2>$null
 }
 
 if (-not $SkipBackend) {
@@ -134,7 +134,7 @@ Write-Host "Packaging..." -ForegroundColor Yellow
 npm exec electron-builder -- -c electron-builder.config.cjs -p never --win dir
 if ($LASTEXITCODE -ne 0) { throw "Packaging failed" }
 
-Write-Host "Success! Output: make/win-unpacked/WaveMux.exe" -ForegroundColor Green
+Write-Host "Success! Output: make/win-unpacked/AgentMux.exe" -ForegroundColor Green
 ```
 
 ### 4. Version bump automation
@@ -153,7 +153,7 @@ After successful build:
 
 ```powershell
 $Version = (Get-Content package.json | ConvertFrom-Json).version
-Copy-Item -Recurse -Force make/win-unpacked "C:\Users\asafe\Desktop\WaveMux-$Version"
+Copy-Item -Recurse -Force make/win-unpacked "C:\Users\asafe\Desktop\AgentMux-$Version"
 ```
 
 ---
@@ -178,7 +178,7 @@ A reliable build means:
 2. **Reproducible** - Same inputs = same outputs
 3. **Self-cleaning** - Handles stale artifacts automatically
 4. **Clear errors** - Fails fast with actionable messages
-5. **Correct icon** - Green WaveMux icon, not Electron default
+5. **Correct icon** - Green AgentMux icon, not Electron default
 
 ---
 

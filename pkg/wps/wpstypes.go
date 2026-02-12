@@ -3,7 +3,7 @@
 
 package wps
 
-import "github.com/a5af/wavemux/pkg/util/utilfn"
+import "github.com/a5af/agentmux/pkg/util/utilfn"
 
 const (
 	Event_BlockClose       = "blockclose"

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a5af/wavemux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshrpc"
 )
 
 var tokenSwapMap map[string]*TokenSwapEntry = make(map[string]*TokenSwapEntry)

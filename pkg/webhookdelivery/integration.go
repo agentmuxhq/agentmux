@@ -10,7 +10,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/a5af/wavemux/pkg/wconfig"
+	"github.com/a5af/agentmux/pkg/wconfig"
 )
 
 // WebhookService manages webhook integration with WaveTerm

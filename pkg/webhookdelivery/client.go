@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/a5af/wavemux/pkg/wconfig"
+	"github.com/a5af/agentmux/pkg/wconfig"
 )
 
 // WebhookEvent represents an event received from the webhook cloud

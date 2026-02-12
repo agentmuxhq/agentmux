@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/a5af/wavemux/pkg/remote/connparse"
+	"github.com/a5af/agentmux/pkg/remote/connparse"
 )
 
 func TestParseURI_WSHWithScheme(t *testing.T) {

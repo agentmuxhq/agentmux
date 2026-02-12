@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/a5af/wavemux/pkg/remote/awsconn"
-	"github.com/a5af/wavemux/pkg/remote/connparse"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/fstype"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/s3fs"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/wavefs"
-	"github.com/a5af/wavemux/pkg/remote/fileshare/wshfs"
-	"github.com/a5af/wavemux/pkg/util/iochan/iochantypes"
-	"github.com/a5af/wavemux/pkg/wshrpc"
-	"github.com/a5af/wavemux/pkg/wshutil"
+	"github.com/a5af/agentmux/pkg/remote/awsconn"
+	"github.com/a5af/agentmux/pkg/remote/connparse"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/fstype"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/s3fs"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/wavefs"
+	"github.com/a5af/agentmux/pkg/remote/fileshare/wshfs"
+	"github.com/a5af/agentmux/pkg/util/iochan/iochantypes"
+	"github.com/a5af/agentmux/pkg/wshrpc"
+	"github.com/a5af/agentmux/pkg/wshutil"
 )
 
 const (

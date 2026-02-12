@@ -1053,18 +1053,16 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
 
     return (
         <Fragment>
-            <webview
+            <iframe
                 id="webview"
                 className="webview"
-                ref={model.webviewRef}
+                ref={model.webviewRef as any}
                 src={metaUrlInitial}
                 data-blockid={model.blockId}
-                data-webcontentsid={webContentsId} // needed for emain
-                preload={getWebviewPreloadUrl()}
-                // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
-                allowpopups="true"
-                partition={webPartition}
-                useragent={userAgent}
+                data-webcontentsid={webContentsId}
+                allow="accelerometer; camera; microphone; geolocation; payment"
+                sandbox="allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-top-navigation allow-top-navigation-by-user-activation"
+                style={{ width: "100%", height: "100%", border: "none", backgroundColor: "white" }}
             />
             {errorText && (
                 <div className="webview-error">

@@ -124,13 +124,24 @@ async function initTauriWave(): Promise<void> {
         // Initialize wave (this will render the UI)
         await initWaveWrap(initOpts);
 
+        // Show the window now that it's fully initialized (Tauri starts hidden)
+        try {
+            const { getCurrent } = await import("@tauri-apps/api/window");
+            const currentWindow = getCurrent();
+            await currentWindow.show();
+            await currentWindow.setFocus();
+        } catch (showError) {
+            console.warn("[initTauriWave] Failed to show window:", showError);
+        }
 
     } catch (error) {
         console.error("[initTauriWave] Initialization failed:", error);
         pushFlashError("Failed to initialize AgentMux: " + String(error));
-        // Show error UI instead of grey screen
-        document.body.style.visibility = "visible";
-        document.body.style.opacity = "1";
+        // Show window even on error so user can see the error message
+        try {
+            const { getCurrent } = await import("@tauri-apps/api/window");
+            await getCurrent().show();
+        } catch {}
     }
 }
 
@@ -409,5 +420,12 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     root.render(reactElem);
     await firstRenderPromise;
     console.log("Wave First Render Done");
+
+    // Hide startup loading message
+    const startupLoading = document.getElementById("startup-loading");
+    if (startupLoading) {
+        startupLoading.remove();
+    }
+
     getApi().setWindowInitStatus("wave-ready");
 }

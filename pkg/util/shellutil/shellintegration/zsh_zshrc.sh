@@ -1,5 +1,15 @@
 # add wsh to path, source dynamic script from wsh token
-AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
+# Detect portable mode: check if wsh exists in AgentMux app directory
+if [ -n "$WAVETERM" ]; then
+    APP_DIR="$(dirname "$WAVETERM")"
+    if ls "$APP_DIR"/wsh-* >/dev/null 2>&1; then
+        AGENTMUX_WSHBINDIR="$APP_DIR"
+    else
+        AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
+    fi
+else
+    AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
+fi
 export PATH="$AGENTMUX_WSHBINDIR:$PATH"
 source <(wsh token "$AGENTMUX_SWAPTOKEN" zsh 2>/dev/null)
 unset AGENTMUX_SWAPTOKEN

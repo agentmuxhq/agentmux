@@ -4,7 +4,17 @@ if [ -f /etc/profile ]; then
     . /etc/profile
 fi
 
-AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
+# Detect portable mode: check if wsh exists in AgentMux app directory
+if [ -n "$WAVETERM" ]; then
+    APP_DIR="$(dirname "$WAVETERM")"
+    if ls "$APP_DIR"/wsh-* >/dev/null 2>&1; then
+        AGENTMUX_WSHBINDIR="$APP_DIR"
+    else
+        AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
+    fi
+else
+    AGENTMUX_WSHBINDIR={{.WSHBINDIR}}
+fi
 
 # after /etc/profile which is likely to clobber the path
 export PATH="$AGENTMUX_WSHBINDIR:$PATH"

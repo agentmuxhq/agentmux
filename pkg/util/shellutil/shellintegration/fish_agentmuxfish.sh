@@ -1,6 +1,16 @@
 # this file is sourced with -C
 # Add Wave binary directory to PATH
-set -x PATH {{.WSHBINDIR}} $PATH
+# Detect portable mode: check if wsh exists in AgentMux app directory
+if set -q WAVETERM
+    set APP_DIR (dirname "$WAVETERM")
+    if test (count $APP_DIR/wsh-*) -gt 0
+        set -x PATH $APP_DIR $PATH
+    else
+        set -x PATH {{.WSHBINDIR}} $PATH
+    end
+else
+    set -x PATH {{.WSHBINDIR}} $PATH
+end
 
 # Source dynamic script from wsh token (the echo is to prevent fish from complaining about empty input)
 wsh token "$AGENTMUX_SWAPTOKEN" fish 2>/dev/null | source

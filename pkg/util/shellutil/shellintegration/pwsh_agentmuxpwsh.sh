@@ -1,5 +1,21 @@
 # We source this file with -NoExit -File
-$env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
+
+# Detect portable mode: check if wsh exists in AgentMux app directory
+$portableWshPath = $null
+if ($env:WAVETERM) {
+    $appDir = Split-Path -Parent $env:WAVETERM
+    $portableWsh = Get-ChildItem -Path $appDir -Filter "wsh-*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($portableWsh) {
+        $portableWshPath = $appDir
+    }
+}
+
+# Use portable path if available, otherwise use installed path
+if ($portableWshPath) {
+    $env:PATH = $portableWshPath + "{{.PATHSEP}}" + $env:PATH
+} else {
+    $env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
+}
 
 # Source dynamic script from wsh token
 $agentmux_swaptoken_output = wsh token $env:AGENTMUX_SWAPTOKEN pwsh 2>$null | Out-String

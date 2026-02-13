@@ -4,12 +4,10 @@
 import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, globalStore, isDev, setActiveTab, createBlock } from "@/store/global";
+import { atoms, createTab, getApi, globalStore, isDev, setActiveTab } from "@/store/global";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -23,6 +21,7 @@ import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WidgetBar } from "./widgetbar";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
+import { createTabBarMenu } from "@/app/menu/base-menus";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
@@ -149,7 +148,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
     const [newTabId, setNewTabId] = useState<string | null>(null);
-    const [version, setVersion] = useState<string>("");
 
     const tabbarWrapperRef = useRef<HTMLDivElement>(null);
     const tabBarRef = useRef<HTMLDivElement>(null);
@@ -182,80 +180,12 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const settings = useAtomValue(atoms.settingsAtom);
 
-    // Fetch version on mount
-    useEffect(() => {
-        const details = getApi().getAboutModalDetails();
-        setVersion(details.version);
-    }, []);
-
-    // Handle version click to copy to clipboard
-    const handleVersionClick = useCallback(() => {
-        navigator.clipboard.writeText(version);
-        // TODO: Show toast notification
-    }, [version]);
-
-    // Handle tabbar context menu for widget toggles
+    // Handle tabbar context menu using MenuBuilder
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const handleTabBarContextMenu = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
-        const widgets = fullConfig?.widgets || {};
-
-        const widgetEntries = Object.entries(widgets)
-            .filter(([key]) => key.startsWith("defwidget@"))
-            .sort((a, b) => {
-                const orderA = a[1]["display:order"] ?? 0;
-                const orderB = b[1]["display:order"] ?? 0;
-                return orderA - orderB;
-            });
-
-        const menuItems: ContextMenuItem[] = [
-            {
-                label: "Widgets",
-                type: "separator",
-            },
-            ...widgetEntries.map(([widgetKey, widgetConfig]) => {
-                const isHidden = widgetConfig["display:hidden"] ?? false;
-                const label = widgetConfig.label || widgetKey.replace("defwidget@", "");
-
-                return {
-                    label: label,
-                    type: "checkbox" as const,
-                    checked: !isHidden,
-                    click: () => {
-                        fireAndForget(async () => {
-                            const newHiddenState = !isHidden;
-                            const updatedConfig = {
-                                ...widgetConfig,
-                                "display:hidden": newHiddenState,
-                            };
-
-                            await RpcApi.SetConfigCommand(TabRpcClient, {
-                                [widgetKey]: updatedConfig,
-                            });
-
-                            getApi().sendLog(`Widget ${label} ${newHiddenState ? 'hidden' : 'shown'}`);
-                        });
-                    },
-                };
-            }),
-            {
-                type: "separator" as const,
-            },
-            {
-                label: "Edit widgets.json",
-                click: () => {
-                    fireAndForget(async () => {
-                        const path = `${getApi().getConfigDir()}/widgets.json`;
-                        const blockDef: BlockDef = {
-                            meta: { view: "preview", file: path },
-                        };
-                        await createBlock(blockDef, false, true);
-                    });
-                },
-            },
-        ];
-
-        ContextMenuModel.showContextMenu(menuItems, e);
+        const menu = createTabBarMenu(fullConfig);
+        ContextMenuModel.showContextMenu(menu.build(), e);
     }, [fullConfig]);
 
     let prevDelta: number;
@@ -750,16 +680,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper" data-tauri-drag-region onContextMenu={handleTabBarContextMenu}>
             <WindowDrag ref={draggerLeftRef} className="left" />
-            {version && (
-                <div
-                    className="tab-bar-version"
-                    onClick={handleVersionClick}
-                    data-tauri-drag-region
-                    title="Click to copy version"
-                >
-                    AgentMux v{version}
-                </div>
-            )}
             {/* Temporarily hidden - tabs/workspace will return with multi-window support */}
             {/* {appMenuButton} */}
             {/* {waveaiButton} */}

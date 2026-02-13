@@ -19,7 +19,7 @@ vars:
 tasks:
     dev:
         desc: Run the Tauri application in development mode (hot reload enabled).
-        cmd: npm run dev
+        cmd: tauri dev
         deps:
             - npm:install
             - docsite:build:embedded
@@ -77,7 +77,7 @@ tasks:
 
     quickdev:
         desc: Run the Tauri application in quick dev mode (no docsite, arm64 only, no generate, no wsh).
-        cmd: npm run dev
+        cmd: tauri dev
         deps:
             - npm:install
             - build:backend:quickdev
@@ -163,7 +163,7 @@ tasks:
         cmds:
             - task: build:backend
             - task: tauri:copy-sidecars
-            - npm run tauri build {{.CLI_ARGS}}
+            - tauri build {{.CLI_ARGS}}
         deps:
             - clean
             - npm:install
@@ -176,9 +176,15 @@ tasks:
             - task: package
             - powershell -Command "& ./scripts/package-portable.ps1"
 
+    build:frontend:
+        desc: Build the frontend (production mode).
+        cmd: npx vite build --mode production --config vite.config.tauri.ts
+        deps:
+            - npm:install
+
     build:frontend:dev:
         desc: Build the frontend in development mode.
-        cmd: npm run build:dev
+        cmd: npx vite build --mode dev --config vite.config.tauri.ts
         deps:
             - npm:install
 
@@ -655,6 +661,6 @@ tasks:
 
     build:frontend:prod:
         desc: Build the frontend for production (used by Tauri)
-        cmd: npm run build:prod
+        cmd: npx vite build --mode production --config vite.config.tauri.ts
         deps:
             - npm:install

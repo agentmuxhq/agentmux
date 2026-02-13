@@ -1,4 +1,6 @@
 # AgentMux Release Build Script
+# DEPRECATED: Use 'task package' instead
+# This script will be removed in v0.27.0
 # Usage: .\scripts\build-release.ps1 [-Clean] [-SkipBackend] [-SkipFrontend] [-SkipPackage]
 
 param(
@@ -9,6 +11,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+Write-Warning "DEPRECATED: This script is deprecated and will be removed in v0.27.0"
+Write-Host "Please use 'task package' instead for production builds" -ForegroundColor Yellow
+Write-Host "Or 'task package:portable' for portable builds" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Continuing with legacy build script..." -ForegroundColor Gray
+Write-Host ""
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = Split-Path -Parent $ScriptDir
 

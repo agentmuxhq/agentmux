@@ -19,12 +19,15 @@
         "Chrome >= 128"
     ],
     "scripts": {
-        "dev": "tauri dev",
-        "build": "tauri build",
-        "tauri": "tauri",
+        "dev": "task dev",
+        "build": "task build:frontend",
+        "build:backend": "task build:backend",
+        "package": "task package",
         "package:portable": "task package:portable",
+        "tauri": "tauri",
+        "test": "vitest",
         "coverage": "vitest run --coverage",
-        "test": "vitest"
+        "clean": "task clean"
     },
     "devDependencies": {
         "@eslint/js": "^8.57.0",

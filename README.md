@@ -10,35 +10,47 @@
 
 ## Quick Start
 
-```powershell
+```bash
 # Install dependencies
-npm install --legacy-peer-deps
+npm install
 
-# Build and package (one command)
-.\scripts\build-release.ps1 -Clean
+# Development mode (hot reload)
+task dev
+
+# Production build
+task package
 ```
-
-Output: `make\win-unpacked\AgentMux.exe`
 
 ## Build Commands
 
-| Command | Purpose |
-|---------|---------|
-| `.\scripts\build-release.ps1 -Clean` | Full clean build with verification |
-| `task build:backend` | Rebuild Go binaries only |
-| `npm run build:prod` | Rebuild frontend only |
-| `task dev` | Development mode (hot reload) |
+AgentMux uses [Task](https://taskfile.dev/) for build orchestration.
 
-## Build Script Options
+| Command | Description |
+|---------|-------------|
+| `task dev` | Start development mode with hot reload |
+| `task package` | Build production installer (NSIS) |
+| `task package:portable` | Build installer + portable ZIP |
+| `task build:backend` | Build Go binaries only |
+| `task build:frontend` | Build frontend only |
+| `task test` | Run all tests |
+| `task clean` | Clean build artifacts |
 
-```powershell
-.\scripts\build-release.ps1 [-Clean] [-SkipBackend] [-SkipFrontend] [-SkipPackage]
+### npm Users
+
+If you prefer npm:
+
+```bash
+npm run dev           # → task dev
+npm run package       # → task package
+npm run build:backend # → task build:backend
+npm test              # → vitest (native)
 ```
 
-- `-Clean` - Kill processes, remove stale artifacts
-- `-SkipBackend` - Skip Go build (use existing binaries)
-- `-SkipFrontend` - Skip TypeScript build
-- `-SkipPackage` - Skip electron-builder packaging
+### Build Outputs
+
+- **Installer:** `src-tauri/target/release/bundle/nsis/AgentMux_*.exe`
+- **Portable:** `dist/agentmux-*-portable.zip`
+- **Standalone:** `src-tauri/target/release/agentmux.exe`
 
 ## Version Verification
 
@@ -51,38 +63,48 @@ The build script automatically verifies:
 ## Architecture
 
 ```
-AgentMux.exe (Electron)
-    └── agentmuxsrv.x64.exe (Go backend - spawned automatically)
+AgentMux.exe (Tauri v2)
+    └── agentmuxsrv.x64.exe (Go backend - sidecar, spawned automatically)
         └── wsh (shell integration - deployed to remotes)
 ```
 
+**Stack:**
+- **Frontend:** React + TypeScript + Vite
+- **Backend:** Go (agentmuxsrv)
+- **Desktop:** Tauri v2 (Rust + WebView2)
+- **Build:** Task + npm + cargo
+
 ## Development
 
-```powershell
-# Hot reload mode
+```bash
+# Hot reload mode (auto-rebuilds on file changes)
 task dev
 
-# After Go changes
+# After Go changes, rebuild backend
 task build:backend
 # Then restart task dev
 
 # Run tests
 npm test
-```
 
-## Deploy to Desktop
-
-```powershell
-$Version = (Get-Content package.json | ConvertFrom-Json).version
-xcopy /E /Y /I make\win-unpacked "C:\Users\asafe\Desktop\AgentMux-$Version\"
+# Run with coverage
+npm run coverage
 ```
 
 ## Prerequisites
 
-- Node.js 18+ with npm
-- Go 1.21+
-- Task (taskfile.dev)
-- Windows with zig (for cross-compilation)
+**Required:**
+- Node.js 20+
+- Go 1.23+
+- Rust 1.70+ (for Tauri)
+- [Task](https://taskfile.dev/) - `npm install -g @go-task/cli`
+
+**Windows-specific:**
+- [Zig 0.13+](https://ziglang.org/download/) - For CGO cross-compilation
+- WebView2 (usually pre-installed on Windows 10/11)
+
+**Optional:**
+- VS Code with recommended extensions
 
 ## License
 

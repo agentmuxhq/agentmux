@@ -22,7 +22,8 @@
 - **Name:** AgentMux
 - **GitHub:** https://github.com/a5af/agentmux
 - **Type:** Tauri v2 terminal application
-- **Version:** 0.26.0
+- **Version:** 0.26.1
+- **Build System:** Task (Taskfile.yml)
 
 ## Git & Pull Requests
 
@@ -43,6 +44,24 @@
 | `task package` | **Final release builds ONLY** | ❌ No |
 
 **CRITICAL:** Never launch from `make/` during development - it's stale and will crash with "agentmuxsrv.x64.exe ENOENT"
+
+### Build System
+
+**Primary:** Task (Taskfile.yml)
+- All builds go through `task <command>`
+- npm scripts are thin wrappers that delegate to Task
+- Run `task --list` to see all available commands
+
+**Common Tasks:**
+- `task dev` - Development mode
+- `task package` - Production installer
+- `task package:portable` - Portable ZIP
+- `task build:backend` - Go binaries only
+- `task build:frontend` - Frontend only
+- `task test` - Run tests
+- `task clean` - Clean artifacts
+
+**npm Users:** Can use `npm run <command>` - it delegates to Task.
 
 ### After Code Changes
 

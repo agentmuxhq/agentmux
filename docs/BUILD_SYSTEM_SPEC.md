@@ -3,6 +3,9 @@
 **Status:** ✅ Complete - Automated portable builds working
 **Date:** 2026-02-12
 **Author:** AgentX + Agent A
+**Updated:** 2026-02-13 - Standardized to Task as primary entry point
+
+> **📌 Latest:** See [BUILD_SYSTEM_STANDARDIZATION.md](specs/BUILD_SYSTEM_STANDARDIZATION.md) for the current build system architecture (Task as primary, npm as wrapper).
 
 ---
 

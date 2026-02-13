@@ -29,6 +29,7 @@ let cachedValues: {
     zoomFactor: number;
     updaterStatus: UpdaterStatus;
     updaterChannel: string;
+    aboutDetails: AboutModalDetails;
 } | null = null;
 
 /**
@@ -69,6 +70,7 @@ export async function initTauriApi(): Promise<void> {
         configDir,
         docsiteUrl,
         zoomFactor,
+        aboutDetails,
     ] = await Promise.all([
         invoke<string>("get_auth_key"),
         invoke<boolean>("get_is_dev"),
@@ -79,6 +81,7 @@ export async function initTauriApi(): Promise<void> {
         invoke<string>("get_config_dir"),
         invoke<string>("get_docsite_url"),
         invoke<number>("get_zoom_factor"),
+        invoke<AboutModalDetails>("get_about_modal_details"),
     ]);
 
     cachedValues = {
@@ -91,6 +94,7 @@ export async function initTauriApi(): Promise<void> {
         configDir,
         docsiteUrl,
         zoomFactor,
+        aboutDetails,
         updaterStatus: "up-to-date" as UpdaterStatus,
         updaterChannel: "latest",
     };
@@ -132,15 +136,7 @@ export function buildTauriApi(): ElectronApi {
 
         // --- About ---
         getAboutModalDetails: () => {
-            // Fetch dynamically from Rust backend on first call
-            // For the sync return, use cached version from invoke
-            const version = typeof __TAURI_APP_VERSION__ !== "undefined"
-                ? __TAURI_APP_VERSION__
-                : cachedValues?.aboutDetails?.version ?? "0.17.17-dev";
-            return {
-                version,
-                buildTime: 0,
-            } as AboutModalDetails;
+            return cachedValues!.aboutDetails;
         },
 
         // --- Context menu ---

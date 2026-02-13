@@ -169,6 +169,13 @@ tasks:
             - npm:install
             - docsite:build:embedded
 
+    package:portable:
+        desc: Package the application as a portable ZIP bundle (Windows only).
+        platforms: [windows]
+        cmds:
+            - task: package
+            - powershell -Command "& ./scripts/package-portable.ps1"
+
     build:frontend:dev:
         desc: Build the frontend in development mode.
         cmd: npm run build:dev

@@ -40,9 +40,27 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
 
     let shell = app.shell();
 
-    let sidecar_cmd = shell
-        .sidecar("agentmuxsrv")
-        .map_err(|e| format!("Failed to find agentmuxsrv sidecar: {}", e))?;
+    // Try to find agentmuxsrv in portable mode first (same dir as exe)
+    let portable_path = std::env::current_exe().ok().and_then(|exe_path| {
+        let exe_dir = exe_path.parent()?;
+        let portable_binary = exe_dir.join("agentmuxsrv.x64.exe");
+        if portable_binary.exists() {
+            tracing::info!("Using portable agentmuxsrv at: {:?}", portable_binary);
+            Some(portable_binary)
+        } else {
+            None
+        }
+    });
+
+    let sidecar_cmd = if let Some(portable_exe) = portable_path {
+        // Portable mode: run executable from same directory
+        shell.command(portable_exe)
+    } else {
+        // Installer mode: use bundled sidecar
+        shell
+            .sidecar("agentmuxsrv")
+            .map_err(|e| format!("Failed to find agentmuxsrv sidecar: {}", e))?
+    };
 
     let (mut rx, child) = sidecar_cmd
         .args([

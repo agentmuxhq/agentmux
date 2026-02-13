@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -48,10 +48,14 @@ import (
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
+// CurrentInstanceID stores the instance ID for this running server
+// Empty string for default instance, "instance-N" for auto-generated instances
+var CurrentInstanceID = ""
+
 // ExpectedVersion is the version this binary should be running
 // This is auto-updated by bump-version.sh to match package.json
 // If WaveVersion != ExpectedVersion, it indicates a stale cached binary
-const ExpectedVersion = "0.26.0"
+const ExpectedVersion = "0.26.4"
 
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
@@ -426,21 +430,69 @@ func main() {
 		log.Printf("error ensuring wave presets dir: %v\n", err)
 		return
 	}
-	waveLock, err := wavebase.AcquireWaveLock()
+	waveLock, instanceID, instanceDataDir, err := wavebase.AcquireWaveLockWithAutoInstance()
 	if err != nil {
-		log.Printf("error acquiring wave lock (another instance of Wave is likely running): %v\n", err)
+		log.Printf("error acquiring wave lock: %v\n", err)
 		log.Printf("\n")
 		log.Printf("========================================\n")
-		log.Printf("ERROR: Another instance of Wave is already running\n")
+		log.Printf("ERROR: Maximum number of instances (10) reached\n")
 		log.Printf("========================================\n")
 		log.Printf("\n")
-		log.Printf("To run multiple instances simultaneously, launch with the --instance flag:\n")
-		log.Printf("  Example: Wave.exe --instance=test\n")
-		log.Printf("  Example: Wave.exe --instance=dev\n")
+		log.Printf("Please close an existing AgentMux window and try again.\n")
 		log.Printf("\n")
-		log.Printf("Each instance will have its own isolated data while sharing your settings.\n")
+		log.Printf("Currently running instances use these data directories:\n")
+		log.Printf("  Default:     %s\n", wavebase.GetWaveDataDirForInstance(""))
+		for i := 1; i <= 10; i++ {
+			log.Printf("  instance-%d: %s\n", i, wavebase.GetWaveDataDirForInstance(fmt.Sprintf("instance-%d", i)))
+		}
 		log.Printf("========================================\n")
+
+		// Write startup error file for frontend to detect
+		errorMessage := fmt.Sprintf(`========================================
+ERROR: Maximum number of instances (10) reached
+========================================
+
+Please close an existing AgentMux window and try again.
+
+Currently running instances use these data directories:
+  Default:     %s
+`, wavebase.GetWaveDataDirForInstance(""))
+		for i := 1; i <= 10; i++ {
+			errorMessage += fmt.Sprintf("  instance-%d: %s\n", i, wavebase.GetWaveDataDirForInstance(fmt.Sprintf("instance-%d", i)))
+		}
+		errorMessage += "========================================"
+
+		errorFilePath := filepath.Join(wavebase.GetWaveDataDir(), "startup-error.txt")
+		_ = os.WriteFile(errorFilePath, []byte(errorMessage), 0644)
+
+		// Exit after delay so frontend can read the error file
+		time.Sleep(2 * time.Second)
 		return
+	}
+
+	// Store instance ID globally for later access
+	CurrentInstanceID = instanceID
+
+	// Update data directory cache if running as an instance
+	if instanceID != "" && instanceDataDir != "" {
+		// CRITICAL: Update the global data directory cache before any other operations
+		// This must be done immediately after lock acquisition to ensure all subsequent
+		// operations use the correct instance-specific data directory
+		wavebase.DataHome_VarCache = instanceDataDir
+		log.Printf("[multi-instance] Running as instance: %s (data: %s)\n", instanceID, instanceDataDir)
+	}
+
+	// Clean up any old startup error file from previous failed attempts
+	errorFilePath := filepath.Join(wavebase.GetWaveDataDir(), "startup-error.txt")
+	_ = os.Remove(errorFilePath)
+
+	// Write instance ID to file for frontend to display in window title
+	instanceIDFile := filepath.Join(wavebase.GetWaveDataDir(), "instance-id.txt")
+	if instanceID != "" {
+		_ = os.WriteFile(instanceIDFile, []byte(instanceID), 0644)
+	} else {
+		// Default instance - write empty file or remove it
+		_ = os.Remove(instanceIDFile)
 	}
 	defer func() {
 		err = waveLock.Close()

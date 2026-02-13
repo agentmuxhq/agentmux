@@ -5,6 +5,9 @@
 // This is the true entry point for Tauri builds.
 
 import { setupTauriApi } from "./tauri-init";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { readTextFile, exists } from "@tauri-apps/plugin-fs";
 
 // Deep verbose logging
 const log = (level: string, ...args: any[]) => {
@@ -22,6 +25,79 @@ const log = (level: string, ...args: any[]) => {
 };
 
 (window as any).debugLog = log;
+
+/**
+ * Check for backend startup errors during initialization.
+ * The backend writes errors to a startup-error.txt file if it fails to start.
+ * We poll for this file during bootstrap and show an error dialog if found.
+ */
+async function checkBackendStartupError(): Promise<boolean> {
+    try {
+        const dataDir = await invoke<string>("get_data_dir");
+        // Use platform-agnostic path joining
+        const errorFilePath = dataDir.endsWith("/") || dataDir.endsWith("\\")
+            ? `${dataDir}startup-error.txt`
+            : `${dataDir}/startup-error.txt`;
+
+        // Check if error file exists
+        const fileExists = await exists(errorFilePath);
+        if (!fileExists) {
+            return false; // No error file, backend is fine
+        }
+
+        // Read the error file
+        try {
+            const errorMessage = await readTextFile(errorFilePath);
+
+            if (errorMessage && errorMessage.trim()) {
+                log("ERROR", "Backend startup error detected:", errorMessage);
+
+                // Show error to user
+                document.body.innerHTML = "";
+                const errorDiv = document.createElement("div");
+                errorDiv.style.cssText =
+                    "padding: 40px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #f7f7f7; background: rgb(34, 34, 34);";
+
+                const title = document.createElement("h1");
+                title.textContent = "AgentMux Startup Error";
+                title.style.cssText = "color: #ff6b6b; margin-bottom: 20px;";
+                errorDiv.appendChild(title);
+
+                const messagePre = document.createElement("pre");
+                messagePre.textContent = errorMessage;
+                messagePre.style.cssText = "background: #1a1a1a; padding: 20px; border-radius: 8px; overflow-x: auto;";
+                errorDiv.appendChild(messagePre);
+
+                const closeInfo = document.createElement("p");
+                closeInfo.textContent = "This window will close in 5 seconds...";
+                closeInfo.style.cssText = "margin-top: 20px; color: rgba(255, 255, 255, 0.6);";
+                errorDiv.appendChild(closeInfo);
+
+                document.body.appendChild(errorDiv);
+
+                // Close window after 5 seconds
+                setTimeout(async () => {
+                    try {
+                        const window = getCurrentWindow();
+                        await window.close();
+                    } catch (e) {
+                        log("ERROR", "Failed to close window:", e);
+                    }
+                }, 5000);
+
+                return true; // Error found
+            }
+        } catch (readError) {
+            // File doesn't exist or can't be read - this is normal during startup
+            // Backend hasn't failed, it's just still starting
+        }
+
+        return false; // No error
+    } catch (e) {
+        log("WARN", "Error checking for backend startup errors (this is normal if backend not ready):", e);
+        return false;
+    }
+}
 
 async function bootstrap() {
     try {
@@ -45,6 +121,15 @@ async function bootstrap() {
             log("INFO", "  - getAuthKey:", typeof api?.getAuthKey);
             log("INFO", "  - onContextMenuClick:", typeof api?.onContextMenuClick);
             log("INFO", "  - showContextMenu:", typeof api?.showContextMenu);
+
+            // Check for backend startup errors before loading main app
+            log("INFO", "Checking for backend startup errors...");
+            const hasError = await checkBackendStartupError();
+            if (hasError) {
+                log("ERROR", "Backend startup error detected, halting bootstrap");
+                return; // Don't load main app if backend failed
+            }
+            log("INFO", "No backend startup errors detected");
         } else {
             log("INFO", "Running in Electron mode, skipping Tauri init");
         }

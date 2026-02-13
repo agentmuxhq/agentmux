@@ -42,6 +42,47 @@ const appVersion = getApi().getAboutModalDetails().version;
 document.title = `AgentMux ${appVersion}`;
 let savedInitOpts: AgentMuxInitOpts = null;
 
+// Update window title with instance ID if running in multi-instance mode
+async function updateWindowTitleWithInstanceID() {
+    try {
+        // Only in Tauri
+        if (!(window as any).__TAURI_INTERNALS__) {
+            return;
+        }
+
+        const { invoke } = await import("@tauri-apps/api/core");
+        const { readTextFile, exists } = await import("@tauri-apps/plugin-fs");
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+
+        const dataDir = await invoke<string>("get_data_dir");
+        // Use platform-agnostic path joining
+        const instanceIDPath = dataDir.endsWith("/") || dataDir.endsWith("\\")
+            ? `${dataDir}instance-id.txt`
+            : `${dataDir}/instance-id.txt`;
+
+        const fileExists = await exists(instanceIDPath);
+        if (fileExists) {
+            const instanceID = await readTextFile(instanceIDPath);
+            if (instanceID && instanceID.trim()) {
+                const newTitle = `AgentMux ${appVersion} [${instanceID.trim()}]`;
+                document.title = newTitle;
+
+                // Also update Tauri window title
+                const window = getCurrentWindow();
+                await window.setTitle(newTitle);
+
+                console.log(`[multi-instance] Running as: ${instanceID.trim()}`);
+            }
+        }
+    } catch (e) {
+        // Ignore errors - instance file may not exist for default instance
+        console.log("[multi-instance] No instance ID file found (default instance)");
+    }
+}
+
+// Call after a short delay to allow backend to write the file
+setTimeout(updateWindowTitleWithInstanceID, 1000);
+
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;

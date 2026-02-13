@@ -171,6 +171,99 @@ func GetDomainSocketName() string {
 	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
 }
 
+// GetWaveDataDirForInstance returns the data directory path for a named instance.
+// For default instance (empty instanceID), returns the standard data directory.
+// For named instances, appends the instance ID to the base application name.
+func GetWaveDataDirForInstance(instanceID string) string {
+	if instanceID == "" {
+		// Return the cached data home (already set from env vars)
+		return DataHome_VarCache
+	}
+
+	homeDir := GetHomeDir()
+	baseName := fmt.Sprintf("agentmux-%s", instanceID)
+
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(homeDir, "Library", "Application Support", baseName)
+	} else if runtime.GOOS == "windows" {
+		localAppData := os.Getenv("LOCALAPPDATA")
+		if localAppData == "" {
+			localAppData = filepath.Join(homeDir, "AppData", "Local")
+		}
+		return filepath.Join(localAppData, baseName)
+	} else {
+		// Linux and other Unix-like systems
+		xdgDataHome := os.Getenv("XDG_DATA_HOME")
+		if xdgDataHome == "" {
+			xdgDataHome = filepath.Join(homeDir, ".local", "share")
+		}
+		return filepath.Join(xdgDataHome, baseName)
+	}
+}
+
+// AcquireWaveLockWithAutoInstance attempts to acquire the wave lock file.
+// If the default lock is already held, it automatically tries instance IDs
+// (instance-1, instance-2, ..., instance-10) until it finds an available slot.
+//
+// IMPORTANT: If an instance lock is acquired (instanceID != ""), the caller MUST
+// update DataHome_VarCache to the returned instanceDataDir before any other operations.
+//
+// Returns:
+//   - lock: The acquired FDLock handle (must be closed by caller)
+//   - instanceID: Empty string for default instance, "instance-N" for auto-generated
+//   - instanceDataDir: Data directory path for the instance (only set if instanceID != "")
+//   - error: Only returned if all 10 instance attempts failed
+func AcquireWaveLockWithAutoInstance() (FDLock, string, string, error) {
+	// Try default instance first
+	lock, err := AcquireWaveLock()
+	if err == nil {
+		log.Printf("[base] acquired default instance lock\n")
+		return lock, "", "", nil
+	}
+
+	log.Printf("[base] default instance locked, trying auto-instances...\n")
+
+	// Try auto-generated instances (instance-1 through instance-10)
+	for i := 1; i <= 10; i++ {
+		instanceID := fmt.Sprintf("instance-%d", i)
+
+		// Get instance-specific data directory
+		instanceDataDir := GetWaveDataDirForInstance(instanceID)
+
+		// Try to acquire lock for this specific instance directory
+		lockFileName := filepath.Join(instanceDataDir, WaveLockFile)
+
+		// Ensure the instance data directory exists
+		err := TryMkdirs(instanceDataDir, 0700, "instance data directory")
+		if err != nil {
+			log.Printf("[base] failed to create data dir for %s: %v\n", instanceID, err)
+			continue
+		}
+
+		// Try to acquire lock using platform-specific implementation
+		lock, err := acquireWaveLockAtPath(lockFileName)
+		if err == nil {
+			// Success! Return the lock and instance info
+			// Caller must update DataHome_VarCache before using other functions
+			log.Printf("[base] acquired lock for %s (data: %s)\n", instanceID, instanceDataDir)
+			return lock, instanceID, instanceDataDir, nil
+		}
+
+		// Failed to acquire this instance's lock, try next
+		log.Printf("[base] instance %s locked, trying next\n", instanceID)
+	}
+
+	// All attempts failed
+	return nil, "", "", fmt.Errorf("could not acquire wave lock after trying default + 10 auto-instances")
+}
+
+// acquireWaveLockAtPath acquires a lock at the specified path.
+// Platform-specific implementation delegated to platform files.
+func acquireWaveLockAtPath(lockPath string) (FDLock, error) {
+	log.Printf("[base] acquiring lock on %s\n", lockPath)
+	return tryAcquireLock(lockPath)
+}
+
 func EnsureWaveDataDir() error {
 	return CacheEnsureDir(GetWaveDataDir(), "wavehome", 0700, "wave home directory")
 }

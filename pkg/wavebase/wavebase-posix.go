@@ -17,6 +17,12 @@ func AcquireWaveLock() (FDLock, error) {
 	dataHomeDir := GetWaveDataDir()
 	lockFileName := filepath.Join(dataHomeDir, WaveLockFile)
 	log.Printf("[base] acquiring lock on %s\n", lockFileName)
+	return tryAcquireLock(lockFileName)
+}
+
+// tryAcquireLock attempts to acquire a file lock at the specified path.
+// Used by both AcquireWaveLock and AcquireWaveLockWithAutoInstance.
+func tryAcquireLock(lockFileName string) (FDLock, error) {
 	fd, err := os.OpenFile(lockFileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err

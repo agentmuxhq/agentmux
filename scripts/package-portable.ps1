@@ -62,13 +62,13 @@ Copy-Item "$RepoRoot\dist\bin\wsh-$Version-windows.x64.exe" "$PortableDir\wsh-$V
 
 # Create README
 Write-Host "  Creating README.txt..." -ForegroundColor Gray
-@"
+$ReadmeContent = @"
 AgentMux v$Version - Portable Edition
 
 Quick Start:
 1. Extract this ZIP to any folder
 2. Run agentmux.exe
-3. Data will be stored in the "Data" subfolder
+3. Data will be stored in the Data subfolder
 
 Requirements:
 - Windows 10/11 x64
@@ -82,8 +82,9 @@ Files:
 
 Support: https://github.com/a5af/agentmux
 
-Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-"@ | Out-File "$PortableDir\README.txt" -Encoding UTF8
+Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+"@
+$ReadmeContent | Out-File "$PortableDir\README.txt" -Encoding UTF8
 
 # Get file sizes before cleanup
 $ExeSize = (Get-Item "$PortableDir\agentmux.exe").Length / 1MB
@@ -100,7 +101,7 @@ Remove-Item $PortableDir -Recurse -Force
 
 # Show results
 Write-Host ""
-Write-Host "✓ Portable build created:" -ForegroundColor Green
+Write-Host "[SUCCESS] Portable build created:" -ForegroundColor Green
 Write-Host "  File: $ZipPath" -ForegroundColor White
 Write-Host "  Size: $([math]::Round($ZipSize, 2)) MB (compressed)" -ForegroundColor White
 Write-Host ""

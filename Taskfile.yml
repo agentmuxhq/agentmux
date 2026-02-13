@@ -174,7 +174,7 @@ tasks:
         platforms: [windows]
         cmds:
             - task: package
-            - powershell -Command "& ./scripts/package-portable.ps1"
+            - powershell -ExecutionPolicy Bypass -Command "& ./scripts/package-portable.ps1"
 
     build:frontend:
         desc: Build the frontend (production mode).

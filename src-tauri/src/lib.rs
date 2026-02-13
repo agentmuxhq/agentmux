@@ -173,6 +173,18 @@ pub fn run() {
                     if let Some(child) = sidecar.take() {
                         tracing::info!("Shutting down backend sidecar");
                         let _ = child.kill();
+
+                        // Clean up endpoints file to prevent stale file race conditions
+                        if let Ok(config_dir) = window.app_handle().path().app_config_dir() {
+                            let endpoints_file = config_dir.join("wave-endpoints.json");
+                            if endpoints_file.exists() {
+                                if let Err(e) = std::fs::remove_file(&endpoints_file) {
+                                    tracing::warn!("Failed to remove endpoints file on shutdown: {}", e);
+                                } else {
+                                    tracing::info!("Removed endpoints file on shutdown");
+                                }
+                            }
+                        }
                     }
 
                     // Clean up heartbeat file

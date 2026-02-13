@@ -163,7 +163,7 @@ tasks:
         cmds:
             - task: build:backend
             - task: tauri:copy-sidecars
-            - tauri build {{.CLI_ARGS}}
+            - npx tauri build {{.CLI_ARGS}}
         deps:
             - clean
             - npm:install
@@ -643,7 +643,7 @@ tasks:
     tauri:copy-sidecars:
         desc: Copy Go binaries to src-tauri/binaries with target-specific names
         cmds:
-            - powershell -Command "New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null"
+            - mkdir -p src-tauri/binaries
             - |
                 {{if eq OS "windows"}}
                 powershell -Command "Copy-Item dist/bin/agentmuxsrv.x64.exe src-tauri/binaries/agentmuxsrv-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"

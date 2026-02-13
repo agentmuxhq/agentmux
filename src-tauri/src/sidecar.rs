@@ -3,9 +3,11 @@ use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
 
 /// State returned after successfully spawning the backend.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct BackendSpawnResult {
     pub ws_endpoint: String,
     pub web_endpoint: String,
+    pub auth_key: String,
 }
 
 /// Spawn the agentmuxsrv Go backend as a Tauri sidecar.
@@ -18,6 +20,8 @@ pub struct BackendSpawnResult {
 /// We parse that line to get the WebSocket and HTTP endpoints,
 /// then the frontend connects to them directly.
 pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult, String> {
+    tracing::info!("🚀 spawn_backend() called");
+
     let data_dir = app
         .path()
         .app_data_dir()
@@ -28,6 +32,63 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .app_config_dir()
         .map_err(|e| format!("Failed to get config dir: {}", e))?;
 
+    tracing::info!("Using config_dir: {}", config_dir.display());
+    tracing::info!("Using data_dir: {}", data_dir.display());
+
+    // Check if backend is already running by looking for endpoints file
+    let endpoints_file = config_dir.join("wave-endpoints.json");
+    tracing::info!("Checking for existing backend at: {}", endpoints_file.display());
+
+    if endpoints_file.exists() {
+        tracing::info!("Found existing endpoints file, attempting to reuse backend");
+        if let Ok(contents) = std::fs::read_to_string(&endpoints_file) {
+            tracing::info!("Read endpoints file: {}", contents);
+            if let Ok(existing) = serde_json::from_str::<BackendSpawnResult>(&contents) {
+                // Test if the existing backend is still responsive
+                // The web_endpoint is like "127.0.0.1:PORT", need to add http://
+                let test_url = if existing.web_endpoint.starts_with("http") {
+                    existing.web_endpoint.clone()
+                } else {
+                    format!("http://{}", existing.web_endpoint)
+                };
+
+                tracing::info!("Testing connection to existing backend at: {}", test_url);
+                match reqwest::get(&test_url).await {
+                    Ok(resp) => {
+                        if resp.status().is_success() || resp.status().is_client_error() {
+                            // Any HTTP response means backend is alive (even 404 is fine)
+                            tracing::info!("Successfully connected to existing backend (status: {})", resp.status());
+
+                            // Reuse the auth key from the existing backend
+                            let key_preview = existing.auth_key.chars().take(8).collect::<String>();
+                            tracing::info!("Reusing auth key from existing backend: {}...", key_preview);
+                            let state = app.state::<crate::state::AppState>();
+                            let mut auth_key_guard = state.auth_key.lock().unwrap();
+                            *auth_key_guard = existing.auth_key.clone();
+
+                            return Ok(existing);
+                        } else {
+                            tracing::warn!("Backend returned unexpected status: {}", resp.status());
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to connect to existing backend: {}", e);
+                    }
+                }
+                tracing::warn!("Existing backend not responsive, will spawn new one");
+            } else {
+                tracing::warn!("Failed to parse endpoints file");
+            }
+        } else {
+            tracing::warn!("Failed to read endpoints file");
+        }
+        // Endpoints file exists but backend is dead, remove stale file
+        tracing::info!("Removing stale endpoints file");
+        let _ = std::fs::remove_file(&endpoints_file);
+    } else {
+        tracing::info!("No existing endpoints file found, will spawn new backend");
+    }
+
     // Ensure directories exist
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir: {}", e))?;
@@ -36,7 +97,8 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
 
     // Get auth key from app state
     let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
-    tracing::info!("Spawning agentmuxsrv with auth key: {}", &auth_key[..8]);
+    let key_preview = auth_key.chars().take(8).collect::<String>();
+    tracing::info!("Spawning agentmuxsrv with auth key: {}", key_preview);
 
     let shell = app.shell();
 
@@ -149,10 +211,45 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     .map_err(|_| "Timeout waiting for agentmuxsrv to start (30s)".to_string())?
     .ok_or_else(|| "agentmuxsrv channel closed before sending endpoints".to_string())?;
 
-    Ok(BackendSpawnResult {
+    let result = BackendSpawnResult {
         ws_endpoint: timeout.0,
         web_endpoint: timeout.1,
-    })
+        auth_key: auth_key.clone(),
+    };
+
+    let key_preview = result.auth_key.chars().take(8).collect::<String>();
+    tracing::info!("Backend successfully started with endpoints: ws={}, web={}, auth_key={}...", result.ws_endpoint, result.web_endpoint, key_preview);
+
+    // Save endpoints for other instances to reuse
+    let endpoints_file = config_dir.join("wave-endpoints.json");
+    tracing::info!("Attempting to save endpoints to: {}", endpoints_file.display());
+
+    match serde_json::to_string_pretty(&result) {
+        Ok(json) => {
+            tracing::info!("Serialized endpoints: {}", json);
+            match std::fs::write(&endpoints_file, &json) {
+                Ok(_) => {
+                    tracing::info!("✅ Successfully saved endpoints to {} for multi-window reuse", endpoints_file.display());
+                    // Verify the file was written
+                    if endpoints_file.exists() {
+                        if let Ok(contents) = std::fs::read_to_string(&endpoints_file) {
+                            tracing::info!("Verified file contents: {}", contents);
+                        }
+                    } else {
+                        tracing::error!("❌ File doesn't exist after write!");
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("❌ Failed to write endpoints file: {}", e);
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to serialize endpoints: {}", e);
+        }
+    }
+
+    Ok(result)
 }
 
 /// Handle WAVESRV-EVENT messages from the backend.

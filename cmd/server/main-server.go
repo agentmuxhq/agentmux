@@ -603,6 +603,10 @@ Currently running instances use these data directories:
 		fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
 	}()
 	go wshutil.RunWshRpcOverListener(unixListener)
+
+	// Initialize system tray icon (runs in separate goroutine)
+	InitTray()
+
 	web.RunWebServer(webListener) // blocking
 	runtime.KeepAlive(waveLock)
 }

@@ -6,7 +6,7 @@ mod heartbeat;
 mod menu;
 mod sidecar;
 mod state;
-mod tray;
+// mod tray; // Tray now managed by backend (cmd/server/tray.go)
 
 use tauri::Emitter;
 use tauri::Manager;
@@ -109,10 +109,8 @@ pub fn run() {
             //     }
             // }
 
-            // Build system tray icon
-            if let Err(e) = tray::build_tray(&handle) {
-                tracing::error!("Failed to build system tray: {}", e);
-            }
+            // System tray now managed by backend (agentmuxsrv)
+            // See cmd/server/tray.go for implementation
 
             // Set window title with version
             if let Some(window) = handle.get_webview_window("main") {

@@ -10,11 +10,6 @@
 
 use serde_json::Value;
 
-#[tauri::command(rename_all = "camelCase")]
-pub fn show_context_menu(workspace_id: String, menu: Option<Value>) {
-    tracing::debug!("stub: show_context_menu workspace={} menu={:?}", workspace_id, menu.is_some());
-}
-
 #[tauri::command]
 pub fn download_file(path: String) {
     tracing::debug!("stub: download_file path={}", path);

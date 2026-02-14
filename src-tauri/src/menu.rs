@@ -271,7 +271,11 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // TODO: Call workspace service
         }
         _ => {
-            tracing::debug!("Unhandled menu event: {:?}", event.id);
+            // Handle context menu clicks - emit to frontend
+            tracing::debug!("Context menu click: {}", event.id.as_ref());
+            if let Some(w) = window {
+                let _ = w.emit("context-menu-click", event.id.as_ref());
+            }
         }
     }
 }

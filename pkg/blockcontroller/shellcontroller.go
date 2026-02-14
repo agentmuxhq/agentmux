@@ -702,31 +702,37 @@ func (bc *ShellController) makeSwapToken(ctx context.Context, logCtx context.Con
 		Env:   make(map[string]string),
 		Exp:   time.Now().Add(5 * time.Minute),
 	}
-	token.Env["TERM_PROGRAM"] = "waveterm"
-	token.Env["WAVETERM_BLOCKID"] = bc.BlockId
-	token.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
-	token.Env["WAVETERM"] = "1"
+	token.Env["TERM_PROGRAM"] = "agentmux"
+	token.Env["AGENTMUX_BLOCKID"] = bc.BlockId
+	token.Env["AGENTMUX_VERSION"] = wavebase.WaveVersion
+	// Set AGENTMUX to executable path for portable mode detection in shell integration
+	exePath, err := os.Executable()
+	if err == nil {
+		token.Env["AGENTMUX"] = exePath
+	} else {
+		token.Env["AGENTMUX"] = "1" // fallback
+	}
 	tabId, err := wstore.DBFindTabForBlockId(ctx, bc.BlockId)
 	if err != nil {
 		log.Printf("error finding tab for block: %v\n", err)
 	} else {
-		token.Env["WAVETERM_TABID"] = tabId
+		token.Env["AGENTMUX_TABID"] = tabId
 	}
 	if tabId != "" {
 		wsId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
 		if err != nil {
 			log.Printf("error finding workspace for tab: %v\n", err)
 		} else {
-			token.Env["WAVETERM_WORKSPACEID"] = wsId
+			token.Env["AGENTMUX_WORKSPACEID"] = wsId
 		}
 	}
 	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		log.Printf("error getting client data: %v\n", err)
 	} else {
-		token.Env["WAVETERM_CLIENTID"] = clientData.OID
+		token.Env["AGENTMUX_CLIENTID"] = clientData.OID
 	}
-	token.Env["WAVETERM_CONN"] = remoteName
+	token.Env["AGENTMUX_CONN"] = remoteName
 	envMap, err := resolveEnvMap(bc.BlockId, blockMeta, remoteName)
 	if err != nil {
 		log.Printf("error resolving env map: %v\n", err)

@@ -1,8 +1,8 @@
 # this file is sourced with -C
 # Add Wave binary directory to PATH
 # Detect portable mode: check if wsh exists in AgentMux app directory
-if set -q WAVETERM
-    set APP_DIR (dirname "$WAVETERM")
+if set -q AGENTMUX; and test "$AGENTMUX" != "1"
+    set APP_DIR (dirname "$AGENTMUX")
     if test (count $APP_DIR/wsh-*) -gt 0
         set -x PATH $APP_DIR $PATH
     else

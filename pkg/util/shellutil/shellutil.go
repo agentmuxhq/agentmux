@@ -6,6 +6,7 @@ package shellutil
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -135,10 +136,10 @@ func WaveshellLocalEnvVars(termType string) map[string]string {
 		rtn["TERM"] = termType
 	}
 	// these are not necessary since they should be set with the swap token, but no harm in setting them here
-	rtn["TERM_PROGRAM"] = "waveterm"
-	rtn["WAVETERM"], _ = os.Executable()
-	rtn["WAVETERM_VERSION"] = wavebase.WaveVersion
-	rtn["WAVETERM_WSHBINDIR"] = filepath.Join(wavebase.GetWaveDataDir(), WaveHomeBinDir)
+	rtn["TERM_PROGRAM"] = "agentmux"
+	rtn["AGENTMUX"], _ = os.Executable()
+	rtn["AGENTMUX_VERSION"] = wavebase.WaveVersion
+	rtn["AGENTMUX_WSHBINDIR"] = filepath.Join(wavebase.GetWaveDataDir(), WaveHomeBinDir)
 	return rtn
 }
 
@@ -177,16 +178,92 @@ func GetEnvStrKey(envStr string) string {
 	return envStr[0:eqIdx]
 }
 
-var initStartupFilesOnce = &sync.Once{}
+// ShellCacheVersion tracks the version of cached shell integration scripts
+type ShellCacheVersion struct {
+	AgentMuxVersion string `json:"agentmux_version"`
+	CacheCreatedAt  string `json:"cache_created_at"`
+}
 
-// in a Once block so it can be called multiple times
-// we run it at startup, but also before launching local shells so we know everything is initialized before starting the shell
+// isCacheValid checks if the cached shell scripts match the current binary version
+func isCacheValid(waveHome string) bool {
+	versionFile := filepath.Join(waveHome, "shell", ".version")
+
+	data, err := os.ReadFile(versionFile)
+	if err != nil {
+		// No version file = invalid cache
+		return false
+	}
+
+	var cached ShellCacheVersion
+	if err := json.Unmarshal(data, &cached); err != nil {
+		log.Printf("[shellutil] Corrupt version file, invalidating cache: %v", err)
+		return false
+	}
+
+	// Version mismatch = invalid cache
+	if cached.AgentMuxVersion != wavebase.WaveVersion {
+		log.Printf("[shellutil] Cache version mismatch: cached=%s, current=%s",
+			cached.AgentMuxVersion, wavebase.WaveVersion)
+		return false
+	}
+
+	return true
+}
+
+// writeCacheVersion writes the current version metadata to the cache directory
+func writeCacheVersion(waveHome string) error {
+	shellDir := filepath.Join(waveHome, "shell")
+
+	// Ensure shell directory exists
+	if err := os.MkdirAll(shellDir, 0755); err != nil {
+		return fmt.Errorf("failed to create shell directory: %v", err)
+	}
+
+	versionFile := filepath.Join(shellDir, ".version")
+
+	version := ShellCacheVersion{
+		AgentMuxVersion: wavebase.WaveVersion,
+		CacheCreatedAt:  time.Now().UTC().Format(time.RFC3339),
+	}
+
+	data, err := json.MarshalIndent(version, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal version: %v", err)
+	}
+
+	if err := os.WriteFile(versionFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write version file: %v", err)
+	}
+
+	log.Printf("[shellutil] Wrote cache version file: %s", wavebase.WaveVersion)
+	return nil
+}
+
+// InitCustomShellStartupFiles initializes shell integration scripts with version checking
+// Replaces the old sync.Once pattern with version-aware caching
 func InitCustomShellStartupFiles() error {
-	var err error
-	initStartupFilesOnce.Do(func() {
-		err = initCustomShellStartupFilesInternal()
-	})
-	return err
+	waveHome := wavebase.GetWaveDataDir()
+
+	// Check if cached scripts are valid for current version
+	if isCacheValid(waveHome) {
+		log.Printf("[shellutil] Shell integration cache is valid (v%s)", wavebase.WaveVersion)
+		return nil
+	}
+
+	// Cache is invalid or missing → Reinitialize
+	log.Printf("[shellutil] Reinitializing shell integration scripts (version: %s)", wavebase.WaveVersion)
+
+	if err := initCustomShellStartupFilesInternal(); err != nil {
+		return fmt.Errorf("failed to initialize shell scripts: %v", err)
+	}
+
+	// Write version metadata
+	if err := writeCacheVersion(waveHome); err != nil {
+		// Non-fatal: Scripts are still usable even if version file write fails
+		log.Printf("[shellutil] Warning: failed to write version file: %v", err)
+	}
+
+	return nil
 }
 
 func GetLocalBashRcFileOverride() string {

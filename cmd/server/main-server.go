@@ -55,7 +55,7 @@ var CurrentInstanceID = ""
 // ExpectedVersion is the version this binary should be running
 // This is auto-updated by bump-version.sh to match package.json
 // If WaveVersion != ExpectedVersion, it indicates a stale cached binary
-const ExpectedVersion = "0.27.5"
+const ExpectedVersion = "0.27.7"
 
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
@@ -521,6 +521,16 @@ Currently running instances use these data directories:
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
+		}
+	}()
+	// Clean up old version lock files (best effort, runs in background)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("CleanupOldLockFiles", recover())
+		}()
+		time.Sleep(2 * time.Second) // Wait for system to stabilize
+		if err := wavebase.CleanupOldLockFiles(); err != nil {
+			log.Printf("warning: failed to cleanup old lock files: %v\n", err)
 		}
 	}()
 	firstLaunch, err := wcore.EnsureInitialData()

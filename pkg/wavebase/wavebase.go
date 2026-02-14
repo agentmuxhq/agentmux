@@ -53,8 +53,18 @@ var AppPath_VarCache string             // caches WAVETERM_APP_PATH
 var AppElectronExecPath_VarCache string // caches WAVETERM_ELECTRONEXECPATH
 var Dev_VarCache string                 // caches WAVETERM_DEV
 
-const WaveLockFile = "wave.lock"
-const DomainSocketBaseName = "wave.sock"
+// GetWaveLockFile returns the version-specific lock file name.
+// This ensures different versions run separate backend processes.
+func GetWaveLockFile() string {
+	return fmt.Sprintf("wave-%s.lock", WaveVersion)
+}
+
+// GetDomainSocketBaseName returns the version-specific socket name.
+// This ensures different versions use separate communication channels.
+func GetDomainSocketBaseName() string {
+	return fmt.Sprintf("wave-%s.sock", WaveVersion)
+}
+
 const RemoteDomainSocketBaseName = "wave-remote.sock"
 const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
@@ -168,7 +178,7 @@ func ReplaceHomeDir(pathStr string) string {
 }
 
 func GetDomainSocketName() string {
-	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
+	return filepath.Join(GetWaveDataDir(), GetDomainSocketBaseName())
 }
 
 // GetWaveDataDirForInstance returns the data directory path for a named instance.
@@ -231,7 +241,7 @@ func AcquireWaveLockWithAutoInstance() (FDLock, string, string, error) {
 		instanceDataDir := GetWaveDataDirForInstance(instanceID)
 
 		// Try to acquire lock for this specific instance directory
-		lockFileName := filepath.Join(instanceDataDir, WaveLockFile)
+		lockFileName := filepath.Join(instanceDataDir, GetWaveLockFile())
 
 		// Ensure the instance data directory exists
 		err := TryMkdirs(instanceDataDir, 0700, "instance data directory")
@@ -262,6 +272,57 @@ func AcquireWaveLockWithAutoInstance() (FDLock, string, string, error) {
 func acquireWaveLockAtPath(lockPath string) (FDLock, error) {
 	log.Printf("[base] acquiring lock on %s\n", lockPath)
 	return tryAcquireLock(lockPath)
+}
+
+// CleanupOldLockFiles removes lock and socket files from previous versions.
+// This is called in a background goroutine after backend startup to clean up
+// orphaned files from old versions that are no longer running.
+func CleanupOldLockFiles() error {
+	dataDir := GetWaveDataDir()
+	currentLockFile := GetWaveLockFile()
+
+	// Find all wave-*.lock files
+	pattern := filepath.Join(dataDir, "wave-*.lock")
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return fmt.Errorf("failed to glob lock files: %w", err)
+	}
+
+	for _, lockPath := range matches {
+		lockFile := filepath.Base(lockPath)
+
+		// Skip current version's lock file
+		if lockFile == currentLockFile {
+			continue
+		}
+
+		// Try to acquire lock (test if backend still running)
+		lock, err := tryAcquireLock(lockPath)
+		if err != nil {
+			// Lock held = backend still running, skip
+			log.Printf("[cleanup] Skipping active lock: %s\n", lockFile)
+			continue
+		}
+
+		// Lock acquired = no backend running, safe to delete
+		lock.Close()
+		if err := os.Remove(lockPath); err != nil {
+			log.Printf("[cleanup] Failed to remove old lock file %s: %v\n", lockFile, err)
+			continue
+		}
+		log.Printf("[cleanup] Removed old lock file: %s\n", lockFile)
+
+		// Also remove corresponding socket file
+		socketName := strings.Replace(lockFile, ".lock", ".sock", 1)
+		socketPath := filepath.Join(dataDir, socketName)
+		if err := os.Remove(socketPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			log.Printf("[cleanup] Failed to remove old socket %s: %v\n", socketName, err)
+		} else if err == nil {
+			log.Printf("[cleanup] Removed old socket: %s\n", socketName)
+		}
+	}
+
+	return nil
 }
 
 func EnsureWaveDataDir() error {

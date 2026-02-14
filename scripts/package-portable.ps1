@@ -47,6 +47,7 @@ if (-not (Test-Path $OutputDir)) {
 
 # Create portable directory
 New-Item -ItemType Directory -Force -Path $PortableDir | Out-Null
+New-Item -ItemType Directory -Force -Path "$PortableDir\bin" | Out-Null
 
 # Copy main executable
 Write-Host "  Copying agentmux.exe..." -ForegroundColor Gray
@@ -56,9 +57,9 @@ Copy-Item "$BuildDir\agentmux.exe" "$PortableDir\agentmux.exe" -Force
 Write-Host "  Copying agentmuxsrv.x64.exe..." -ForegroundColor Gray
 Copy-Item "$RepoRoot\dist\bin\agentmuxsrv.x64.exe" "$PortableDir\agentmuxsrv.x64.exe" -Force
 
-# Copy wsh
-Write-Host "  Copying wsh-$Version-windows.x64.exe..." -ForegroundColor Gray
-Copy-Item "$RepoRoot\dist\bin\wsh-$Version-windows.x64.exe" "$PortableDir\wsh-$Version-windows.x64.exe" -Force
+# Copy wsh to bin subdirectory (backend expects it there)
+Write-Host "  Copying wsh-$Version-windows.x64.exe to bin/..." -ForegroundColor Gray
+Copy-Item "$RepoRoot\dist\bin\wsh-$Version-windows.x64.exe" "$PortableDir\bin\wsh-$Version-windows.x64.exe" -Force
 
 # Create README
 Write-Host "  Creating README.txt..." -ForegroundColor Gray
@@ -78,7 +79,7 @@ Requirements:
 Files:
 - agentmux.exe: Main application (Tauri frontend)
 - agentmuxsrv.x64.exe: Backend server (auto-launched)
-- wsh-$Version-windows.x64.exe: Shell integration binary
+- bin/wsh-$Version-windows.x64.exe: Shell integration binary
 
 Support: https://github.com/a5af/agentmux
 
@@ -89,7 +90,7 @@ $ReadmeContent | Out-File "$PortableDir\README.txt" -Encoding UTF8
 # Get file sizes before cleanup
 $ExeSize = (Get-Item "$PortableDir\agentmux.exe").Length / 1MB
 $BackendSize = (Get-Item "$PortableDir\agentmuxsrv.x64.exe").Length / 1MB
-$WshSize = (Get-Item "$PortableDir\wsh-$Version-windows.x64.exe").Length / 1MB
+$WshSize = (Get-Item "$PortableDir\bin\wsh-$Version-windows.x64.exe").Length / 1MB
 
 # Create ZIP
 Write-Host "  Creating ZIP archive..." -ForegroundColor Gray

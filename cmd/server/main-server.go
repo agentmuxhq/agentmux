@@ -523,6 +523,16 @@ Currently running instances use these data directories:
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
 		}
 	}()
+	// Clean up old version lock files (best effort, runs in background)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("CleanupOldLockFiles", recover())
+		}()
+		time.Sleep(2 * time.Second) // Wait for system to stabilize
+		if err := wavebase.CleanupOldLockFiles(); err != nil {
+			log.Printf("warning: failed to cleanup old lock files: %v\n", err)
+		}
+	}()
 	firstLaunch, err := wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)

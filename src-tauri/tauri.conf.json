@@ -26,10 +26,6 @@
     ],
     "security": {
       "csp": "default-src 'self' tauri: ipc: http://ipc.localhost; connect-src 'self' tauri: ipc: http://ipc.localhost ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:* http://tauri.localhost; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;"
-    },
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
     }
   },
   "bundle": {

@@ -19,7 +19,7 @@ vars:
 tasks:
     dev:
         desc: Run the Tauri application in development mode (hot reload enabled).
-        cmd: tauri dev
+        cmd: npx tauri dev
         deps:
             - npm:install
             - docsite:build:embedded

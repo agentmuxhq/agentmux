@@ -1,12 +1,13 @@
 # We source this file with -NoExit -File
 
-# Detect portable mode: check if wsh exists in AgentMux app directory
+# Detect portable mode: check if wsh exists in AgentMux app bin directory
 $portableWshPath = $null
 if ($env:AGENTMUX -and $env:AGENTMUX -ne "1") {
     $appDir = Split-Path -Parent $env:AGENTMUX
-    $portableWsh = Get-ChildItem -Path $appDir -Filter "wsh-*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    $portableBinDir = Join-Path $appDir "bin"
+    $portableWsh = Get-ChildItem -Path $portableBinDir -Filter "wsh-*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($portableWsh) {
-        $portableWshPath = $appDir
+        $portableWshPath = $portableBinDir
     }
 }
 
@@ -22,8 +23,10 @@ $agentmux_swaptoken_output = wsh token $env:AGENTMUX_SWAPTOKEN pwsh 2>$null | Ou
 if ($agentmux_swaptoken_output -and $agentmux_swaptoken_output -ne "") {
     Invoke-Expression $agentmux_swaptoken_output
 }
-Remove-Variable -Name agentmux_swaptoken_output
-Remove-Item Env:AGENTMUX_SWAPTOKEN
+Remove-Variable -Name agentmux_swaptoken_output -ErrorAction SilentlyContinue
+if (Test-Path Env:AGENTMUX_SWAPTOKEN) {
+    Remove-Item Env:AGENTMUX_SWAPTOKEN
+}
 
 # Load AgentMux completions
 wsh completion powershell | Out-String | Invoke-Expression

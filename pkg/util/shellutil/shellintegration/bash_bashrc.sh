@@ -5,8 +5,8 @@ if [ -f /etc/profile ]; then
 fi
 
 # Detect portable mode: check if wsh exists in AgentMux app directory
-if [ -n "$WAVETERM" ]; then
-    APP_DIR="$(dirname "$WAVETERM")"
+if [ -n "$AGENTMUX" ] && [ "$AGENTMUX" != "1" ]; then
+    APP_DIR="$(dirname "$AGENTMUX")"
     if ls "$APP_DIR"/wsh-* >/dev/null 2>&1; then
         AGENTMUX_WSHBINDIR="$APP_DIR"
     else

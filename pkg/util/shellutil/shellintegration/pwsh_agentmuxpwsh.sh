@@ -2,8 +2,8 @@
 
 # Detect portable mode: check if wsh exists in AgentMux app directory
 $portableWshPath = $null
-if ($env:WAVETERM) {
-    $appDir = Split-Path -Parent $env:WAVETERM
+if ($env:AGENTMUX -and $env:AGENTMUX -ne "1") {
+    $appDir = Split-Path -Parent $env:AGENTMUX
     $portableWsh = Get-ChildItem -Path $appDir -Filter "wsh-*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($portableWsh) {
         $portableWshPath = $appDir

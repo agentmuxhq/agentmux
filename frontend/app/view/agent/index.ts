@@ -16,3 +16,7 @@ export { ToolBlock } from "./components/ToolBlock";
 export { AgentMessageBlock } from "./components/AgentMessageBlock";
 export { DiffViewer } from "./components/DiffViewer";
 export { BashOutputViewer } from "./components/BashOutputViewer";
+export { AgentHeader } from "./components/AgentHeader";
+export { AgentFooter } from "./components/AgentFooter";
+export { FilterControls } from "./components/FilterControls";
+export { ProcessControls } from "./components/ProcessControls";

@@ -1,12 +1,13 @@
 # We source this file with -NoExit -File
 
-# Detect portable mode: check if wsh exists in AgentMux app directory
+# Detect portable mode: check if wsh exists in AgentMux app bin directory
 $portableWshPath = $null
 if ($env:AGENTMUX -and $env:AGENTMUX -ne "1") {
     $appDir = Split-Path -Parent $env:AGENTMUX
-    $portableWsh = Get-ChildItem -Path $appDir -Filter "wsh-*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    $portableBinDir = Join-Path $appDir "bin"
+    $portableWsh = Get-ChildItem -Path $portableBinDir -Filter "wsh-*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($portableWsh) {
-        $portableWshPath = $appDir
+        $portableWshPath = $portableBinDir
     }
 }
 

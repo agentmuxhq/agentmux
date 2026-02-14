@@ -22,8 +22,10 @@ $agentmux_swaptoken_output = wsh token $env:AGENTMUX_SWAPTOKEN pwsh 2>$null | Ou
 if ($agentmux_swaptoken_output -and $agentmux_swaptoken_output -ne "") {
     Invoke-Expression $agentmux_swaptoken_output
 }
-Remove-Variable -Name agentmux_swaptoken_output
-Remove-Item Env:AGENTMUX_SWAPTOKEN
+Remove-Variable -Name agentmux_swaptoken_output -ErrorAction SilentlyContinue
+if (Test-Path Env:AGENTMUX_SWAPTOKEN) {
+    Remove-Item Env:AGENTMUX_SWAPTOKEN
+}
 
 # Load AgentMux completions
 wsh completion powershell | Out-String | Invoke-Expression

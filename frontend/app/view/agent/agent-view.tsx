@@ -13,7 +13,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import clsx from "clsx";
-import React, { memo, useCallback, useEffect, useRef } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { DocumentNode } from "./types";
 import {
     documentStateAtom,
@@ -23,17 +23,28 @@ import {
 import { MarkdownBlock } from "./components/MarkdownBlock";
 import { ToolBlock } from "./components/ToolBlock";
 import { AgentMessageBlock } from "./components/AgentMessageBlock";
+import { AgentHeader } from "./components/AgentHeader";
+import { AgentFooter } from "./components/AgentFooter";
+import { FilterControls } from "./components/FilterControls";
 import "./agent-view.scss";
 
 interface AgentViewProps {
     agentId: string;
+    onSendMessage?: (message: string) => void;
+    onExport?: (format: "markdown" | "html") => void;
+    onPause?: () => void;
+    onResume?: () => void;
+    onKill?: () => void;
+    onRestart?: () => void;
 }
 
-export const AgentView: React.FC<AgentViewProps> = memo(({ agentId }) => {
-    const document = useAtomValue(filteredDocumentAtom);
-    const documentState = useAtomValue(documentStateAtom);
-    const toggleCollapse = useSetAtom(toggleNodeCollapsed);
-    const scrollRef = useRef<HTMLDivElement>(null);
+export const AgentView: React.FC<AgentViewProps> = memo(
+    ({ agentId, onSendMessage, onExport, onPause, onResume, onKill, onRestart }) => {
+        const document = useAtomValue(filteredDocumentAtom);
+        const documentState = useAtomValue(documentStateAtom);
+        const toggleCollapse = useSetAtom(toggleNodeCollapsed);
+        const scrollRef = useRef<HTMLDivElement>(null);
+        const [showFilters, setShowFilters] = useState(false);
 
     // Auto-scroll to bottom on new nodes
     useEffect(() => {
@@ -96,24 +107,51 @@ export const AgentView: React.FC<AgentViewProps> = memo(({ agentId }) => {
         [documentState.collapsedNodes, toggleCollapse]
     );
 
-    return (
-        <div className="agent-view">
-            <div className="agent-document" ref={scrollRef}>
-                {document.length === 0 ? (
-                    <div className="agent-empty">
-                        <div className="agent-empty-icon">🤖</div>
-                        <div className="agent-empty-text">
-                            Agent {agentId} is idle
-                            <br />
-                            Waiting for activity...
+        return (
+            <div className="agent-view">
+                <AgentHeader
+                    agentId={agentId}
+                    onPause={onPause}
+                    onResume={onResume}
+                    onKill={onKill}
+                    onRestart={onRestart}
+                />
+
+                <div className="agent-main-container">
+                    {showFilters && (
+                        <div className="agent-sidebar">
+                            <FilterControls />
                         </div>
+                    )}
+
+                    <div className="agent-document" ref={scrollRef}>
+                        <button
+                            className="agent-filter-toggle"
+                            onClick={() => setShowFilters(!showFilters)}
+                            title="Toggle filters"
+                        >
+                            🔍 {showFilters ? "Hide" : "Show"} Filters
+                        </button>
+
+                        {document.length === 0 ? (
+                            <div className="agent-empty">
+                                <div className="agent-empty-icon">🤖</div>
+                                <div className="agent-empty-text">
+                                    Agent {agentId} is idle
+                                    <br />
+                                    Waiting for activity...
+                                </div>
+                            </div>
+                        ) : (
+                            document.map(renderNode)
+                        )}
                     </div>
-                ) : (
-                    document.map(renderNode)
-                )}
+                </div>
+
+                <AgentFooter agentId={agentId} onSendMessage={onSendMessage} onExport={onExport} />
             </div>
-        </div>
-    );
-});
+        );
+    }
+);
 
 AgentView.displayName = "AgentView";

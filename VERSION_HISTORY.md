@@ -10,6 +10,12 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
+### v0.27.14-fork (2026-02-15)
+- **Agent:** AgentO
+- **Changes:**
+  - Fix: Skip systray on macOS to prevent backend crash (CGO signal fault in getlantern/systray)
+  - Resolves blank screen issue on macOS ARM64
+
 ### v0.27.11-fork (2026-02-15)
 - **Agent:** AgentX
 - **Changes:**

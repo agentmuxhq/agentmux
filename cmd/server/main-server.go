@@ -619,7 +619,10 @@ Currently running instances use these data directories:
 	go wshutil.RunWshRpcOverListener(unixListener)
 
 	// Initialize system tray icon (runs in separate goroutine)
-	InitTray()
+	// Skip on macOS: getlantern/systray CGO crashes on darwin/arm64
+	if runtime.GOOS != "darwin" {
+		InitTray()
+	}
 
 	web.RunWebServer(webListener) // blocking
 	runtime.KeepAlive(waveLock)

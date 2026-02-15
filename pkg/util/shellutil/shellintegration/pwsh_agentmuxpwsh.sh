@@ -1,54 +1,149 @@
-# We source this file with -NoExit -File
+# ============================================================================
+# AgentMux Shell Integration for PowerShell
+# ============================================================================
+# Generated Version: {{.AGENTMUX_VERSION}}
+# Template Version: 3
+# Generated: {{.TIMESTAMP}}
+# DO NOT EDIT - This file is auto-generated
+# ============================================================================
 
-# Detect portable mode: check if wsh exists in AgentMux app bin directory
-$portableWshPath = $null
-if ($env:AGENTMUX -and $env:AGENTMUX -ne "1") {
+# We source this file with: pwsh -NoExit -File <this-file>
+
+# ----------------------------------------------------------------------------
+# 1. VERSION GUARD
+# ----------------------------------------------------------------------------
+$AGENTMUX_SHELL_VERSION = "{{.AGENTMUX_VERSION}}"
+$AGENTMUX_TEMPLATE_VERSION = 3
+
+# Warn if file is stale (optional, non-breaking)
+if ($env:AGENTMUX_VERSION -and $env:AGENTMUX_VERSION -ne $AGENTMUX_SHELL_VERSION) {
+    Write-Host "[AgentMux] Shell integration outdated (file: $AGENTMUX_SHELL_VERSION, running: $env:AGENTMUX_VERSION)" -ForegroundColor Yellow
+    Write-Host "[AgentMux] Restart AgentMux to regenerate" -ForegroundColor Yellow
+}
+
+# ----------------------------------------------------------------------------
+# 2. BINARY DISCOVERY (Multi-Strategy)
+# ----------------------------------------------------------------------------
+
+# Strategy 1: Template-injected binary directory (most reliable)
+$wshBinaryDir = {{.WSHBINDIR_PWSH}}
+
+# Strategy 2: Portable mode (check for ./bin/ subdirectory)
+$portableBinDir = $null
+if ($env:AGENTMUX -and (Test-Path $env:AGENTMUX -PathType Leaf)) {
     $appDir = Split-Path -Parent $env:AGENTMUX
-    $portableBinDir = Join-Path $appDir "bin"
-    $portableWsh = Get-ChildItem -Path $portableBinDir -Filter "wsh-*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($portableWsh) {
-        $portableWshPath = $portableBinDir
+    $candidateDir = Join-Path $appDir "bin"
+    if (Test-Path $candidateDir -PathType Container) {
+        # Validate: ensure wsh binary exists
+        $wshTest = Get-ChildItem -Path $candidateDir -Filter "wsh*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($wshTest) {
+            $portableBinDir = $candidateDir
+        }
     }
 }
 
-# Use portable path if available, otherwise use installed path
-if ($portableWshPath) {
-    $env:PATH = $portableWshPath + "{{.PATHSEP}}" + $env:PATH
+# Strategy 3: Already in PATH (globally installed)
+$wshInPath = $null
+$wshCommand = Get-Command wsh -ErrorAction SilentlyContinue
+if ($wshCommand) {
+    $wshInPath = Split-Path -Parent $wshCommand.Source
+}
+
+# Select best strategy (priority: portable > installed > PATH)
+$selectedWshDir = $null
+if ($portableBinDir) {
+    $selectedWshDir = $portableBinDir
+} elseif (Test-Path $wshBinaryDir -PathType Container) {
+    $selectedWshDir = $wshBinaryDir
+} elseif ($wshInPath) {
+    $selectedWshDir = $wshInPath
+}
+
+# ----------------------------------------------------------------------------
+# 3. PATH SETUP
+# ----------------------------------------------------------------------------
+
+if ($selectedWshDir) {
+    # Prepend to PATH (only if not already present)
+    if ($env:PATH -notlike "*$selectedWshDir*") {
+        $env:PATH = $selectedWshDir + "{{.PATHSEP}}" + $env:PATH
+    }
 } else {
-    $env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
+    Write-Verbose "[AgentMux] wsh binary not found - some features will be unavailable"
 }
 
-# Source dynamic script from wsh token
-$agentmux_swaptoken_output = wsh token $env:AGENTMUX_SWAPTOKEN pwsh 2>$null | Out-String
-if ($agentmux_swaptoken_output -and $agentmux_swaptoken_output -ne "") {
-    Invoke-Expression $agentmux_swaptoken_output
-}
-Remove-Variable -Name agentmux_swaptoken_output -ErrorAction SilentlyContinue
-if (Test-Path Env:AGENTMUX_SWAPTOKEN) {
-    Remove-Item Env:AGENTMUX_SWAPTOKEN
+# ----------------------------------------------------------------------------
+# 4. HELPER FUNCTIONS
+# ----------------------------------------------------------------------------
+
+function Test-WshAvailable {
+    $cmd = Get-Command wsh -ErrorAction SilentlyContinue
+    return ($null -ne $cmd)
 }
 
-# Load AgentMux completions
-wsh completion powershell | Out-String | Invoke-Expression
+# ----------------------------------------------------------------------------
+# 5. TOKEN SWAP (Dynamic Shell Configuration)
+# ----------------------------------------------------------------------------
 
-# shell integration
+if (Test-WshAvailable) {
+    if ($env:AGENTMUX_SWAPTOKEN) {
+        try {
+            $agentmux_swaptoken_output = wsh token $env:AGENTMUX_SWAPTOKEN pwsh 2>$null | Out-String
+            if ($agentmux_swaptoken_output -and $agentmux_swaptoken_output.Trim() -ne "") {
+                Invoke-Expression $agentmux_swaptoken_output
+            }
+        } catch {
+            Write-Verbose "[AgentMux] Token swap failed: $_"
+        }
+
+        # Cleanup
+        Remove-Variable -Name agentmux_swaptoken_output -ErrorAction SilentlyContinue
+        if (Test-Path Env:AGENTMUX_SWAPTOKEN) {
+            Remove-Item Env:AGENTMUX_SWAPTOKEN -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+# ----------------------------------------------------------------------------
+# 6. LOAD COMPLETIONS
+# ----------------------------------------------------------------------------
+
+if (Test-WshAvailable) {
+    try {
+        $completions = wsh completion powershell 2>$null | Out-String
+        if ($completions -and $completions.Trim() -ne "") {
+            Invoke-Expression $completions
+        }
+    } catch {
+        Write-Verbose "[AgentMux] Completion loading failed: $_"
+    }
+}
+
+# ----------------------------------------------------------------------------
+# 7. SHELL INTEGRATION FEATURES
+# ----------------------------------------------------------------------------
+
+# tmux/screen detection
 function Global:_agentmux_si_blocked {
-    # Check if we're in tmux or screen
     return ($env:TMUX -or $env:STY -or $env:TERM -like "tmux*" -or $env:TERM -like "screen*")
 }
 
+# OSC 7 directory tracking
 function Global:_agentmux_si_osc7 {
     if (_agentmux_si_blocked) { return }
-    
+
     # Get hostname (allow empty for file:/// format)
     $hostname = $env:COMPUTERNAME
     if (-not $hostname) {
         $hostname = $env:HOSTNAME
     }
-    
+    if (-not $hostname) {
+        $hostname = ""
+    }
+
     # Percent-encode the raw path as-is (handles UNC, drive letters, etc.)
     $encoded_pwd = [System.Uri]::EscapeDataString($PWD.Path)
-    
+
     # OSC 7 - current directory
     Write-Host -NoNewline "`e]7;file://$hostname/$encoded_pwd`a"
 }
@@ -104,3 +199,7 @@ if (Test-Path Function:\prompt) {
         "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) "
     }
 }
+
+# ----------------------------------------------------------------------------
+# END OF AGENTMUX SHELL INTEGRATION
+# ----------------------------------------------------------------------------

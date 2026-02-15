@@ -332,9 +332,11 @@ func InitRcFiles(waveHome string, absWshBinDir string) error {
 		pathSep = ":"
 	}
 	params := map[string]string{
-		"WSHBINDIR":      HardQuote(absWshBinDir),
-		"WSHBINDIR_PWSH": HardQuotePowerShell(absWshBinDir),
-		"PATHSEP":        pathSep,
+		"WSHBINDIR":        HardQuote(absWshBinDir),
+		"WSHBINDIR_PWSH":   HardQuotePowerShell(absWshBinDir),
+		"PATHSEP":          pathSep,
+		"AGENTMUX_VERSION": wavebase.WaveVersion,
+		"TIMESTAMP":        time.Now().Format(time.RFC3339),
 	}
 
 	// write files to directory

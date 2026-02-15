@@ -5,6 +5,7 @@ import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
+import { zoomIn, zoomOut, WHEEL_STEP } from "@/store/zoom";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
 import { PLATFORM } from "@/util/platformutil";
@@ -210,9 +211,6 @@ const AppZoomHandler = () => {
 
             // Prevent default browser zoom
             e.preventDefault();
-
-            // Import zoom functions
-            const { zoomIn, zoomOut, WHEEL_STEP } = require("@/app/store/zoom");
 
             // Zoom direction based on wheel delta
             // Note: deltaY > 0 = scroll down = zoom out

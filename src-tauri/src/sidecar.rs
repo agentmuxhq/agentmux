@@ -24,10 +24,12 @@ pub struct BackendSpawnResult {
 pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult, String> {
     tracing::info!("🚀 spawn_backend() called");
 
+    // Use app_local_data_dir for database storage (AppData\Local on Windows)
+    // Use app_config_dir for configuration (AppData\Roaming on Windows)
     let data_dir = app
         .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get data dir: {}", e))?;
+        .app_local_data_dir()
+        .map_err(|e| format!("Failed to get local data dir: {}", e))?;
 
     let config_dir = app
         .path()

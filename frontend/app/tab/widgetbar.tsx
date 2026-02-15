@@ -4,6 +4,7 @@
 import { Tooltip } from "@/app/element/tooltip";
 import { NotificationPopover } from "@/app/notification/notificationpopover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { WindowService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, createBlock, getApi, isDev } from "@/store/global";
@@ -24,6 +25,11 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
 }
 
 async function handleWidgetSelect(widget: WidgetConfigType) {
+    // Special handling for new window widget
+    if (widget.blockdef?.meta?.view === "newwindow") {
+        await WindowService.CreateWindow(null, "");
+        return;
+    }
     // Special handling for devtools widget
     if (widget.blockdef?.meta?.view === "devtools") {
         getApi().toggleDevtools();
@@ -60,6 +66,16 @@ const HorizontalWidget = memo(({ widget }: { widget: WidgetConfigType }) => {
 const WidgetBar = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
 
+    const newWindowWidget: WidgetConfigType = {
+        icon: "window-restore",
+        label: "agentmux",
+        description: "Open New Window",
+        blockdef: {
+            meta: {
+                view: "newwindow",
+            },
+        },
+    };
     const helpWidget: WidgetConfigType = {
         icon: "circle-question",
         label: "help",
@@ -131,6 +147,7 @@ const WidgetBar = memo(() => {
             className="flex flex-row items-center gap-1 h-full px-1 select-none"
             onContextMenu={handleWidgetsBarContextMenu}
         >
+            <HorizontalWidget key="newwindow" widget={newWindowWidget} />
             {widgets?.map((data, idx) => <HorizontalWidget key={`widget-${idx}`} widget={data} />)}
             {showHelp && <HorizontalWidget key="help" widget={helpWidget} />}
             <HorizontalWidget key="devtools" widget={devToolsWidget} />

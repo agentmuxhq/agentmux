@@ -1,27 +1,6 @@
 {
-    "defwidget@terminal": {
-        "display:order": -5,
-        "icon": "square-terminal",
-        "label": "terminal",
-        "blockdef": {
-            "meta": {
-                "view": "term",
-                "controller": "shell"
-            }
-        }
-    },
-    "defwidget@sysinfo": {
-        "display:order": -1,
-        "icon": "chart-line",
-        "label": "sysinfo",
-        "blockdef": {
-            "meta": {
-                "view": "sysinfo"
-            }
-        }
-    },
     "defwidget@agent": {
-        "display:order": 1,
+        "display:order": -5,
         "icon": "sparkles",
         "color": "#cc785c",
         "label": "agent",
@@ -34,6 +13,27 @@
                 "cmd:args": ["--output-format", "stream-json"],
                 "cmd:interactive": true,
                 "cmd:runonstart": true
+            }
+        }
+    },
+    "defwidget@terminal": {
+        "display:order": -4,
+        "icon": "square-terminal",
+        "label": "terminal",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "shell"
+            }
+        }
+    },
+    "defwidget@sysinfo": {
+        "display:order": -3,
+        "icon": "chart-line",
+        "label": "sysinfo",
+        "blockdef": {
+            "meta": {
+                "view": "sysinfo"
             }
         }
     }

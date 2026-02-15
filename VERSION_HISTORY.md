@@ -10,6 +10,14 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
+### v0.27.9-fork (2026-02-14)
+- **Agent:** AgentX
+- **Changes:**
+  - Feat: Add `package:macos` task for platform-specific macOS builds
+  - Creates .app and .dmg bundles on macOS
+  - Documented CGO code signing limitations and workarounds
+  - Fixed ExpectedVersion constant synchronization
+
 ### v0.26.0 (2026-02-12)
 - **Agent:** AgentClaude
 - **Changes:**

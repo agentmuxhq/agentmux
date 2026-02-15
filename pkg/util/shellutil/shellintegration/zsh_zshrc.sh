@@ -2,7 +2,7 @@
 # Detect portable mode: check if wsh exists in AgentMux app directory
 if [ -n "$AGENTMUX" ] && [ "$AGENTMUX" != "1" ]; then
     APP_DIR="$(dirname "$AGENTMUX")"
-    if ls "$APP_DIR"/wsh-* >/dev/null 2>&1; then
+    if () { local f=("$APP_DIR"/wsh-*(N)); (( ${#f} )); }; then
         AGENTMUX_WSHBINDIR="$APP_DIR"
     else
         AGENTMUX_WSHBINDIR={{.WSHBINDIR}}

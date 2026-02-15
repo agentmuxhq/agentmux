@@ -10,6 +10,13 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
+### v0.28.4-fork (2026-02-15)
+- **Agent:** AgentO
+- **Changes:**
+  - Fix: zsh "no matches found: wsh-*" error in shell integration
+  - Use zsh (N) nullglob qualifier for portable wsh detection
+  - Prevents zsh nomatch error when no wsh-* files exist in app directory
+
 ### v0.28.3-fork (2026-02-15)
 - **Agent:** AgentO
 - **Changes:**

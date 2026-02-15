@@ -169,6 +169,52 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
             .map_err(|e| format!("Failed to find agentmuxsrv sidecar: {}", e))?
     };
 
+    // Resolve WAVETERM_APP_PATH and deploy wsh binary for the Go backend.
+    // Tauri bundles wsh as a sidecar at Contents/MacOS/wsh (stripped platform suffix).
+    // The Go backend expects: WAVETERM_APP_PATH/bin/wsh-VERSION-OS.ARCH
+    let app_path = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_default();
+
+    // Deploy bundled wsh to bin/ with the name the Go backend expects
+    let bin_dir = app_path.join("bin");
+    if let Err(e) = std::fs::create_dir_all(&bin_dir) {
+        tracing::warn!("Failed to create bin dir for wsh: {}", e);
+    } else {
+        let bundled_wsh = app_path.join("wsh");
+        if bundled_wsh.exists() {
+            let version = env!("CARGO_PKG_VERSION");
+            let (goos, goarch) = if cfg!(target_os = "macos") {
+                ("darwin", if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" })
+            } else if cfg!(target_os = "linux") {
+                ("linux", if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" })
+            } else {
+                ("windows", if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" })
+            };
+            let wsh_name = format!("wsh-{}-{}.{}", version, goos, goarch);
+            let dest = bin_dir.join(&wsh_name);
+            if !dest.exists() {
+                if let Err(e) = std::fs::copy(&bundled_wsh, &dest) {
+                    tracing::warn!("Failed to copy wsh to {}: {}", dest.display(), e);
+                } else {
+                    // Ensure executable permission on Unix
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::PermissionsExt;
+                        let _ = std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755));
+                    }
+                    tracing::info!("Deployed wsh to: {}", dest.display());
+                }
+            }
+        } else {
+            tracing::warn!("Bundled wsh not found at: {}", bundled_wsh.display());
+        }
+    }
+
+    let app_path_str = app_path.to_string_lossy().to_string();
+    tracing::info!("Setting WAVETERM_APP_PATH to: {}", app_path_str);
+
     let (mut rx, child) = sidecar_cmd
         .args([
             "--wavedata",
@@ -177,6 +223,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .env("WAVETERM_AUTH_KEY", &auth_key)
         .env("WAVETERM_CONFIG_HOME", config_dir.to_string_lossy().to_string())
         .env("WAVETERM_DATA_HOME", data_dir.to_string_lossy().to_string())
+        .env("WAVETERM_APP_PATH", &app_path_str)
         .env("WAVETERM_DEV", if cfg!(debug_assertions) { "1" } else { "" })
         .env("WCLOUD_ENDPOINT", "https://api.waveterm.dev/central")
         .env("WCLOUD_WS_ENDPOINT", "wss://wsapi.waveterm.dev/")

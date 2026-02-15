@@ -47,12 +47,16 @@ tasks:
         internal: true
         platforms: [darwin]
         cmds:
-            - mkdir -p src-tauri/target/debug src-tauri/target/release
+            - mkdir -p src-tauri/target/debug/bin src-tauri/target/release/bin
             - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/debug/agentmuxsrv || true
             - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/release/agentmuxsrv || true
             - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/debug/agentmuxsrv || true
             - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/release/agentmuxsrv || true
-            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (macOS)"
+            - cp -f dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/target/debug/bin/ || true
+            - cp -f dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/target/release/bin/ || true
+            - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/debug/bin/ || true
+            - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/release/bin/ || true
+            - echo "✓ Synced agentmuxsrv + wsh to Tauri dev/release cache (macOS)"
 
     sync:dev:binaries:linux:
         internal: true
@@ -669,6 +673,20 @@ tasks:
                 cp dist/bin/wsh-{{.VERSION}}-linux.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{end}}
                 echo "Copied binaries for $TRIPLE"
+                {{end}}
+            # Also create bin/ directory with versioned wsh names (backend expects WAVETERM_APP_PATH/bin/wsh-VERSION-OS.ARCH)
+            - |
+                {{if eq OS "windows"}}
+                powershell -Command "New-Item -ItemType Directory -Force -Path src-tauri/binaries/bin | Out-Null; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/bin/ -Force; Write-Host 'Copied wsh to bin/ for backend deployment'"
+                {{else if eq OS "darwin"}}
+                mkdir -p src-tauri/binaries/bin;
+                cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/binaries/bin/ 2>/dev/null || true;
+                cp dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/binaries/bin/ 2>/dev/null || true;
+                echo "Copied wsh to bin/ for backend deployment"
+                {{else}}
+                mkdir -p src-tauri/binaries/bin;
+                cp dist/bin/wsh-{{.VERSION}}-linux.* src-tauri/binaries/bin/ 2>/dev/null || true;
+                echo "Copied wsh to bin/ for backend deployment"
                 {{end}}
 
     build:frontend:prod:

@@ -10,6 +10,14 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
+### v0.28.3-fork (2026-02-15)
+- **Agent:** AgentO
+- **Changes:**
+  - Fix: Deploy wsh binary on macOS for shell integration
+  - Set WAVETERM_APP_PATH env var so Go backend can locate wsh
+  - Runtime copy of bundled wsh to bin/ with correct versioned name
+  - Sync wsh binaries for dev mode in Taskfile.yml
+
 ### v0.27.14-fork (2026-02-15)
 - **Agent:** AgentO
 - **Changes:**

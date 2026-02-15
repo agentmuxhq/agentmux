@@ -12,14 +12,12 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
+import { Atom } from "jotai";
 import clsx from "clsx";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { DocumentNode } from "./types";
-import {
-    documentStateAtom,
-    filteredDocumentAtom,
-    toggleNodeCollapsed,
-} from "./state";
+import type { AgentViewModel } from "./agent-model";
+import type { AgentAtoms } from "./state";
 import { MarkdownBlock } from "./components/MarkdownBlock";
 import { ToolBlock } from "./components/ToolBlock";
 import { AgentMessageBlock } from "./components/AgentMessageBlock";
@@ -30,6 +28,14 @@ import "./agent-view.scss";
 
 interface AgentViewProps {
     agentId: string;
+    atoms: AgentAtoms; // Instance-scoped atoms from ViewModel
+    filteredDocumentAtom: Atom<DocumentNode[]>;
+    documentStatsAtom: Atom<any>;
+    toggleNodeCollapsed: any;
+    expandAllNodes: any;
+    collapseAllNodes: any;
+    clearDocument: any;
+    updateFilter: any;
     onSendMessage?: (message: string) => void;
     onExport?: (format: "markdown" | "html") => void;
     onPause?: () => void;
@@ -38,10 +44,54 @@ interface AgentViewProps {
     onRestart?: () => void;
 }
 
-export const AgentView: React.FC<AgentViewProps> = memo(
-    ({ agentId, onSendMessage, onExport, onPause, onResume, onKill, onRestart }) => {
+/**
+ * Wrapper component that adapts ViewComponentProps to AgentViewProps
+ */
+export const AgentViewWrapper: React.FC<ViewComponentProps<AgentViewModel>> = memo(({ model }) => {
+    return (
+        <AgentViewInner
+            agentId={model.agentIdValue}
+            atoms={model.atoms}
+            filteredDocumentAtom={model.filteredDocumentAtom}
+            documentStatsAtom={model.documentStatsAtom}
+            toggleNodeCollapsed={model.toggleNodeCollapsed}
+            expandAllNodes={model.expandAllNodes}
+            collapseAllNodes={model.collapseAllNodes}
+            clearDocument={model.clearDocument}
+            updateFilter={model.updateFilter}
+            onSendMessage={model.sendMessage}
+            onExport={model.exportDocument}
+            onPause={model.pauseAgent}
+            onResume={model.resumeAgent}
+            onKill={model.killAgent}
+            onRestart={model.restartAgent}
+        />
+    );
+});
+
+AgentViewWrapper.displayName = "AgentViewWrapper";
+
+export const AgentViewInner: React.FC<AgentViewProps> = memo(
+    ({
+        agentId,
+        atoms,
+        filteredDocumentAtom,
+        documentStatsAtom,
+        toggleNodeCollapsed,
+        expandAllNodes,
+        collapseAllNodes,
+        clearDocument,
+        updateFilter,
+        onSendMessage,
+        onExport,
+        onPause,
+        onResume,
+        onKill,
+        onRestart,
+    }) => {
+        // Use instance-scoped atoms from props
         const document = useAtomValue(filteredDocumentAtom);
-        const documentState = useAtomValue(documentStateAtom);
+        const documentState = useAtomValue(atoms.documentStateAtom);
         const toggleCollapse = useSetAtom(toggleNodeCollapsed);
         const scrollRef = useRef<HTMLDivElement>(null);
         const [showFilters, setShowFilters] = useState(false);
@@ -111,6 +161,9 @@ export const AgentView: React.FC<AgentViewProps> = memo(
             <div className="agent-view">
                 <AgentHeader
                     agentId={agentId}
+                    processAtom={atoms.processAtom}
+                    streamingStateAtom={atoms.streamingStateAtom}
+                    messageRouterAtom={atoms.messageRouterAtom}
                     onPause={onPause}
                     onResume={onResume}
                     onKill={onKill}
@@ -120,7 +173,11 @@ export const AgentView: React.FC<AgentViewProps> = memo(
                 <div className="agent-main-container">
                     {showFilters && (
                         <div className="agent-sidebar">
-                            <FilterControls />
+                            <FilterControls
+                                documentStateAtom={atoms.documentStateAtom}
+                                documentStatsAtom={documentStatsAtom}
+                                updateFilter={updateFilter}
+                            />
                         </div>
                     )}
 
@@ -148,10 +205,20 @@ export const AgentView: React.FC<AgentViewProps> = memo(
                     </div>
                 </div>
 
-                <AgentFooter agentId={agentId} onSendMessage={onSendMessage} onExport={onExport} />
+                <AgentFooter
+                    agentId={agentId}
+                    expandAllNodes={expandAllNodes}
+                    collapseAllNodes={collapseAllNodes}
+                    clearDocument={clearDocument}
+                    onSendMessage={onSendMessage}
+                    onExport={onExport}
+                />
             </div>
         );
     }
 );
 
-AgentView.displayName = "AgentView";
+AgentViewInner.displayName = "AgentViewInner";
+
+// Re-export wrapper as AgentView for backward compatibility
+export const AgentView = AgentViewWrapper;

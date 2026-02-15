@@ -7,16 +7,18 @@
 
 import { useSetAtom } from "jotai";
 import React, { memo, useCallback, useState } from "react";
-import { clearDocument, collapseAllNodes, expandAllNodes } from "../state";
 
 interface AgentFooterProps {
     agentId: string;
+    expandAllNodes: any;
+    collapseAllNodes: any;
+    clearDocument: any;
     onSendMessage?: (message: string) => void;
     onExport?: (format: "markdown" | "html") => void;
 }
 
 export const AgentFooter: React.FC<AgentFooterProps> = memo(
-    ({ agentId, onSendMessage, onExport }) => {
+    ({ agentId, expandAllNodes, collapseAllNodes, clearDocument, onSendMessage, onExport }) => {
         const [message, setMessage] = useState("");
         const clearDoc = useSetAtom(clearDocument);
         const expandAll = useSetAtom(expandAllNodes);

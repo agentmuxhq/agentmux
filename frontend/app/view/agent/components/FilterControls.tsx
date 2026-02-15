@@ -6,13 +6,21 @@
  */
 
 import { useAtomValue, useSetAtom } from "jotai";
+import { Atom, PrimitiveAtom } from "jotai";
 import React, { memo } from "react";
-import { documentStateAtom, documentStatsAtom, updateFilter } from "../state";
+import type { DocumentState } from "../types";
 
-export const FilterControls: React.FC = memo(() => {
-    const documentState = useAtomValue(documentStateAtom);
-    const stats = useAtomValue(documentStatsAtom);
-    const setFilter = useSetAtom(updateFilter);
+interface FilterControlsProps {
+    documentStateAtom: PrimitiveAtom<DocumentState>;
+    documentStatsAtom: Atom<any>;
+    updateFilter: any;
+}
+
+export const FilterControls: React.FC<FilterControlsProps> = memo(
+    ({ documentStateAtom, documentStatsAtom, updateFilter }) => {
+        const documentState = useAtomValue(documentStateAtom);
+        const stats = useAtomValue(documentStatsAtom);
+        const setFilter = useSetAtom(updateFilter);
 
     const { filter } = documentState;
 
@@ -67,6 +75,7 @@ export const FilterControls: React.FC = memo(() => {
             </div>
         </div>
     );
-});
+    }
+);
 
 FilterControls.displayName = "FilterControls";

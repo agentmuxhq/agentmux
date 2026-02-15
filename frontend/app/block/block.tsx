@@ -12,6 +12,7 @@ import {
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { ClaudeCodeViewModel } from "@/app/view/claudecode/claudecode";
+import { AgentViewModel } from "@/app/view/agent";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -48,6 +49,7 @@ BlockRegistry.set("help", HelpViewModel);
 BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("claudecode", ClaudeCodeViewModel);
+BlockRegistry.set("agent", AgentViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);

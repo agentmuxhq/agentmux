@@ -6,13 +6,17 @@
  */
 
 import { useAtomValue } from "jotai";
+import { PrimitiveAtom } from "jotai";
 import clsx from "clsx";
 import React, { memo } from "react";
-import { agentProcessAtom, messageRouterAtom, streamingStateAtom } from "../state";
+import type { AgentProcessState, MessageRouterState, StreamingState } from "../types";
 import { ProcessControls } from "./ProcessControls";
 
 interface AgentHeaderProps {
     agentId: string;
+    processAtom: PrimitiveAtom<AgentProcessState>;
+    streamingStateAtom: PrimitiveAtom<StreamingState>;
+    messageRouterAtom: PrimitiveAtom<MessageRouterState>;
     onPause?: () => void;
     onResume?: () => void;
     onKill?: () => void;
@@ -20,8 +24,8 @@ interface AgentHeaderProps {
 }
 
 export const AgentHeader: React.FC<AgentHeaderProps> = memo(
-    ({ agentId, onPause, onResume, onKill, onRestart }) => {
-        const processState = useAtomValue(agentProcessAtom);
+    ({ agentId, processAtom, streamingStateAtom, messageRouterAtom, onPause, onResume, onKill, onRestart }) => {
+        const processState = useAtomValue(processAtom);
         const streamingState = useAtomValue(streamingStateAtom);
         const routerState = useAtomValue(messageRouterAtom);
 
@@ -63,6 +67,8 @@ export const AgentHeader: React.FC<AgentHeaderProps> = memo(
                 </div>
 
                 <ProcessControls
+                    processAtom={processAtom}
+                    streamingStateAtom={streamingStateAtom}
                     onPause={onPause}
                     onResume={onResume}
                     onKill={onKill}

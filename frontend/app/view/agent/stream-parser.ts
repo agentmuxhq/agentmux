@@ -79,6 +79,15 @@ export class ClaudeCodeStreamParser {
     }
 
     /**
+     * Parse a single event object (already parsed from JSON)
+     * Returns array of nodes since some events may generate multiple nodes
+     */
+    async parseEvent(event: any): Promise<DocumentNode[]> {
+        const node = this.eventToNode(event as StreamEvent);
+        return node ? [node] : [];
+    }
+
+    /**
      * Convert stream event to document node
      */
     private eventToNode(event: StreamEvent): DocumentNode | null {

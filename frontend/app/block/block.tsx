@@ -10,7 +10,6 @@ import {
     SubBlockProps,
 } from "@/app/block/blocktypes";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
-import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { ClaudeCodeViewModel } from "@/app/view/claudecode/claudecode";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
@@ -30,7 +29,6 @@ import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpViewModel } from "@/view/helpview/helpview";
 import { TermViewModel } from "@/view/term/term";
 import { AgentAiModel } from "@/view/agentai/agentai";
-import { WebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
 import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -41,8 +39,6 @@ import { blockViewToIcon, blockViewToName } from "./blockutil";
 
 const BlockRegistry: Map<string, ViewModelClass> = new Map();
 BlockRegistry.set("term", TermViewModel);
-BlockRegistry.set("preview", PreviewModel);
-BlockRegistry.set("web", WebViewModel);
 BlockRegistry.set("agentai", AgentAiModel);
 BlockRegistry.set("cpuplot", SysinfoViewModel);
 BlockRegistry.set("sysinfo", SysinfoViewModel);

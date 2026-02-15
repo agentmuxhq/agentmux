@@ -10,27 +10,6 @@
             }
         }
     },
-    "defwidget@files": {
-        "display:order": -4,
-        "icon": "folder",
-        "label": "files",
-        "blockdef": {
-            "meta": {
-                "view": "preview",
-                "file": "~"
-            }
-        }
-    },
-    "defwidget@web": {
-        "display:order": -3,
-        "icon": "globe",
-        "label": "web",
-        "blockdef": {
-            "meta": {
-                "view": "web"
-            }
-        }
-    },
     "defwidget@ai": {
         "display:order": -2,
         "icon": "sparkles",

@@ -23,6 +23,7 @@ import {
 import { WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { zoomIn, zoomOut, zoomReset } from "@/app/store/zoom";
 import { TabBarModel } from "@/app/tab/tabbar-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
@@ -659,22 +660,18 @@ function registerGlobalKeys() {
 
     // Zoom controls
     globalKeyMap.set("Cmd:=", () => {
-        const { zoomIn } = require("@/app/store/zoom");
         zoomIn(globalStore);
         return true;
     });
     globalKeyMap.set("Cmd:+", () => {
-        const { zoomIn } = require("@/app/store/zoom");
         zoomIn(globalStore);
         return true;
     });
     globalKeyMap.set("Cmd:-", () => {
-        const { zoomOut } = require("@/app/store/zoom");
         zoomOut(globalStore);
         return true;
     });
     globalKeyMap.set("Cmd:0", () => {
-        const { zoomReset } = require("@/app/store/zoom");
         zoomReset(globalStore);
         return true;
     });

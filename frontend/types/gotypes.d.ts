@@ -665,6 +665,7 @@ declare global {
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
+        "term:zoom"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
         "term:conndebug"?: string;

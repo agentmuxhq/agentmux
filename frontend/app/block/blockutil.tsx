@@ -15,12 +15,6 @@ export function blockViewToIcon(view: string): string {
     if (view == "term") {
         return "terminal";
     }
-    if (view == "preview") {
-        return "file";
-    }
-    if (view == "web") {
-        return "globe";
-    }
     if (view == "waveai") {
         return "sparkles";
     }
@@ -42,12 +36,6 @@ export function blockViewToName(view: string): string {
     }
     if (view == "term") {
         return "Terminal";
-    }
-    if (view == "preview") {
-        return "Preview";
-    }
-    if (view == "web") {
-        return "Web";
     }
     if (view == "waveai") {
         return "WaveAI";

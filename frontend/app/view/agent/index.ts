@@ -5,6 +5,8 @@
  * Unified Agent Widget - Main exports
  */
 
+// Barrel file - re-exports for external consumers
+export { AgentViewModel } from "./agent-model";
 export { AgentView } from "./agent-view";
 export { ClaudeCodeStreamParser } from "./stream-parser";
 export * from "./types";

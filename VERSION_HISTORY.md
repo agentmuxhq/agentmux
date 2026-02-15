@@ -10,6 +10,18 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
+### v0.27.11-fork (2026-02-15)
+- **Agent:** AgentX
+- **Changes:**
+  - Feat: Phase 5 - Unified Agent Widget Registration & Integration
+  - Fix: Complete state scoping refactor - per-instance atoms to prevent state bleeding
+  - Created AgentViewModel for state management and terminal streaming
+  - Registered agent widget in block registry and widget config
+  - Added AgentViewWrapper to bridge ViewModel and component interfaces
+  - Enhanced stream parser with parseEvent() method
+  - Users can now create and use unified agent widgets from UI
+  - Completes Phases 1-5 of unified agent widget implementation
+
 ### v0.27.10-fork (2026-02-15)
 - **Agent:** AgentX
 - **Changes:**

@@ -46,5 +46,22 @@
                 "cmd:runonstart": true
             }
         }
+    },
+    "defwidget@agent": {
+        "display:order": 1,
+        "icon": "sparkles",
+        "color": "#cc785c",
+        "label": "agent",
+        "description": "Unified AI agent with streaming output and tool execution",
+        "blockdef": {
+            "meta": {
+                "view": "agent",
+                "controller": "cmd",
+                "cmd": "claude",
+                "cmd:args": ["--output-format", "stream-json"],
+                "cmd:interactive": true,
+                "cmd:runonstart": true
+            }
+        }
     }
 }

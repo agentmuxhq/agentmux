@@ -6,11 +6,14 @@
  */
 
 import { useAtomValue } from "jotai";
+import { PrimitiveAtom } from "jotai";
 import clsx from "clsx";
 import React, { memo, useCallback } from "react";
-import { agentProcessAtom, streamingStateAtom } from "../state";
+import type { AgentProcessState, StreamingState } from "../types";
 
 interface ProcessControlsProps {
+    processAtom: PrimitiveAtom<AgentProcessState>;
+    streamingStateAtom: PrimitiveAtom<StreamingState>;
     onPause?: () => void;
     onResume?: () => void;
     onKill?: () => void;
@@ -18,8 +21,8 @@ interface ProcessControlsProps {
 }
 
 export const ProcessControls: React.FC<ProcessControlsProps> = memo(
-    ({ onPause, onResume, onKill, onRestart }) => {
-        const processState = useAtomValue(agentProcessAtom);
+    ({ processAtom, streamingStateAtom, onPause, onResume, onKill, onRestart }) => {
+        const processState = useAtomValue(processAtom);
         const streamingState = useAtomValue(streamingStateAtom);
 
         const handlePause = useCallback(() => {

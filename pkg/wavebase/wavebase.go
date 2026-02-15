@@ -182,33 +182,14 @@ func GetDomainSocketName() string {
 }
 
 // GetWaveDataDirForInstance returns the data directory path for a named instance.
-// For default instance (empty instanceID), returns the standard data directory.
-// For named instances, appends the instance ID to the base application name.
+// Uses nested structure: base/instances/{instanceID}/
+// For default instance (empty instanceID), uses "default" as the instance name.
 func GetWaveDataDirForInstance(instanceID string) string {
+	baseDir := DataHome_VarCache // Already set from env vars
 	if instanceID == "" {
-		// Return the cached data home (already set from env vars)
-		return DataHome_VarCache
+		instanceID = "default"
 	}
-
-	homeDir := GetHomeDir()
-	baseName := fmt.Sprintf("agentmux-%s", instanceID)
-
-	if runtime.GOOS == "darwin" {
-		return filepath.Join(homeDir, "Library", "Application Support", baseName)
-	} else if runtime.GOOS == "windows" {
-		localAppData := os.Getenv("LOCALAPPDATA")
-		if localAppData == "" {
-			localAppData = filepath.Join(homeDir, "AppData", "Local")
-		}
-		return filepath.Join(localAppData, baseName)
-	} else {
-		// Linux and other Unix-like systems
-		xdgDataHome := os.Getenv("XDG_DATA_HOME")
-		if xdgDataHome == "" {
-			xdgDataHome = filepath.Join(homeDir, ".local", "share")
-		}
-		return filepath.Join(xdgDataHome, baseName)
-	}
+	return filepath.Join(baseDir, "instances", instanceID)
 }
 
 // AcquireWaveLockWithAutoInstance attempts to acquire the wave lock file.
@@ -220,15 +201,16 @@ func GetWaveDataDirForInstance(instanceID string) string {
 //
 // Returns:
 //   - lock: The acquired FDLock handle (must be closed by caller)
-//   - instanceID: Empty string for default instance, "instance-N" for auto-generated
-//   - instanceDataDir: Data directory path for the instance (only set if instanceID != "")
+//   - instanceID: "default" for default instance, "instance-N" for auto-generated
+//   - instanceDataDir: Data directory path for the instance (always set)
 //   - error: Only returned if all 10 instance attempts failed
 func AcquireWaveLockWithAutoInstance() (FDLock, string, string, error) {
 	// Try default instance first
 	lock, err := AcquireWaveLock()
 	if err == nil {
-		log.Printf("[base] acquired default instance lock\n")
-		return lock, "", "", nil
+		instanceDataDir := GetWaveDataDirForInstance("default")
+		log.Printf("[base] acquired default instance lock (data: %s)\n", instanceDataDir)
+		return lock, "default", instanceDataDir, nil
 	}
 
 	log.Printf("[base] default instance locked, trying auto-instances...\n")

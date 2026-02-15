@@ -22,7 +22,7 @@
 - **Name:** AgentMux
 - **GitHub:** https://github.com/a5af/agentmux
 - **Type:** Tauri v2 terminal application
-- **Version:** 0.26.1
+- **Version:** 0.27.10
 - **Build System:** Task (Taskfile.yml)
 
 ## Git & Pull Requests
@@ -83,23 +83,72 @@ AgentMux is built on **Tauri v2** (NOT Electron):
 
 ## Version Management
 
+**CRITICAL:** Always use the versioning scripts - never manually edit version numbers.
+
 **See [README.md](README.md) for complete guide.**
 
-### Quick Reference
+### Mandatory Workflow
 
+**Step 1: Bump version** (updates ALL files automatically)
 ```bash
-# Bump version (updates ALL files)
 ./bump-version.sh patch --message "Description"
+# OR
+./bump-version.sh minor --message "Description"
+# OR
+./bump-version.sh major --message "Description"
+```
 
-# Rebuild binaries with new version
-task build:backend
+This script updates:
+- `package.json`
+- `package-lock.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/Cargo.lock`
+- `src-tauri/tauri.conf.json`
+- `cmd/server/main-server.go` (ExpectedVersion constant)
+- `VERSION_HISTORY.md`
 
-# Verify consistency
+**Step 2: Verify consistency** (ALWAYS run after bump)
+```bash
 bash scripts/verify-version.sh
+```
 
-# Push
+Expected output:
+```
+✓ package-lock.json: X.Y.Z
+✓ version.cjs: X.Y.Z
+✓ VERSION_HISTORY.md contains X.Y.Z-fork
+✓ All version checks passed!
+```
+
+**Step 3: Rebuild binaries** (required for Go binaries)
+```bash
+task build:backend
+```
+
+**Step 4: Push with tags**
+```bash
 git push origin <branch> --tags
 ```
+
+### Common Issues
+
+❌ **WRONG:** Manually editing version in `package.json`
+- Results in version mismatches across files
+- Breaks builds with "ExpectedVersion" errors
+- Causes shell integration failures
+
+✅ **RIGHT:** Always use `./bump-version.sh`
+- Ensures all files stay synchronized
+- Automatically updates VERSION_HISTORY.md
+- Creates git tag
+
+### Verification Failures
+
+If `verify-version.sh` reports errors:
+
+1. **Version mismatch** → Re-run `./bump-version.sh`
+2. **Missing binaries** → Run `task build:backend`
+3. **Outdated references** → Update code references manually
 
 **Current version:** See [VERSION_HISTORY.md](VERSION_HISTORY.md)
 

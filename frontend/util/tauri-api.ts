@@ -258,6 +258,12 @@ export function buildTauriApi(): ElectronApi {
         focusWindow: async (label: string) => {
             await invoke("focus_window", { label });
         },
+        minimizeWindow: () => {
+            invoke("minimize_window").catch(console.error);
+        },
+        maximizeWindow: () => {
+            invoke("maximize_window").catch(console.error);
+        },
 
         // --- Workspace & Tabs ---
         // In Tauri, tabs are managed in the frontend (React state).

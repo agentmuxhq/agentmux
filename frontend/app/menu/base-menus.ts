@@ -91,10 +91,36 @@ export function createWidgetsMenu(fullConfig: any): MenuBuilder {
 }
 
 /**
- * Create the complete tabbar menu (base + widgets)
+ * Create the complete tabbar menu (window controls + version + widgets)
  */
 export function createTabBarMenu(fullConfig: any): MenuBuilder {
-    return createTabBarBaseMenu()
-        .separator()
-        .merge(createWidgetsMenu(fullConfig));
+    const menu = new MenuBuilder();
+
+    // Window controls
+    menu.add({
+        label: "Minimize",
+        click: () => getApi().minimizeWindow(),
+    });
+
+    menu.add({
+        label: "Maximize",
+        click: () => getApi().maximizeWindow(),
+    });
+
+    menu.add({
+        label: "Close",
+        click: () => getApi().closeWindow(),
+    });
+
+    menu.separator();
+
+    // Version and widgets
+    menu.merge(createTabBarBaseMenu());
+
+    if (fullConfig?.widgets && Object.keys(fullConfig.widgets).length > 0) {
+        menu.separator();
+        menu.merge(createWidgetsMenu(fullConfig));
+    }
+
+    return menu;
 }

@@ -133,3 +133,29 @@ pub fn focus_window(app: tauri::AppHandle, label: String) -> Result<(), String> 
     }
     Ok(())
 }
+
+/// Minimize the current window.
+#[tauri::command]
+pub fn minimize_window(window: tauri::Window) -> Result<(), String> {
+    window
+        .minimize()
+        .map_err(|e| format!("Failed to minimize window: {}", e))
+}
+
+/// Toggle maximize/restore the current window.
+#[tauri::command]
+pub fn maximize_window(window: tauri::Window) -> Result<(), String> {
+    let is_maximized = window
+        .is_maximized()
+        .map_err(|e| format!("Failed to check maximize state: {}", e))?;
+
+    if is_maximized {
+        window
+            .unmaximize()
+            .map_err(|e| format!("Failed to restore window: {}", e))
+    } else {
+        window
+            .maximize()
+            .map_err(|e| format!("Failed to maximize window: {}", e))
+    }
+}

@@ -54,6 +54,8 @@ pub fn run() {
             commands::window::is_main_window,
             commands::window::list_windows,
             commands::window::focus_window,
+            commands::window::minimize_window,
+            commands::window::maximize_window,
             commands::window::get_zoom_factor,
             commands::window::set_zoom_factor,
             commands::window::get_cursor_point,

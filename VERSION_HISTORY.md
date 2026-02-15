@@ -2,13 +2,24 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.26.0
+## Latest Version: 0.27.10
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.27.10-fork (2026-02-15)
+- **Agent:** AgentX
+- **Changes:**
+  - Feat: Robust shell integration with self-healing
+  - Add version guard to detect stale shell integration files
+  - Implement multi-strategy wsh binary discovery (portable > installed > PATH)
+  - Add defensive execution with graceful degradation
+  - Wrap all wsh calls in Test-WshAvailable checks
+  - Use -ErrorAction SilentlyContinue on all cleanup operations
+  - Add template versioning support (AGENTMUX_VERSION, TIMESTAMP)
 
 ### v0.27.9-fork (2026-02-14)
 - **Agent:** AgentX

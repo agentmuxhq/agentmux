@@ -55,7 +55,7 @@ var CurrentInstanceID = ""
 // ExpectedVersion is the version this binary should be running
 // This is auto-updated by bump-version.sh to match package.json
 // If WaveVersion != ExpectedVersion, it indicates a stale cached binary
-const ExpectedVersion = "0.27.11"
+const ExpectedVersion = "0.27.13"
 
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
@@ -473,13 +473,22 @@ Currently running instances use these data directories:
 	// Store instance ID globally for later access
 	CurrentInstanceID = instanceID
 
-	// Update data directory cache if running as an instance
-	if instanceID != "" && instanceDataDir != "" {
-		// CRITICAL: Update the global data directory cache before any other operations
-		// This must be done immediately after lock acquisition to ensure all subsequent
-		// operations use the correct instance-specific data directory
+	// CRITICAL: Update the global data directory cache before any other operations
+	// This must be done immediately after lock acquisition to ensure all subsequent
+	// operations use the correct instance-specific data directory
+	// instanceID is now always set: "default", "instance-1", "instance-2", etc.
+	if instanceDataDir != "" {
 		wavebase.DataHome_VarCache = instanceDataDir
 		log.Printf("[multi-instance] Running as instance: %s (data: %s)\n", instanceID, instanceDataDir)
+	}
+
+	// Ensure db subdirectory exists for this instance
+	// Database initialization expects this directory to exist
+	dbDir := filepath.Join(wavebase.GetWaveDataDir(), wavebase.WaveDBDir)
+	err = wavebase.TryMkdirs(dbDir, 0700, "database directory")
+	if err != nil {
+		log.Printf("error creating db directory: %v\n", err)
+		return
 	}
 
 	// Clean up any old startup error file from previous failed attempts
@@ -488,12 +497,7 @@ Currently running instances use these data directories:
 
 	// Write instance ID to file for frontend to display in window title
 	instanceIDFile := filepath.Join(wavebase.GetWaveDataDir(), "instance-id.txt")
-	if instanceID != "" {
-		_ = os.WriteFile(instanceIDFile, []byte(instanceID), 0644)
-	} else {
-		// Default instance - write empty file or remove it
-		_ = os.Remove(instanceIDFile)
-	}
+	_ = os.WriteFile(instanceIDFile, []byte(instanceID), 0644)
 	defer func() {
 		err = waveLock.Close()
 		if err != nil {
@@ -610,7 +614,7 @@ Currently running instances use these data directories:
 			BuildTime = "0"
 		}
 		// use fmt instead of log here to make sure it goes directly to stderr
-		fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
+		fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s instance:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime, CurrentInstanceID)
 	}()
 	go wshutil.RunWshRpcOverListener(unixListener)
 

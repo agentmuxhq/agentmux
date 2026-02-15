@@ -8,6 +8,9 @@ pub struct BackendSpawnResult {
     pub ws_endpoint: String,
     pub web_endpoint: String,
     pub auth_key: String,
+    pub instance_id: String,  // "default", "instance-1", etc.
+    pub version: String,      // Backend version (e.g., "0.27.12")
+    pub is_reused: bool,      // true if reusing an existing backend (not spawned by this process)
 }
 
 /// Spawn the agentmuxsrv Go backend as a Tauri sidecar.
@@ -22,10 +25,12 @@ pub struct BackendSpawnResult {
 pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult, String> {
     tracing::info!("🚀 spawn_backend() called");
 
+    // Use app_local_data_dir for database storage (AppData\Local on Windows)
+    // Use app_config_dir for configuration (AppData\Roaming on Windows)
     let data_dir = app
         .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get data dir: {}", e))?;
+        .app_local_data_dir()
+        .map_err(|e| format!("Failed to get local data dir: {}", e))?;
 
     let config_dir = app
         .path()
@@ -35,17 +40,50 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     tracing::info!("Using config_dir: {}", config_dir.display());
     tracing::info!("Using data_dir: {}", data_dir.display());
 
-    // Check if backend is already running by looking for endpoints file
-    let endpoints_file = config_dir.join("wave-endpoints.json");
-    tracing::info!("Checking for existing backend at: {}", endpoints_file.display());
+    // Check for existing backend in nested instance directories
+    let instances_to_check = vec!["default", "instance-1", "instance-2", "instance-3",
+                                   "instance-4", "instance-5", "instance-6", "instance-7",
+                                   "instance-8", "instance-9", "instance-10"];
 
-    if endpoints_file.exists() {
-        tracing::info!("Found existing endpoints file, attempting to reuse backend");
+    let current_version = env!("CARGO_PKG_VERSION");
+
+    for instance_id in instances_to_check {
+        let instance_dir = config_dir.join("instances").join(instance_id);
+        let endpoints_file = instance_dir.join("wave-endpoints.json");
+
+        if !endpoints_file.exists() {
+            continue;
+        }
+
+        tracing::info!("Checking for existing backend at: {}", endpoints_file.display());
+
         if let Ok(contents) = std::fs::read_to_string(&endpoints_file) {
-            tracing::info!("Read endpoints file: {}", contents);
-            if let Ok(existing) = serde_json::from_str::<BackendSpawnResult>(&contents) {
+            // Parse as generic JSON first to handle extra fields
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&contents) {
+                // Extract version first to check compatibility
+                let backend_version = json["version"].as_str().unwrap_or("");
+
+                if backend_version != current_version {
+                    tracing::warn!(
+                        "Backend version mismatch: backend={}, frontend={}. Skipping instance {}.",
+                        backend_version,
+                        current_version,
+                        instance_id
+                    );
+                    continue;
+                }
+
+                // Version matches - safe to parse as BackendSpawnResult
+                let existing = BackendSpawnResult {
+                    ws_endpoint: json["ws_endpoint"].as_str().unwrap_or_default().to_string(),
+                    web_endpoint: json["web_endpoint"].as_str().unwrap_or_default().to_string(),
+                    auth_key: json["auth_key"].as_str().unwrap_or_default().to_string(),
+                    instance_id: json["instance_id"].as_str().unwrap_or_default().to_string(),
+                    version: backend_version.to_string(),
+                    is_reused: true,
+                };
+
                 // Test if the existing backend is still responsive
-                // The web_endpoint is like "127.0.0.1:PORT", need to add http://
                 let test_url = if existing.web_endpoint.starts_with("http") {
                     existing.web_endpoint.clone()
                 } else {
@@ -56,12 +94,13 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                 match reqwest::get(&test_url).await {
                     Ok(resp) => {
                         if resp.status().is_success() || resp.status().is_client_error() {
-                            // Any HTTP response means backend is alive (even 404 is fine)
-                            tracing::info!("Successfully connected to existing backend (status: {})", resp.status());
+                            tracing::info!(
+                                "✅ Reusing existing backend v{} (instance: {})",
+                                existing.version,
+                                existing.instance_id
+                            );
 
                             // Reuse the auth key from the existing backend
-                            let key_preview = existing.auth_key.chars().take(8).collect::<String>();
-                            tracing::info!("Reusing auth key from existing backend: {}...", key_preview);
                             let state = app.state::<crate::state::AppState>();
                             let mut auth_key_guard = state.auth_key.lock().unwrap();
                             *auth_key_guard = existing.auth_key.clone();
@@ -75,25 +114,31 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                         tracing::warn!("Failed to connect to existing backend: {}", e);
                     }
                 }
-                tracing::warn!("Existing backend not responsive, will spawn new one");
-            } else {
-                tracing::warn!("Failed to parse endpoints file");
+
+                // Backend not responsive - remove stale file
+                tracing::warn!("Backend not responsive, removing stale endpoints file");
+                let _ = std::fs::remove_file(&endpoints_file);
             }
-        } else {
-            tracing::warn!("Failed to read endpoints file");
         }
-        // Endpoints file exists but backend is dead, remove stale file
-        tracing::info!("Removing stale endpoints file");
-        let _ = std::fs::remove_file(&endpoints_file);
-    } else {
-        tracing::info!("No existing endpoints file found, will spawn new backend");
     }
 
-    // Ensure directories exist
+    tracing::info!("No existing backend found, spawning new one");
+
+    // Ensure base directories exist
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir: {}", e))?;
     std::fs::create_dir_all(&config_dir)
         .map_err(|e| format!("Failed to create config dir: {}", e))?;
+
+    // Pre-create instance directory structure for default instance
+    // Backend needs these to exist before it starts
+    let default_data_instance_dir = data_dir.join("instances").join("default").join("db");
+    std::fs::create_dir_all(&default_data_instance_dir)
+        .map_err(|e| format!("Failed to create default instance data dir: {}", e))?;
+
+    let default_config_instance_dir = config_dir.join("instances").join("default");
+    std::fs::create_dir_all(&default_config_instance_dir)
+        .map_err(|e| format!("Failed to create default instance config dir: {}", e))?;
 
     // Get auth key from app state
     let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
@@ -146,7 +191,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     }
 
     // Wait for WAVESRV-ESTART line from stderr
-    let (tx, mut endpoint_rx) = tokio::sync::mpsc::channel::<(String, String)>(1);
+    let (tx, mut endpoint_rx) = tokio::sync::mpsc::channel::<(String, String, String, String)>(1);
     let app_handle = app.clone();
 
     tokio::spawn(async move {
@@ -169,9 +214,19 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                                 .find_map(|p| p.strip_prefix("web:"))
                                 .map(|s| s.to_string())
                                 .unwrap_or_default();
+                            let version = parts
+                                .iter()
+                                .find_map(|p| p.strip_prefix("version:"))
+                                .map(|s| s.to_string())
+                                .unwrap_or_default();
+                            let instance_id = parts
+                                .iter()
+                                .find_map(|p| p.strip_prefix("instance:"))
+                                .map(|s| s.to_string())
+                                .unwrap_or_default();
 
-                            tracing::info!("Backend started: ws={}, web={}", ws, web);
-                            let _ = tx.send((ws, web)).await;
+                            tracing::info!("Backend started: ws={}, web={}, version={}, instance={}", ws, web, version, instance_id);
+                            let _ = tx.send((ws, web, version, instance_id)).await;
                         } else if let Some(event_data) = l.strip_prefix("WAVESRV-EVENT:") {
                             handle_backend_event(&app_handle, event_data);
                         } else {
@@ -214,17 +269,40 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     let result = BackendSpawnResult {
         ws_endpoint: timeout.0,
         web_endpoint: timeout.1,
+        version: timeout.2,
+        instance_id: timeout.3,
         auth_key: auth_key.clone(),
+        is_reused: false,
     };
 
     let key_preview = result.auth_key.chars().take(8).collect::<String>();
-    tracing::info!("Backend successfully started with endpoints: ws={}, web={}, auth_key={}...", result.ws_endpoint, result.web_endpoint, key_preview);
+    tracing::info!("Backend successfully started with endpoints: ws={}, web={}, version={}, instance={}, auth_key={}...",
+        result.ws_endpoint, result.web_endpoint, result.version, result.instance_id, key_preview);
 
-    // Save endpoints for other instances to reuse
-    let endpoints_file = config_dir.join("wave-endpoints.json");
-    tracing::info!("Attempting to save endpoints to: {}", endpoints_file.display());
+    // Compute nested instance directory inside base config dir
+    let instance_dir = config_dir.join("instances").join(&result.instance_id);
 
-    match serde_json::to_string_pretty(&result) {
+    // Ensure instance directory exists
+    if let Err(e) = std::fs::create_dir_all(&instance_dir) {
+        tracing::error!("Failed to create instance config dir: {}", e);
+        return Err(format!("Failed to create instance config dir: {}", e));
+    }
+
+    let endpoints_file = instance_dir.join("wave-endpoints.json");
+    tracing::info!("Saving endpoints to: {}", endpoints_file.display());
+
+    // Save endpoints with additional metadata
+    let endpoints_json = serde_json::json!({
+        "version": result.version,
+        "ws_endpoint": result.ws_endpoint,
+        "web_endpoint": result.web_endpoint,
+        "auth_key": result.auth_key,
+        "instance_id": result.instance_id,
+        "pid": std::process::id(),
+        "started_at": chrono::Utc::now().to_rfc3339(),
+    });
+
+    match serde_json::to_string_pretty(&endpoints_json) {
         Ok(json) => {
             tracing::info!("Serialized endpoints: {}", json);
             match std::fs::write(&endpoints_file, &json) {

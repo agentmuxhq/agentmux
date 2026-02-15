@@ -256,6 +256,22 @@ class TermViewModel implements ViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+        this.termZoomAtom = useBlockAtom(blockId, "termzoomatom", () => {
+            return jotai.atom<number>((get) => {
+                const blockData = get(this.blockAtom);
+                const zoomFactor = blockData?.meta?.["term:zoom"];
+
+                // Validate range
+                if (zoomFactor == null) {
+                    return 1.0; // Default 100%
+                }
+                if (typeof zoomFactor !== "number" || isNaN(zoomFactor)) {
+                    return 1.0;
+                }
+                // Clamp to safe range (0.5-2.0)
+                return Math.max(0.5, Math.min(2.0, zoomFactor));
+            });
+        });
         this.fontSizeAtom = useBlockAtom(blockId, "fontsizeatom", () => {
             return jotai.atom<number>((get) => {
                 const blockData = get(this.blockAtom);
@@ -264,11 +280,21 @@ class TermViewModel implements ViewModel {
                 const connName = blockData?.meta?.connection;
                 const fullConfig = get(atoms.fullConfigAtom);
                 const connFontSize = fullConfig?.connections?.[connName]?.["term:fontsize"];
-                const rtnFontSize = blockData?.meta?.["term:fontsize"] ?? connFontSize ?? settingsFontSize ?? 12;
-                if (typeof rtnFontSize != "number" || isNaN(rtnFontSize) || rtnFontSize < 4 || rtnFontSize > 64) {
+
+                // Get base font size (existing logic)
+                const baseFontSize = blockData?.meta?.["term:fontsize"] ?? connFontSize ?? settingsFontSize ?? 12;
+
+                // Validate base font size
+                if (typeof baseFontSize !== "number" || isNaN(baseFontSize) || baseFontSize < 4 || baseFontSize > 64) {
                     return 12;
                 }
-                return rtnFontSize;
+
+                // Apply zoom factor
+                const zoomFactor = get(this.termZoomAtom);
+                const effectiveFontSize = baseFontSize * zoomFactor;
+
+                // Final validation (clamp to 4-64px range)
+                return Math.max(4, Math.min(64, Math.round(effectiveFontSize)));
             });
         });
         this.noPadding = jotai.atom(true);
@@ -636,6 +662,39 @@ class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Font Size",
             submenu: fontSizeSubMenu,
+        });
+
+        // Terminal Zoom submenu
+        const currentZoom = blockData?.meta?.["term:zoom"] ?? 1.0;
+        const zoomLevels = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+        const zoomSubMenu: ContextMenuItem[] = zoomLevels.map((zoom: number) => {
+            const percentage = Math.round(zoom * 100);
+            return {
+                label: `${percentage}%`,
+                type: "checkbox",
+                checked: Math.abs(currentZoom - zoom) < 0.01, // Float comparison tolerance
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:zoom": zoom === 1.0 ? null : zoom }, // null = default
+                    });
+                },
+            };
+        });
+        zoomSubMenu.push({ type: "separator" });
+        zoomSubMenu.push({
+            label: "Reset to Default",
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:zoom": null },
+                });
+            },
+        });
+
+        fullMenu.push({
+            label: "Terminal Zoom",
+            submenu: zoomSubMenu,
         });
         fullMenu.push({
             label: "Transparency",

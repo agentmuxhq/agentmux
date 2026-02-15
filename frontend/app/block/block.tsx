@@ -11,7 +11,6 @@ import {
 } from "@/app/block/blocktypes";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
-import { ClaudeCodeViewModel } from "@/app/view/claudecode/claudecode";
 import { AgentViewModel } from "@/app/view/agent";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
@@ -29,26 +28,21 @@ import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpViewModel } from "@/view/helpview/helpview";
 import { TermViewModel } from "@/view/term/term";
-import { AgentAiModel } from "@/view/agentai/agentai";
 import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
 import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import "./block.scss";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 
 const BlockRegistry: Map<string, ViewModelClass> = new Map();
 BlockRegistry.set("term", TermViewModel);
-BlockRegistry.set("agentai", AgentAiModel);
 BlockRegistry.set("cpuplot", SysinfoViewModel);
 BlockRegistry.set("sysinfo", SysinfoViewModel);
 BlockRegistry.set("vdom", VDomModel);
-BlockRegistry.set("tips", QuickTipsViewModel);
 BlockRegistry.set("help", HelpViewModel);
 BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
-BlockRegistry.set("claudecode", ClaudeCodeViewModel);
 BlockRegistry.set("agent", AgentViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel): ViewModel {

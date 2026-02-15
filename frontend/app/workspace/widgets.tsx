@@ -83,16 +83,6 @@ const Widgets = memo(() => {
             },
         },
     };
-    const tipsWidget: WidgetConfigType = {
-        icon: "lightbulb",
-        label: "tips",
-        blockdef: {
-            meta: {
-                view: "tips",
-            },
-        },
-        magnified: true,
-    };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
     const widgetsMap = fullConfig?.widgets ?? {};
     const filteredWidgets = hasCustomAIPresets
@@ -205,10 +195,7 @@ const Widgets = memo(() => {
                         </div>
                         <div className="flex-grow" />
                         {showHelp ? (
-                            <div className="grid grid-cols-2 gap-0 w-full">
-                                <Widget key="tips" widget={tipsWidget} mode={mode} />
-                                <Widget key="help" widget={helpWidget} mode={mode} />
-                            </div>
+                            <Widget key="help" widget={helpWidget} mode={mode} />
                         ) : null}
                     </>
                 ) : (
@@ -218,10 +205,7 @@ const Widgets = memo(() => {
                         ))}
                         <div className="flex-grow" />
                         {showHelp ? (
-                            <>
-                                <Widget key="tips" widget={tipsWidget} mode={mode} />
-                                <Widget key="help" widget={helpWidget} mode={mode} />
-                            </>
+                            <Widget key="help" widget={helpWidget} mode={mode} />
                         ) : null}
                     </>
                 )}
@@ -244,10 +228,7 @@ const Widgets = memo(() => {
                 ))}
                 <div className="flex-grow" />
                 {showHelp ? (
-                    <>
-                        <Widget key="measurement-tips" widget={tipsWidget} mode="normal" />
-                        <Widget key="measurement-help" widget={helpWidget} mode="normal" />
-                    </>
+                    <Widget key="measurement-help" widget={helpWidget} mode="normal" />
                 ) : null}
                 {isDev() ? (
                     <div

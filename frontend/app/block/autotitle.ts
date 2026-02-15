@@ -171,8 +171,6 @@ export function generateAutoTitle(block: Block, settingsEnv?: Record<string, str
             return generateChatTitle(block);
         case "help":
             return "Help";
-        case "tips":
-            return "Tips";
         case "sysinfo":
             return "System Info";
         case "tsunami":

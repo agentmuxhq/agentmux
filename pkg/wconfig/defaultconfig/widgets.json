@@ -10,16 +10,6 @@
             }
         }
     },
-    "defwidget@ai": {
-        "display:order": -2,
-        "icon": "sparkles",
-        "label": "ai",
-        "blockdef": {
-            "meta": {
-                "view": "waveai"
-            }
-        }
-    },
     "defwidget@sysinfo": {
         "display:order": -1,
         "icon": "chart-line",
@@ -27,23 +17,6 @@
         "blockdef": {
             "meta": {
                 "view": "sysinfo"
-            }
-        }
-    },
-    "defwidget@claudecode": {
-        "display:order": 0,
-        "icon": "terminal",
-        "color": "#cc785c",
-        "label": "claude code",
-        "description": "Claude Code AI terminal",
-        "blockdef": {
-            "meta": {
-                "view": "claudecode",
-                "controller": "cmd",
-                "cmd": "claude",
-                "cmd:args": ["--output-format", "stream-json"],
-                "cmd:interactive": true,
-                "cmd:runonstart": true
             }
         }
     },

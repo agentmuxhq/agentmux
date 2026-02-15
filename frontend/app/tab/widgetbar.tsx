@@ -69,15 +69,6 @@ const WidgetBar = memo(() => {
             },
         },
     };
-    const tipsWidget: WidgetConfigType = {
-        icon: "lightbulb",
-        label: "tips",
-        blockdef: {
-            meta: {
-                view: "tips",
-            },
-        },
-    };
     const devToolsWidget: WidgetConfigType = {
         icon: "code",
         label: "devtools",
@@ -141,12 +132,7 @@ const WidgetBar = memo(() => {
             onContextMenu={handleWidgetsBarContextMenu}
         >
             {widgets?.map((data, idx) => <HorizontalWidget key={`widget-${idx}`} widget={data} />)}
-            {showHelp && (
-                <>
-                    <HorizontalWidget key="tips" widget={tipsWidget} />
-                    <HorizontalWidget key="help" widget={helpWidget} />
-                </>
-            )}
+            {showHelp && <HorizontalWidget key="help" widget={helpWidget} />}
             <HorizontalWidget key="devtools" widget={devToolsWidget} />
             {isDev() && <NotificationPopover />}
         </div>

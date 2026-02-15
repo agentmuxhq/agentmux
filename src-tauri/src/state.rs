@@ -36,6 +36,7 @@ pub struct AppState {
 pub struct BackendEndpoints {
     pub ws_endpoint: String,
     pub web_endpoint: String,
+    pub is_reused: bool,
 }
 
 impl Default for AppState {

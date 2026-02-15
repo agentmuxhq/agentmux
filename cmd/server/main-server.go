@@ -55,7 +55,7 @@ var CurrentInstanceID = ""
 // ExpectedVersion is the version this binary should be running
 // This is auto-updated by bump-version.sh to match package.json
 // If WaveVersion != ExpectedVersion, it indicates a stale cached binary
-const ExpectedVersion = "0.27.12"
+const ExpectedVersion = "0.27.13"
 
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
@@ -480,6 +480,15 @@ Currently running instances use these data directories:
 	if instanceDataDir != "" {
 		wavebase.DataHome_VarCache = instanceDataDir
 		log.Printf("[multi-instance] Running as instance: %s (data: %s)\n", instanceID, instanceDataDir)
+	}
+
+	// Ensure db subdirectory exists for this instance
+	// Database initialization expects this directory to exist
+	dbDir := filepath.Join(wavebase.GetWaveDataDir(), wavebase.WaveDBDir)
+	err = wavebase.TryMkdirs(dbDir, 0700, "database directory")
+	if err != nil {
+		log.Printf("error creating db directory: %v\n", err)
+		return
 	}
 
 	// Clean up any old startup error file from previous failed attempts

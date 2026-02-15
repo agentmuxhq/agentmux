@@ -131,6 +131,7 @@ pub fn run() {
                         let mut endpoints = state.backend_endpoints.lock().unwrap();
                         endpoints.ws_endpoint = backend_state.ws_endpoint;
                         endpoints.web_endpoint = backend_state.web_endpoint;
+                        endpoints.is_reused = backend_state.is_reused;
                         tracing::info!("Backend ready: ws={}, web={}",
                             endpoints.ws_endpoint, endpoints.web_endpoint);
 
@@ -145,6 +146,7 @@ pub fn run() {
                             let _ = window.emit("backend-ready", serde_json::json!({
                                 "ws": endpoints.ws_endpoint.clone(),
                                 "web": endpoints.web_endpoint.clone(),
+                                "is_reused": backend_state.is_reused,
                             }));
                         }
                     }

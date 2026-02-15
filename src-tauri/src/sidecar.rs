@@ -10,6 +10,7 @@ pub struct BackendSpawnResult {
     pub auth_key: String,
     pub instance_id: String,  // "default", "instance-1", etc.
     pub version: String,      // Backend version (e.g., "0.27.12")
+    pub is_reused: bool,      // true if reusing an existing backend (not spawned by this process)
 }
 
 /// Spawn the agentmuxsrv Go backend as a Tauri sidecar.
@@ -24,10 +25,12 @@ pub struct BackendSpawnResult {
 pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult, String> {
     tracing::info!("🚀 spawn_backend() called");
 
+    // Use app_local_data_dir for database storage (AppData\Local on Windows)
+    // Use app_config_dir for configuration (AppData\Roaming on Windows)
     let data_dir = app
         .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get data dir: {}", e))?;
+        .app_local_data_dir()
+        .map_err(|e| format!("Failed to get local data dir: {}", e))?;
 
     let config_dir = app
         .path()
@@ -77,6 +80,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                     auth_key: json["auth_key"].as_str().unwrap_or_default().to_string(),
                     instance_id: json["instance_id"].as_str().unwrap_or_default().to_string(),
                     version: backend_version.to_string(),
+                    is_reused: true,
                 };
 
                 // Test if the existing backend is still responsive
@@ -120,11 +124,21 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
 
     tracing::info!("No existing backend found, spawning new one");
 
-    // Ensure directories exist
+    // Ensure base directories exist
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir: {}", e))?;
     std::fs::create_dir_all(&config_dir)
         .map_err(|e| format!("Failed to create config dir: {}", e))?;
+
+    // Pre-create instance directory structure for default instance
+    // Backend needs these to exist before it starts
+    let default_data_instance_dir = data_dir.join("instances").join("default").join("db");
+    std::fs::create_dir_all(&default_data_instance_dir)
+        .map_err(|e| format!("Failed to create default instance data dir: {}", e))?;
+
+    let default_config_instance_dir = config_dir.join("instances").join("default");
+    std::fs::create_dir_all(&default_config_instance_dir)
+        .map_err(|e| format!("Failed to create default instance config dir: {}", e))?;
 
     // Get auth key from app state
     let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
@@ -258,6 +272,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         version: timeout.2,
         instance_id: timeout.3,
         auth_key: auth_key.clone(),
+        is_reused: false,
     };
 
     let key_preview = result.auth_key.chars().take(8).collect::<String>();

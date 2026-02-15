@@ -300,15 +300,17 @@ async function initBare() {
             try {
                 // Check if this is a new window or the main window
                 const isMain = await getApi().isMainWindow();
-                getApi().sendLog(`Window type: ${isMain ? "main" : "new window"}`);
+                // If backend was reused (another window already owns it), treat as new window
+                const isBackendReused = (window as any).__WAVE_BACKEND_REUSED__ === true;
+                getApi().sendLog(`Window type: ${isMain ? "main" : "new window"}, backend reused: ${isBackendReused}`);
 
-                if (isMain) {
-                    // Main window: standard initialization
+                if (isMain && !isBackendReused) {
+                    // Main window with freshly spawned backend: standard initialization
                     await initTauriWave();
                 } else {
-                    // New window: create backend objects first
+                    // New window or reused backend: create new backend window objects
                     const label = await getApi().getWindowLabel();
-                    getApi().sendLog(`Initializing new window: ${label}`);
+                    getApi().sendLog(`Initializing as new window: ${label} (reused backend: ${isBackendReused})`);
                     await initTauriNewWindow();
                 }
             } catch (error) {

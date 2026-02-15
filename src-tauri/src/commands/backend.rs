@@ -21,6 +21,7 @@ pub fn get_backend_endpoints(
     Ok(serde_json::json!({
         "ws": endpoints.ws_endpoint,
         "web": endpoints.web_endpoint,
+        "is_reused": endpoints.is_reused,
     }))
 }
 

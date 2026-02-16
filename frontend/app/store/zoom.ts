@@ -58,9 +58,7 @@ export function setZoom(factor: number, store: any): void {
  * Increase zoom by step
  */
 export function zoomIn(store: any, step: number = KEYBOARD_STEP): void {
-    console.log(`[ZOOM] zoomIn called, step=${step}`);
     const current = store.get(zoomFactorAtom);
-    console.log(`[ZOOM] current zoom: ${current}, new zoom: ${current + step}`);
     setZoom(current + step, store);
 }
 
@@ -68,9 +66,7 @@ export function zoomIn(store: any, step: number = KEYBOARD_STEP): void {
  * Decrease zoom by step
  */
 export function zoomOut(store: any, step: number = KEYBOARD_STEP): void {
-    console.log(`[ZOOM] zoomOut called, step=${step}`);
     const current = store.get(zoomFactorAtom);
-    console.log(`[ZOOM] current zoom: ${current}, new zoom: ${current - step}`);
     setZoom(current - step, store);
 }
 
@@ -78,7 +74,6 @@ export function zoomOut(store: any, step: number = KEYBOARD_STEP): void {
  * Reset zoom to 100%
  */
 export function zoomReset(store: any): void {
-    console.log(`[ZOOM] zoomReset called`);
     setZoom(DEFAULT_ZOOM, store);
 }
 

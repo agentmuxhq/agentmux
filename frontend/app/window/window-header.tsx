@@ -16,11 +16,11 @@ import { createRef, memo, useCallback, useEffect, useRef, useState } from "react
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
 import { WindowService } from "../store/services";
-import { Tab } from "./tab";
-import "./tabbar.scss";
-import { UpdateStatusBanner } from "./updatebanner";
-import { WidgetBar } from "./widgetbar";
-import { WorkspaceSwitcher } from "./workspaceswitcher";
+import { Tab } from "@/app/tab/tab";
+import "./window-header.scss";
+import { UpdateStatusBanner } from "./update-banner";
+import { WidgetBar } from "@/app/tab/widgetbar";
+import { WorkspaceSwitcher } from "@/app/tab/workspaceswitcher";
 import { createTabBarMenu } from "@/app/menu/base-menus";
 // New window components
 import { WindowControls } from "@/app/window/window-controls";
@@ -45,7 +45,7 @@ const OS_OPTIONS = {
     },
 };
 
-interface TabBarProps {
+interface WindowHeaderProps {
     workspace: Workspace;
 }
 
@@ -86,7 +86,7 @@ function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
     return true;
 }
 
-const TabBar = memo(({ workspace }: TabBarProps) => {
+const WindowHeader = memo(({ workspace }: WindowHeaderProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
@@ -623,7 +623,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         title: "Add Tab",
     };
     return (
-        <div ref={tabbarWrapperRef} className="tab-bar-wrapper" data-tauri-drag-region onContextMenu={handleTabBarContextMenu}>
+        <div ref={tabbarWrapperRef} className="window-header" data-tauri-drag-region onContextMenu={handleTabBarContextMenu}>
             <WindowDrag ref={draggerLeftRef} className="left" />
 
             <WindowControls
@@ -670,4 +670,4 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     );
 });
 
-export { TabBar };
+export { WindowHeader };

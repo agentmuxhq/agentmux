@@ -1,12 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.tab-bar-wrapper {
+.window-header {
     --default-indent: 10px;
     --darwin-not-fullscreen-indent: calc(74px * var(--zoomfactor-inv));
 }
 
-.darwin:not(.fullscreen) .tab-bar-wrapper {
+.darwin:not(.fullscreen) .window-header {
     .window-drag.left {
         width: var(--darwin-not-fullscreen-indent);
     }
@@ -23,7 +23,7 @@
     }
 }
 
-.tab-bar-wrapper {
+.window-header {
     padding-top: 6px;
     position: relative;
     user-select: none;
@@ -43,7 +43,7 @@
         -webkit-app-region: no-drag;
     }
 
-    .tab-bar-version {
+    .window-header-version {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
@@ -103,7 +103,7 @@
         color: var(--accent-color);
     }
 
-    .tab-bar-left {
+    .window-header-left {
         display: flex;
         flex-direction: row;
         gap: 6px;
@@ -112,7 +112,7 @@
         -webkit-app-region: no-drag;
     }
 
-    .tab-bar-right {
+    .window-header-right {
         display: flex;
         flex-direction: row;
         gap: 6px;

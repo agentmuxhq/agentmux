@@ -61,6 +61,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAto
     const handleConnect = useCallback(async () => {
         try {
             console.log("[ConnectionStatus] Opening Claude Code auth...");
+            setAuthState({ status: "connecting" });
             await getApi().openClaudeCodeAuth();
         } catch (error) {
             console.error("[ConnectionStatus] Failed to open auth:", error);
@@ -71,6 +72,58 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAto
         }
     }, [setAuthState]);
 
+    const handleDisconnect = useCallback(async () => {
+        try {
+            console.log("[ConnectionStatus] Disconnecting from Claude Code...");
+            await getApi().disconnectClaudeCode();
+            setAuthState({ status: "disconnected" });
+            setUserInfo(null);
+        } catch (error) {
+            console.error("[ConnectionStatus] Failed to disconnect:", error);
+            setAuthState({
+                status: "error",
+                error: `Disconnect failed: ${String(error)}`,
+            });
+        }
+    }, [setAuthState, setUserInfo]);
+
+    const handleRetry = useCallback(async () => {
+        setAuthState({ status: "disconnected" });
+        await handleConnect();
+    }, [setAuthState, handleConnect]);
+
+    // Check auth status on mount and periodically
+    useEffect(() => {
+        let checkInterval: NodeJS.Timeout;
+
+        const checkAuthStatus = async () => {
+            try {
+                const status = await getApi().getClaudeCodeAuth();
+                if (status.connected) {
+                    setAuthState({ status: "connected" });
+                    setUserInfo({
+                        email: status.email || "user@example.com",
+                        name: undefined,
+                    });
+                }
+            } catch (error) {
+                console.error("[ConnectionStatus] Failed to check auth status:", error);
+            }
+        };
+
+        // Initial check
+        checkAuthStatus();
+
+        // Periodic check every 5 minutes to detect token expiration
+        checkInterval = setInterval(checkAuthStatus, 5 * 60 * 1000);
+
+        return () => {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+        };
+    }, [setAuthState, setUserInfo]);
+
     if (authState.status === "connected" && userInfo) {
         return (
             <div className="agent-connection-status connected">
@@ -79,6 +132,9 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAto
                     <div className="connection-label">Connected to Claude Code</div>
                     <div className="connection-email">{userInfo.email}</div>
                 </div>
+                <button className="connection-disconnect-btn" onClick={handleDisconnect} title="Disconnect">
+                    <i className="fa fa-sign-out" />
+                </button>
             </div>
         );
     }
@@ -103,8 +159,8 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAto
                     <div className="connection-label">Connection Failed</div>
                     {authState.error && <div className="connection-error">{authState.error}</div>}
                 </div>
-                <button className="connection-retry-btn" onClick={handleConnect}>
-                    Retry
+                <button className="connection-retry-btn" onClick={handleRetry}>
+                    <i className="fa fa-refresh" /> Retry
                 </button>
             </div>
         );

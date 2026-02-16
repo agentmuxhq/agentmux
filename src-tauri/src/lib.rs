@@ -50,6 +50,8 @@ pub fn run() {
             // Window commands
             commands::window::open_new_window,
             commands::window::close_window,
+            commands::window::minimize_window,
+            commands::window::maximize_window,
             commands::window::get_window_label,
             commands::window::is_main_window,
             commands::window::list_windows,

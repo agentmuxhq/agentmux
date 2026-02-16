@@ -99,6 +99,38 @@ pub fn close_window(
     Ok(())
 }
 
+/// Minimize the current window.
+#[tauri::command]
+pub fn minimize_window(window: tauri::Window) -> Result<(), String> {
+    window
+        .minimize()
+        .map_err(|e| format!("Failed to minimize window: {}", e))?;
+    tracing::info!("Minimized window: {}", window.label());
+    Ok(())
+}
+
+/// Maximize/unmaximize the current window (toggle).
+#[tauri::command]
+pub fn maximize_window(window: tauri::Window) -> Result<(), String> {
+    let is_maximized = window
+        .is_maximized()
+        .map_err(|e| format!("Failed to check maximize state: {}", e))?;
+
+    if is_maximized {
+        window
+            .unmaximize()
+            .map_err(|e| format!("Failed to unmaximize window: {}", e))?;
+        tracing::info!("Unmaximized window: {}", window.label());
+    } else {
+        window
+            .maximize()
+            .map_err(|e| format!("Failed to maximize window: {}", e))?;
+        tracing::info!("Maximized window: {}", window.label());
+    }
+
+    Ok(())
+}
+
 /// Get the current window label.
 #[tauri::command]
 pub fn get_window_label(window: tauri::Window) -> String {

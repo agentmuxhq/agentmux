@@ -243,6 +243,12 @@ export function buildTauriApi(): ElectronApi {
         closeWindow: async (label?: string) => {
             await invoke("close_window", { label: label ?? null });
         },
+        minimizeWindow: () => {
+            invoke("minimize_window").catch(console.error);
+        },
+        maximizeWindow: () => {
+            invoke("maximize_window").catch(console.error);
+        },
         toggleDevtools: () => {
             invoke("toggle_devtools").catch(console.error);
         },

@@ -15,13 +15,16 @@ import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
-import { WorkspaceService } from "../store/services";
+import { WindowService } from "../store/services";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WidgetBar } from "./widgetbar";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 import { createTabBarMenu } from "@/app/menu/base-menus";
+// New window components
+import { WindowControls } from "@/app/window/window-controls";
+import { SystemStatus } from "@/app/window/system-status";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
@@ -45,64 +48,6 @@ const OS_OPTIONS = {
 interface TabBarProps {
     workspace: Workspace;
 }
-
-const ConfigErrorMessage = () => {
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
-
-    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
-        return (
-            <div className="config-error-message">
-                <h3>Configuration Clean</h3>
-                <p>There are no longer any errors detected in your config.</p>
-            </div>
-        );
-    }
-    if (fullConfig?.configerrors.length == 1) {
-        const singleError = fullConfig.configerrors[0];
-        return (
-            <div className="config-error-message">
-                <h3>Configuration Error</h3>
-                <div>
-                    {singleError.file}: {singleError.err}
-                </div>
-            </div>
-        );
-    }
-    return (
-        <div className="config-error-message">
-            <h3>Configuration Error</h3>
-            <ul>
-                {fullConfig.configerrors.map((error, index) => (
-                    <li key={index}>
-                        {error.file}: {error.err}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-};
-
-const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement> }) => {
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
-
-    function handleClick() {
-        modalsModel.pushModal("MessageModal", { children: <ConfigErrorMessage /> });
-    }
-
-    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
-        return null;
-    }
-    return (
-        <Button
-            ref={buttonRef as React.RefObject<HTMLButtonElement>}
-            className="config-error-button red"
-            onClick={handleClick}
-        >
-            <i className="fa fa-solid fa-exclamation-triangle" />
-            Config Error
-        </Button>
-    );
-};
 
 function strArrayIsEqual(a: string[], b: string[]) {
     // null check
@@ -680,6 +625,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper" data-tauri-drag-region onContextMenu={handleTabBarContextMenu}>
             <WindowDrag ref={draggerLeftRef} className="left" />
+
+            <WindowControls
+                platform={PLATFORM}
+                showNativeControls={PLATFORM === PlatformMacOS && !settings["window:showmenubar"]}
+            />
             {/* Temporarily hidden - tabs/workspace will return with multi-window support */}
             {/* {appMenuButton} */}
             {/* {waveaiButton} */}
@@ -711,28 +661,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 </div>
             </div> */}
             {/* <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} /> */}
-            <div className="tab-bar-right">
-                <WidgetBar />
-                <UpdateStatusBanner ref={updateStatusBannerRef} />
-                <ConfigErrorIcon buttonRef={configErrorButtonRef} />
-                <div
-                    className="close-button"
-                    onClick={() => {
-                        getApi().closeWindow();
-                    }}
-                    title="Close Window"
-                    data-tauri-drag-region="false"
-                    style={{
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        color: '#ff4444',
-                        fontSize: '16px',
-                        WebkitAppRegion: 'no-drag'
-                    } as React.CSSProperties}
-                >
-                    <i className="fa fa-times" />
-                </div>
-            </div>
+
+            <SystemStatus
+                updateStatusBannerRef={updateStatusBannerRef}
+                configErrorRef={configErrorButtonRef}
+            />
         </div>
     );
 });

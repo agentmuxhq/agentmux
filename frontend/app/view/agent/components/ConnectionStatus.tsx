@@ -95,16 +95,26 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAto
     // Check auth status on mount and periodically
     useEffect(() => {
         let checkInterval: NodeJS.Timeout;
+        let isMounted = true;
 
         const checkAuthStatus = async () => {
             try {
                 const status = await getApi().getClaudeCodeAuth();
+
+                // Only update state if component is still mounted
+                if (!isMounted) return;
+
                 if (status.connected) {
                     setAuthState({ status: "connected" });
                     setUserInfo({
                         email: status.email || "user@example.com",
                         name: undefined,
                     });
+                } else {
+                    // Token expired or disconnected - clear auth state
+                    console.log("[ConnectionStatus] Token expired or disconnected");
+                    setAuthState({ status: "disconnected" });
+                    setUserInfo(null);
                 }
             } catch (error) {
                 console.error("[ConnectionStatus] Failed to check auth status:", error);
@@ -112,12 +122,15 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAto
         };
 
         // Initial check
-        checkAuthStatus();
+        void checkAuthStatus();
 
         // Periodic check every 5 minutes to detect token expiration
-        checkInterval = setInterval(checkAuthStatus, 5 * 60 * 1000);
+        checkInterval = setInterval(() => {
+            void checkAuthStatus();
+        }, 5 * 60 * 1000);
 
         return () => {
+            isMounted = false;
             if (checkInterval) {
                 clearInterval(checkInterval);
             }

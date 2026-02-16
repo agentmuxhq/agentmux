@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/a5af/agentmux/pkg/waveobj"
@@ -29,44 +28,6 @@ type PortableLayout []struct {
 	Size     *uint             `json:"size,omitempty"`
 	BlockDef *waveobj.BlockDef `json:"blockdef"`
 	Focused  bool              `json:"focused"`
-}
-
-func GetStarterLayout() PortableLayout {
-	// Simple layout: 1 terminal + 1 sysinfo panel
-	// Reverted from 4-terminal layout to fix gamerlove startup issues.
-	// The 4-terminal layout caused resource exhaustion on Windows sandbox.
-	// Users can manually create additional terminals as needed.
-	// Layout:
-	//   +-----------------+
-	//   | terminal        |
-	//   | (focused)       |
-	//   +-----------------+
-	//   | sysinfo         |
-	//   +-----------------+
-	return PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
-			},
-		}, Focused: true},
-		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "sysinfo",
-			},
-		}},
-	}
-}
-
-func GetNewTabLayout() PortableLayout {
-	return PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
-			},
-		}, Focused: true},
-	}
 }
 
 func GetLayoutIdForTab(ctx context.Context, tabId string) (string, error) {
@@ -112,6 +73,18 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 }
 
 func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool) error {
+	return ApplyPortableLayoutWithMode(ctx, tabId, layout, recordTelemetry, false)
+}
+
+// ApplyPortableLayoutWithMode applies a portable layout either synchronously or asynchronously.
+// synchronous=true: Directly builds layout tree in database (prevents race conditions on bootstrap)
+// synchronous=false: Queues actions for frontend to process (existing behavior)
+func ApplyPortableLayoutWithMode(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool, synchronous bool) error {
+	if synchronous {
+		return applyPortableLayoutDirect(ctx, tabId, layout, recordTelemetry)
+	}
+
+	// Original async behavior: queue actions for frontend
 	actions := make([]waveobj.LayoutActionData, len(layout)+1)
 	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {
@@ -139,179 +112,99 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 	return nil
 }
 
-func BootstrapStarterLayout(ctx context.Context) error {
-	ctx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
-	defer cancelFn()
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+// applyPortableLayoutDirect builds the layout tree synchronously and writes directly to the database.
+// This prevents race conditions where blocks are created before the layout tree is populated.
+func applyPortableLayoutDirect(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool) error {
+	// Get the layout state ID
+	layoutStateId, err := GetLayoutIdForTab(ctx, tabId)
 	if err != nil {
-		log.Printf("unable to find client: %v\n", err)
-		return fmt.Errorf("unable to find client: %w", err)
+		return fmt.Errorf("unable to get layout id for tab: %w", err)
 	}
 
-	if len(client.WindowIds) < 1 {
-		return fmt.Errorf("error bootstrapping layout, no windows exist")
-	}
-
-	windowId := client.WindowIds[0]
-
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
+	layoutState, err := wstore.DBGet[*waveobj.LayoutState](ctx, layoutStateId)
 	if err != nil {
-		return fmt.Errorf("error getting window: %w", err)
+		return fmt.Errorf("unable to get layout state: %w", err)
 	}
 
-	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
+	// Create blocks and build tree nodes
+	var rootNode map[string]any
+	var leafOrder []waveobj.LeafOrderEntry
+	var focusedNodeId string
+
+	if len(layout) == 0 {
+		// Empty layout
+		rootNode = nil
+		leafOrder = []waveobj.LeafOrderEntry{}
+	} else if len(layout) == 1 {
+		// Single block - no container needed
+		layoutAction := layout[0]
+		blockData, err := CreateBlockWithTelemetry(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{}, recordTelemetry)
+		if err != nil {
+			return fmt.Errorf("unable to create block: %w", err)
+		}
+
+		nodeId := uuid.NewString()
+		rootNode = map[string]any{
+			"id": nodeId,
+			"data": map[string]any{
+				"blockId": blockData.OID,
+			},
+		}
+
+		leafOrder = []waveobj.LeafOrderEntry{
+			{NodeId: nodeId, BlockId: blockData.OID},
+		}
+
+		if layoutAction.Focused {
+			focusedNodeId = nodeId
+		}
+	} else {
+		// Multiple blocks - create vertical container
+		children := make([]any, len(layout))
+		leafOrder = make([]waveobj.LeafOrderEntry, len(layout))
+
+		for i, layoutAction := range layout {
+			blockData, err := CreateBlockWithTelemetry(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{}, recordTelemetry)
+			if err != nil {
+				return fmt.Errorf("unable to create block %d: %w", i, err)
+			}
+
+			nodeId := uuid.NewString()
+			children[i] = map[string]any{
+				"id": nodeId,
+				"data": map[string]any{
+					"blockId": blockData.OID,
+				},
+			}
+
+			leafOrder[i] = waveobj.LeafOrderEntry{
+				NodeId:  nodeId,
+				BlockId: blockData.OID,
+			}
+
+			if layoutAction.Focused {
+				focusedNodeId = nodeId
+			}
+		}
+
+		rootNode = map[string]any{
+			"id":            uuid.NewString(),
+			"flexDirection": "column",
+			"children":      children,
+		}
+	}
+
+	// Update layout state with new tree
+	layoutState.RootNode = rootNode
+	layoutState.LeafOrder = &leafOrder
+	layoutState.FocusedNodeId = focusedNodeId
+	layoutState.Version++
+
+	err = wstore.DBUpdate(ctx, layoutState)
 	if err != nil {
-		return fmt.Errorf("error getting workspace: %w", err)
+		return fmt.Errorf("unable to update layout state: %w", err)
 	}
 
-	tabId := workspace.ActiveTabId
-
-	starterLayout := GetStarterLayout()
-	err = ApplyPortableLayout(ctx, tabId, starterLayout, false)
-	if err != nil {
-		return fmt.Errorf("error applying starter layout: %w", err)
-	}
-
+	log.Printf("applyPortableLayoutDirect: applied %d blocks to tab %s synchronously", len(layout), tabId)
 	return nil
-}
-
-// MigrateOrphanedLayouts scans all tabs and cleans up orphaned block references.
-// This should be run once on app startup to fix existing orphaned layouts.
-// Orphaned blocks are those in layout.LeafOrder but not in tab.BlockIds.
-func MigrateOrphanedLayouts(ctx context.Context) error {
-	log.Println("MigrateOrphanedLayouts: checking for orphaned layout references...")
-
-	// Get all workspaces to find all tabs
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return fmt.Errorf("error getting client: %w", err)
-	}
-
-	fixedTabCount := 0
-	totalOrphanCount := 0
-
-	// Iterate through all windows and workspaces to find tabs
-	for _, windowId := range client.WindowIds {
-		window, err := wstore.DBGet[*waveobj.Window](ctx, windowId)
-		if err != nil || window == nil {
-			continue
-		}
-
-		workspace, err := wstore.DBGet[*waveobj.Workspace](ctx, window.WorkspaceId)
-		if err != nil || workspace == nil {
-			continue
-		}
-
-		// Check each tab in the workspace
-		for _, tabId := range workspace.TabIds {
-			tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
-			if err != nil || tab == nil {
-				continue
-			}
-
-			layout, err := wstore.DBGet[*waveobj.LayoutState](ctx, tab.LayoutState)
-			if err != nil || layout == nil || layout.LeafOrder == nil {
-				continue
-			}
-
-			// Build set of valid block IDs from tab
-			blockIdSet := make(map[string]bool)
-			for _, bid := range tab.BlockIds {
-				blockIdSet[bid] = true
-			}
-
-			// Find orphaned blocks (in layout but not in tab.BlockIds)
-			orphanedBlocks := []string{}
-			for _, leaf := range *layout.LeafOrder {
-				if !blockIdSet[leaf.BlockId] {
-					orphanedBlocks = append(orphanedBlocks, leaf.BlockId)
-				}
-			}
-
-			// Directly clean tree structure (more reliable than frontend actions)
-			if len(orphanedBlocks) > 0 {
-				log.Printf("MigrateOrphanedLayouts: found %d orphaned blocks in tab %s", len(orphanedBlocks), tab.OID)
-
-				// Create orphan set for fast lookup
-				orphanSet := make(map[string]bool)
-				for _, blockId := range orphanedBlocks {
-					orphanSet[blockId] = true
-				}
-
-				// Clean rootnode tree
-				if layout.RootNode != nil {
-					layout.RootNode = removeOrphanedNodesFromTree(layout.RootNode, orphanSet)
-				}
-
-				// Clean leaforder
-				if layout.LeafOrder != nil {
-					cleanedLeafOrder := make([]waveobj.LeafOrderEntry, 0)
-					for _, leaf := range *layout.LeafOrder {
-						if !orphanSet[leaf.BlockId] {
-							cleanedLeafOrder = append(cleanedLeafOrder, leaf)
-						}
-					}
-					layout.LeafOrder = &cleanedLeafOrder
-				}
-
-				// Increment version and persist
-				layout.Version++
-				err = wstore.DBUpdate(ctx, layout)
-				if err != nil {
-					log.Printf("MigrateOrphanedLayouts: error updating layout for tab %s: %v", tab.OID, err)
-					continue
-				}
-
-				fixedTabCount++
-				totalOrphanCount += len(orphanedBlocks)
-				log.Printf("MigrateOrphanedLayouts: cleaned %d orphans from tab %s", len(orphanedBlocks), tab.OID)
-			}
-		}
-	}
-
-	log.Printf("MigrateOrphanedLayouts: complete - fixed %d tabs, cleaned %d orphaned blocks", fixedTabCount, totalOrphanCount)
-	return nil
-}
-
-// removeOrphanedNodesFromTree recursively removes nodes with orphaned blockIds from the layout tree
-func removeOrphanedNodesFromTree(node any, orphanSet map[string]bool) any {
-	if node == nil {
-		return nil
-	}
-
-	// Cast to map to access fields
-	nodeMap, ok := node.(map[string]any)
-	if !ok {
-		return node
-	}
-
-	// Check if this node has data with an orphaned blockId
-	if data, hasData := nodeMap["data"].(map[string]any); hasData {
-		if blockId, hasBlockId := data["blockId"].(string); hasBlockId {
-			if orphanSet[blockId] {
-				nodeId := nodeMap["id"]
-				log.Printf("removeOrphanedNodesFromTree: removing orphaned node %v with blockId %s", nodeId, blockId)
-				return nil
-			}
-		}
-	}
-
-	// Recursively clean children
-	if children, hasChildren := nodeMap["children"].([]any); hasChildren && len(children) > 0 {
-		cleanedChildren := make([]any, 0)
-		for _, child := range children {
-			cleaned := removeOrphanedNodesFromTree(child, orphanSet)
-			if cleaned != nil {
-				cleanedChildren = append(cleanedChildren, cleaned)
-			}
-		}
-
-		if len(cleanedChildren) > 0 {
-			nodeMap["children"] = cleanedChildren
-		} else {
-			delete(nodeMap, "children")
-		}
-	}
-
-	return nodeMap
 }

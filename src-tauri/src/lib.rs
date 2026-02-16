@@ -47,6 +47,10 @@ pub fn run() {
             commands::platform::get_docsite_url,
             // Auth commands
             commands::auth::get_auth_key,
+            // Claude Code auth commands
+            commands::claudecode::open_claude_code_auth,
+            commands::claudecode::get_claude_code_auth,
+            commands::claudecode::disconnect_claude_code,
             // Window commands
             commands::window::open_new_window,
             commands::window::close_window,
@@ -123,6 +127,26 @@ pub fn run() {
                     tracing::error!("Failed to set window title: {}", e);
                 }
             }
+
+            // Register deep link handler for OAuth callback (agentmux://auth?code=...)
+            // TODO: Deep link registration needs proper Tauri v2 configuration
+            // For now, this is a placeholder for future implementation
+            // #[cfg(target_os = "macos")]
+            // {
+            //     let handle_clone = handle.clone();
+            //     tauri::async_runtime::spawn(async move {
+            //         handle_clone.listen("deep-link-urls", move |event| {
+            //             if let Some(urls) = event.payload().as_array() {
+            //                 for url_value in urls {
+            //                     if let Some(url) = url_value.as_str() {
+            //                         tracing::info!("Received deep link: {}", url);
+            //                         handle_deep_link(handle_clone.clone(), url);
+            //                     }
+            //                 }
+            //             }
+            //         });
+            //     });
+            // }
 
             // Spawn the Go backend as a sidecar
             tauri::async_runtime::spawn(async move {
@@ -216,6 +240,67 @@ pub fn run() {
     builder
         .run(tauri::generate_context!())
         .expect("error while running AgentMux");
+}
+
+/// Handle deep link URLs (e.g., agentmux://auth?code=ABC123)
+#[allow(dead_code)]
+fn handle_deep_link(app: tauri::AppHandle, url: &str) {
+    // Redact sensitive params from logs
+    let safe_url = if url.contains("code=") {
+        url.split("code=").next().unwrap_or(url).to_string() + "code=[redacted]"
+    } else {
+        url.to_string()
+    };
+    tracing::info!("Processing deep link: {}", safe_url);
+
+    // Parse the URL to extract the protocol and path
+    if let Some(path_with_query) = url.strip_prefix("agentmux://") {
+        let parts: Vec<&str> = path_with_query.split('?').collect();
+        let path = parts[0];
+
+        match path {
+            "auth" => {
+                // OAuth callback: agentmux://auth?code=ABC123
+                if parts.len() > 1 {
+                    let query = parts[1];
+                    let params: std::collections::HashMap<_, _> = query
+                        .split('&')
+                        .filter_map(|pair| {
+                            let mut split = pair.split('=');
+                            Some((split.next()?, split.next()?))
+                        })
+                        .collect();
+
+                    if let Some(code) = params.get("code") {
+                        tracing::info!("Received OAuth code from deep link");
+
+                        // Call the auth callback handler
+                        let app_clone = app.clone();
+                        let code_owned = code.to_string();
+                        tauri::async_runtime::spawn(async move {
+                            match commands::claudecode::handle_auth_callback(app_clone, code_owned).await {
+                                Ok(()) => {
+                                    tracing::info!("OAuth callback handled successfully");
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to handle OAuth callback: {}", e);
+                                }
+                            }
+                        });
+                    } else {
+                        tracing::warn!("Deep link missing 'code' parameter");
+                    }
+                } else {
+                    tracing::warn!("Deep link missing query parameters");
+                }
+            }
+            _ => {
+                tracing::warn!("Unknown deep link path: {}", path);
+            }
+        }
+    } else {
+        tracing::warn!("Deep link doesn't match expected protocol: {}", url);
+    }
 }
 
 fn init_logging(handle: &tauri::AppHandle) -> std::path::PathBuf {

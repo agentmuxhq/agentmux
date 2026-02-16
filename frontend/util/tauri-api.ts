@@ -320,6 +320,23 @@ export function buildTauriApi(): ElectronApi {
         setWaveAIOpen: (isOpen: boolean) => {
             invoke("set_waveai_open", { isOpen }).catch(console.error);
         },
+
+        // --- Claude Code Auth ---
+        openClaudeCodeAuth: async () => {
+            await invoke("open_claude_code_auth");
+        },
+        getClaudeCodeAuth: async () => {
+            return await invoke<{ connected: boolean; email?: string; expires_at?: number }>(
+                "get_claude_code_auth"
+            );
+        },
+        disconnectClaudeCode: async () => {
+            await invoke("disconnect_claude_code");
+        },
+        listen: async (event: string, callback: (event: any) => void) => {
+            const unlisten = await listen(event, callback);
+            return unlisten;
+        },
     };
 
     return api;

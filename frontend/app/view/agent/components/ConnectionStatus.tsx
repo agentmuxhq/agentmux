@@ -9,8 +9,9 @@
  * 2. User info when connected
  */
 
-import { useAtomValue } from "jotai";
-import React, { memo, useCallback } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import React, { memo, useCallback, useEffect } from "react";
+import { getApi } from "@/app/store/global";
 import type { PrimitiveAtom } from "jotai";
 import type { AuthState, UserInfo } from "../types";
 
@@ -22,17 +23,53 @@ interface ConnectionStatusProps {
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAtom, userInfoAtom }) => {
     const authState = useAtomValue(authAtom);
     const userInfo = useAtomValue(userInfoAtom);
+    const setAuthState = useSetAtom(authAtom);
+    const setUserInfo = useSetAtom(userInfoAtom);
+
+    // Listen for auth events from backend
+    useEffect(() => {
+        const unlistenStart = getApi().listen("claude-code-auth-started", () => {
+            console.log("[ConnectionStatus] Auth started");
+            setAuthState({ status: "connecting" });
+        });
+
+        const unlistenSuccess = getApi().listen("claude-code-auth-success", (event: any) => {
+            console.log("[ConnectionStatus] Auth success:", event.payload);
+            const payload = event.payload;
+            setAuthState({ status: "connected" });
+            setUserInfo({
+                email: payload.email || "user@example.com",
+                name: payload.name,
+            });
+        });
+
+        const unlistenError = getApi().listen("claude-code-auth-error", (event: any) => {
+            console.error("[ConnectionStatus] Auth error:", event.payload);
+            setAuthState({
+                status: "error",
+                error: event.payload?.message || "Authentication failed",
+            });
+        });
+
+        return () => {
+            unlistenStart.then((fn) => fn());
+            unlistenSuccess.then((fn) => fn());
+            unlistenError.then((fn) => fn());
+        };
+    }, [setAuthState, setUserInfo]);
 
     const handleConnect = useCallback(async () => {
         try {
-            // This will be implemented in Phase 3 (backend)
-            // For now, it's a placeholder that would call:
-            // await getApi().openClaudeCodeAuth();
-            console.log("[ConnectionStatus] Connect clicked - auth flow not yet implemented");
+            console.log("[ConnectionStatus] Opening Claude Code auth...");
+            await getApi().openClaudeCodeAuth();
         } catch (error) {
             console.error("[ConnectionStatus] Failed to open auth:", error);
+            setAuthState({
+                status: "error",
+                error: String(error),
+            });
         }
-    }, []);
+    }, [setAuthState]);
 
     if (authState.status === "connected" && userInfo) {
         return (

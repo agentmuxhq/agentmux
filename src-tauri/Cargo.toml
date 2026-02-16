@@ -1,6 +1,6 @@
 [package]
 name = "agentmux"
-version = "0.28.17"
+version = "0.28.18"
 description = "AgentMux - AI-Native Terminal"
 authors = ["a5af"]
 edition = "2021"
@@ -26,17 +26,17 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "=2.10", features = ["tray-icon", "devtools", "custom-protocol"] }
-tauri-plugin-shell = "2"
-tauri-plugin-dialog = "2"
-tauri-plugin-notification = "2"
-tauri-plugin-clipboard-manager = "2"
-tauri-plugin-global-shortcut = "2"
-tauri-plugin-fs = "2"
-tauri-plugin-opener = "2"
-tauri-plugin-process = "2"
-tauri-plugin-store = "2"
-tauri-plugin-window-state = "2"
-tauri-plugin-websocket = "2"
+tauri-plugin-shell = "=2.3"
+tauri-plugin-dialog = "=2.6"
+tauri-plugin-notification = "=2.3"
+tauri-plugin-clipboard-manager = "=2.3"
+tauri-plugin-global-shortcut = "=2.3"
+tauri-plugin-fs = "=2.4"
+tauri-plugin-opener = "=2.5"
+tauri-plugin-process = "=2.3"
+tauri-plugin-store = "=2.4"
+tauri-plugin-window-state = "=2.4"
+tauri-plugin-websocket = "=2.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }

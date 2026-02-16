@@ -28,7 +28,8 @@ exports.config = {
         application: getAppBinary()
       },
       // Required for EdgeDriver 117+ on Windows
-      ...(isWindows && { webviewOptions: {} })
+      // Temporarily disabled due to WebDriver validation errors with EdgeDriver 144
+      // ...(isWindows && { webviewOptions: {} })
     }
   ],
   logLevel: 'info',

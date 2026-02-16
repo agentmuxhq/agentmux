@@ -667,6 +667,27 @@
                     opacity: 0.8;
                 }
             }
+
+            .connection-disconnect-btn {
+                padding: 6px 10px;
+                background: transparent;
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                color: var(--secondary-text-color);
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.15s;
+
+                &:hover {
+                    background: color-mix(in srgb, var(--error-color) 10%, transparent);
+                    border-color: var(--error-color);
+                    color: var(--error-color);
+                }
+
+                i {
+                    font-size: 12px;
+                }
+            }
         }
 
         &.connecting {

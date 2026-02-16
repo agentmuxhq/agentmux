@@ -143,32 +143,17 @@ describe('Zoom Functionality', () => {
       console.log('Performing Ctrl+Wheel scroll...')
 
       try {
-        // Hold Ctrl and scroll up (negative deltaY = zoom in)
-        await browser.performActions([
-          {
-            type: 'key',
-            id: 'keyboard',
-            actions: [
-              { type: 'keyDown', value: '\uE009' } // Control key
-            ]
-          },
-          {
-            type: 'wheel',
-            id: 'wheel',
-            actions: [
-              {
-                type: 'scroll',
-                duration: 0,
-                x: 0,
-                y: 0,
-                deltaX: 0,
-                deltaY: -100
-              }
-            ]
-          }
-        ])
+        // Dispatch a real WheelEvent with Ctrl key
+        await browser.execute(() => {
+          const event = new WheelEvent('wheel', {
+            deltaY: -100,
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true
+          })
+          window.dispatchEvent(event)
+        })
 
-        await browser.releaseActions()
         await browser.pause(500)
 
         const newZoom = await getZoomFactor()
@@ -201,32 +186,17 @@ describe('Zoom Functionality', () => {
       await body.moveTo()
 
       try {
-        // Hold Ctrl and scroll down (positive deltaY = zoom out)
-        await browser.performActions([
-          {
-            type: 'key',
-            id: 'keyboard',
-            actions: [
-              { type: 'keyDown', value: '\uE009' } // Control key
-            ]
-          },
-          {
-            type: 'wheel',
-            id: 'wheel',
-            actions: [
-              {
-                type: 'scroll',
-                duration: 0,
-                x: 0,
-                y: 0,
-                deltaX: 0,
-                deltaY: 100
-              }
-            ]
-          }
-        ])
+        // Dispatch a real WheelEvent with Ctrl key
+        await browser.execute(() => {
+          const event = new WheelEvent('wheel', {
+            deltaY: 100,
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true
+          })
+          window.dispatchEvent(event)
+        })
 
-        await browser.releaseActions()
         await browser.pause(500)
 
         const newZoom = await getZoomFactor()

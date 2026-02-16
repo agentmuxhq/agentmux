@@ -11,10 +11,12 @@
 import { atom, Atom, PrimitiveAtom, WritableAtom } from "jotai";
 import {
     AgentProcessState,
+    AuthState,
     DocumentNode,
     DocumentState,
     MessageRouterState,
     StreamingState,
+    UserInfo,
 } from "./types";
 
 /**
@@ -26,6 +28,8 @@ export interface AgentAtoms {
     streamingStateAtom: PrimitiveAtom<StreamingState>;
     processAtom: PrimitiveAtom<AgentProcessState>;
     messageRouterAtom: PrimitiveAtom<MessageRouterState>;
+    authAtom: PrimitiveAtom<AuthState>;
+    userInfoAtom: PrimitiveAtom<UserInfo | null>;
 }
 
 /**
@@ -70,6 +74,10 @@ export function createAgentAtoms(agentId: string): AgentAtoms {
             connected: false,
             endpoint: "",
         }),
+        authAtom: atom<AuthState>({
+            status: "disconnected",
+        }),
+        userInfoAtom: atom<UserInfo | null>(null),
     };
 }
 

@@ -23,6 +23,7 @@ import { ToolBlock } from "./components/ToolBlock";
 import { AgentMessageBlock } from "./components/AgentMessageBlock";
 import { AgentHeader } from "./components/AgentHeader";
 import { AgentFooter } from "./components/AgentFooter";
+import { ConnectionStatus } from "./components/ConnectionStatus";
 import { FilterControls } from "./components/FilterControls";
 import "./agent-view.scss";
 
@@ -92,6 +93,7 @@ export const AgentViewInner: React.FC<AgentViewProps> = memo(
         // Use instance-scoped atoms from props
         const document = useAtomValue(filteredDocumentAtom);
         const documentState = useAtomValue(atoms.documentStateAtom);
+        const authState = useAtomValue(atoms.authAtom);
         const toggleCollapse = useSetAtom(toggleNodeCollapsed);
         const scrollRef = useRef<HTMLDivElement>(null);
         const [showFilters, setShowFilters] = useState(false);
@@ -205,14 +207,12 @@ export const AgentViewInner: React.FC<AgentViewProps> = memo(
                     </div>
                 </div>
 
-                <AgentFooter
-                    agentId={agentId}
-                    expandAllNodes={expandAllNodes}
-                    collapseAllNodes={collapseAllNodes}
-                    clearDocument={clearDocument}
-                    onSendMessage={onSendMessage}
-                    onExport={onExport}
-                />
+                {/* Footer: Show connection UI or message input based on auth state */}
+                {authState.status === "disconnected" ? (
+                    <ConnectionStatus authAtom={atoms.authAtom} userInfoAtom={atoms.userInfoAtom} />
+                ) : (
+                    <AgentFooter agentId={agentId} onSendMessage={onSendMessage} />
+                )}
             </div>
         );
     }

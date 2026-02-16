@@ -254,6 +254,22 @@ export interface MessageRouterState {
 }
 
 /**
+ * Claude Code authentication state
+ */
+export interface AuthState {
+    status: "disconnected" | "connecting" | "connected" | "error";
+    error?: string;
+}
+
+/**
+ * Claude Code user information
+ */
+export interface UserInfo {
+    email: string;
+    name?: string;
+}
+
+/**
  * Tool icon mapping
  */
 export const TOOL_ICONS: Record<string, string> = {

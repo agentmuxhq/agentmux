@@ -55,9 +55,6 @@ libc = { version = "0.2", optional = true }
 subtle = { version = "2", optional = true }
 url = "2"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-webkit2gtk = "=2.0.1"
-
 [profile.release]
 strip = true
 lto = true

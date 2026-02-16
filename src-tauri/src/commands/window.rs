@@ -52,22 +52,10 @@ pub fn set_zoom_factor<R: Runtime>(
     let factor = factor.clamp(0.5, 3.0);
     *state.zoom_factor.lock().unwrap() = factor;
 
-    // On Linux, use webkit2gtk's set_zoom_level() directly for proper support
-    #[cfg(target_os = "linux")]
-    {
-        window.with_webview(|webview| {
-            use webkit2gtk::WebViewExt;
-            webview.set_zoom_level(factor);
-        }).map_err(|e| format!("Failed to set zoom: {}", e))?;
-    }
-
-    // On other platforms, use cross-platform set_zoom()
-    #[cfg(not(target_os = "linux"))]
-    {
-        window
-            .set_zoom(factor)
-            .map_err(|e| format!("Failed to set zoom: {}", e))?;
-    }
+    // Use cross-platform zoom API
+    window
+        .set_zoom(factor)
+        .map_err(|e| format!("Failed to set zoom: {}", e))?;
 
     // Notify frontend of zoom change
     let _ = window.emit("zoom-factor-change", factor);

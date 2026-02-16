@@ -92,6 +92,7 @@ const WindowActionButtons = memo(() => {
                 className="window-action-btn minimize-btn"
                 onClick={handleMinimize}
                 title="Minimize Window"
+                data-testid="window-minimize-btn"
             >
                 <i className="fa fa-window-minimize" />
             </button>
@@ -99,6 +100,7 @@ const WindowActionButtons = memo(() => {
                 className="window-action-btn maximize-btn"
                 onClick={handleMaximize}
                 title="Maximize Window"
+                data-testid="window-maximize-btn"
             >
                 <i className="fa fa-window-maximize" />
             </button>
@@ -106,6 +108,7 @@ const WindowActionButtons = memo(() => {
                 className="window-action-btn close-btn"
                 onClick={handleClose}
                 title="Close Window"
+                data-testid="window-close-btn"
             >
                 <i className="fa fa-times" />
             </button>

@@ -11,11 +11,6 @@ interface WindowControlsProps {
 }
 
 const WindowControls = memo(({ platform, showNativeControls }: WindowControlsProps) => {
-    // On macOS with native controls, don't show custom window controls
-    if (platform === "darwin" && showNativeControls) {
-        return null;
-    }
-
     const handleNewWindow = async () => {
         try {
             const newWindowLabel = await getApi().openNewWindow();
@@ -26,11 +21,12 @@ const WindowControls = memo(({ platform, showNativeControls }: WindowControlsPro
     };
 
     return (
-        <div className="window-controls" data-tauri-drag-region="false">
+        <div className="window-controls" data-tauri-drag-region="false" data-testid="window-controls">
             <button
                 className="window-control-btn new-window-btn"
                 onClick={handleNewWindow}
                 title="Open New Window"
+                data-testid="new-window-btn"
             >
                 <i className="fa fa-window-restore" />
                 <span>agentmux</span>

@@ -3,6 +3,13 @@
  */
 
 /**
+ * Returns a selector string for data-testid attributes.
+ */
+export function byTestId(id) {
+  return `[data-testid="${id}"]`
+}
+
+/**
  * Invoke a Tauri command and return the result
  */
 export async function invokeTauriCommand(commandName, args = {}) {
@@ -36,6 +43,22 @@ export async function setZoomFactor(factor) {
   if (!response.success) {
     throw new Error(`Failed to set zoom factor: ${response.error}`)
   }
+}
+
+/**
+ * Wait until zoom factor changes from a given value.
+ */
+export async function waitForZoomChange(fromValue, timeout = 5000) {
+  await browser.waitUntil(
+    async () => {
+      const current = await getZoomFactor()
+      return current !== fromValue
+    },
+    {
+      timeout,
+      timeoutMsg: `Zoom factor did not change from ${fromValue} within ${timeout}ms`
+    }
+  )
 }
 
 /**
@@ -77,10 +100,19 @@ export async function getTauriVersion() {
 }
 
 /**
- * Get current platform
+ * Get current platform.
+ * Uses Tauri IPC get_platform when available, falls back to navigator.platform.
  */
 export async function getPlatform() {
   return await browser.execute(() => {
+    if (window.__TAURI_INTERNALS__) {
+      try {
+        // Synchronous check — the mock or cached value
+        return window.__TAURI_INTERNALS__.invoke('get_platform') ?? navigator.platform
+      } catch {
+        return navigator.platform
+      }
+    }
     return navigator.platform
   })
 }

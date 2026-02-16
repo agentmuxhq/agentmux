@@ -313,6 +313,7 @@ const BlockFrame_Header = ({
         <div
             className="block-frame-default-header"
             data-role="block-header"
+            data-testid="block-header"
             ref={dragHandleRef}
             onContextMenu={onContextMenu}
             style={headerStyle}

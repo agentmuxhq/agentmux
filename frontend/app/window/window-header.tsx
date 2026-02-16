@@ -39,6 +39,7 @@ const WindowHeader = memo(({ workspace }: WindowHeaderProps) => {
         <div
             ref={windowHeaderRef}
             className="window-header"
+            data-testid="window-header"
             onContextMenu={handleContextMenu}
         >
             <WindowDrag ref={draggerLeftRef} className="left" />

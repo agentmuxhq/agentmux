@@ -709,6 +709,16 @@ tasks:
                 echo "Copied wsh to bin/ for backend deployment"
                 {{end}}
 
+    test:e2e:macos:
+        desc: Run E2E tests on macOS (frontend-only with mocked Tauri IPC)
+        platforms: [darwin]
+        deps:
+            - npm:install
+        cmds:
+            - npx vite --config vite.config.tauri.ts &
+            - sleep 5
+            - npx wdio run wdio.macos.conf.cjs || EXIT_CODE=$?; kill %1 2>/dev/null; exit ${EXIT_CODE:-0}
+
     build:frontend:prod:
         desc: Build the frontend for production (used by Tauri)
         cmd: npx vite build --mode production --config vite.config.tauri.ts

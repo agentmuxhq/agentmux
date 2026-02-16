@@ -11,6 +11,11 @@ interface WindowControlsProps {
 }
 
 const WindowControls = memo(({ platform, showNativeControls }: WindowControlsProps) => {
+    // On macOS with native controls, don't show custom window controls
+    if (platform === "darwin" && showNativeControls) {
+        return null;
+    }
+
     const handleNewWindow = async () => {
         try {
             const newWindowLabel = await getApi().openNewWindow();

@@ -8,6 +8,7 @@
  *
  * Or use the npm script: npm run test:e2e:macos
  */
+const { version } = require('./package.json')
 const baseConfig = require('./wdio.conf.cjs').config
 
 exports.config = {
@@ -35,7 +36,7 @@ exports.config = {
   // Inject Tauri IPC mocks before each test
   before: async function () {
     await browser.url('/')
-    await browser.execute(() => {
+    await browser.execute((appVersion) => {
       if (!window.__TAURI_INTERNALS__) {
         // Mutable zoom state for get/set_zoom_factor
         let mockZoomFactor = 1.0
@@ -52,7 +53,7 @@ exports.config = {
               get_config_dir: '/tmp/agentmux-test/config',
               get_env: '',
               get_about_modal_details: {
-                version: '0.28.17',
+                version: appVersion,
                 buildTime: '202602160000',
               },
               get_backend_endpoints: {
@@ -95,6 +96,6 @@ exports.config = {
           },
         }
       }
-    })
+    }, version)
   },
 }

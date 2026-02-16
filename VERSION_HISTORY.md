@@ -10,6 +10,16 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
+### v0.28.18-fork (2026-02-16)
+- **Agent:** AgentO
+- **Changes:**
+  - Harden E2E tests: replace browser.pause() with proper waitUntil waits
+  - Add data-testid attributes to UI components for stable test selectors
+  - Create macOS-compatible WDIO config with mocked Tauri IPC
+  - Add window-controls and layout regression test specs
+  - Add byTestId() and waitForZoomChange() test helpers
+  - Update SPEC_E2E_TESTING_MACOS.md with implementation details
+
 ### v0.28.5-fork (2026-02-15)
 - **Agent:** AgentO
 - **Changes:**

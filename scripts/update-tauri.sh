@@ -38,7 +38,7 @@ rm -f src-tauri/Cargo.toml.bak
 
 # Update Cargo.lock
 echo "📝 Updating Cargo.lock..."
-cd src-tauri && cargo update tauri && cd ..
+(cd src-tauri && cargo update tauri)
 
 if [ "$UPDATE_PLUGINS" = true ]; then
     echo
@@ -62,15 +62,20 @@ if [ "$UPDATE_PLUGINS" = true ]; then
             npm install --save-exact @tauri-apps/plugin-$plugin@$cargo_ver 2>/dev/null || echo "    ⚠️  Package not found or not needed"
 
             # Update Cargo.toml to pin major.minor
+            # Handles both simple format: tauri-plugin-foo = "2"
+            # And complex format: tauri-plugin-foo = { version = "2", features = [...] }
             cargo_mm=$(echo $cargo_ver | cut -d. -f1,2)
-            sed -i.bak "s/tauri-plugin-$plugin = \"[^\"]*\"/tauri-plugin-$plugin = \"=$cargo_mm\"/" src-tauri/Cargo.toml
+            sed -i.bak \
+                -e "s/tauri-plugin-$plugin = \"[^\"]*\"/tauri-plugin-$plugin = \"=$cargo_mm\"/" \
+                -e "s/tauri-plugin-$plugin = { version = \"[^\"]*\"/tauri-plugin-$plugin = { version = \"=$cargo_mm\"/" \
+                src-tauri/Cargo.toml
             rm -f src-tauri/Cargo.toml.bak
         fi
     done
 
     # Update all plugin versions in Cargo.lock
     echo "  📝 Updating Cargo.lock for plugins..."
-    cd src-tauri && cargo update && cd ..
+    (cd src-tauri && cargo update)
 fi
 
 echo

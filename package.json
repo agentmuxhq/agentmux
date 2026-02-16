@@ -7,7 +7,7 @@
     "productName": "AgentMux",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.28.20",
+    "version": "0.28.21",
     "homepage": "https://github.com/a5af/agentmux",
     "build": {
         "appId": "com.a5af.agentmux"

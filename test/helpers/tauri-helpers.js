@@ -104,12 +104,12 @@ export async function getTauriVersion() {
  * Uses Tauri IPC get_platform when available, falls back to navigator.platform.
  */
 export async function getPlatform() {
-  return await browser.execute(() => {
+  return await browser.execute(function () {
     if (window.__TAURI_INTERNALS__) {
       try {
         // Synchronous check — the mock or cached value
-        return window.__TAURI_INTERNALS__.invoke('get_platform') ?? navigator.platform
-      } catch {
+        return window.__TAURI_INTERNALS__.invoke('get_platform') || navigator.platform
+      } catch (e) {
         return navigator.platform
       }
     }
@@ -123,7 +123,7 @@ export async function getPlatform() {
 export async function waitForAppReady(timeout = 30000) {
   await browser.waitUntil(
     async () => {
-      const isReady = await browser.execute(() => {
+      const isReady = await browser.execute(function () {
         return window.__TAURI_INTERNALS__ !== undefined &&
                document.readyState === 'complete'
       })

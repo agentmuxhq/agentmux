@@ -15,7 +15,7 @@ describe('Zoom Functionality', () => {
     const platform = await getPlatform()
     console.log(`Running on platform: ${platform}`)
 
-    const version = await browser.execute(() => {
+    const version = await browser.execute(function () {
       return window.__TAURI_INTERNALS__ ? 'Tauri available' : 'No Tauri'
     })
     console.log(`Tauri status: ${version}`)
@@ -145,7 +145,7 @@ describe('Zoom Functionality', () => {
 
       try {
         // Dispatch a real WheelEvent with Ctrl key
-        await browser.execute(() => {
+        await browser.execute(function () {
           const event = new WheelEvent('wheel', {
             deltaY: -100,
             ctrlKey: true,
@@ -189,7 +189,7 @@ describe('Zoom Functionality', () => {
 
       try {
         // Dispatch a real WheelEvent with Ctrl key
-        await browser.execute(() => {
+        await browser.execute(function () {
           const event = new WheelEvent('wheel', {
             deltaY: 100,
             ctrlKey: true,
@@ -262,7 +262,7 @@ describe('Zoom Functionality', () => {
 
   describe('Frontend State Tests', () => {
     it('should have zoom atom accessible', async function() {
-      const hasZoomAtom = await browser.execute(() => {
+      const hasZoomAtom = await browser.execute(function () {
         // Check if zoom module is loaded
         return typeof window !== 'undefined'
       })
@@ -271,7 +271,7 @@ describe('Zoom Functionality', () => {
     })
 
     it('should have wheel event listener registered', async function() {
-      const hasListener = await browser.execute(() => {
+      const hasListener = await browser.execute(function () {
         // This is a basic check - can't directly check listeners
         return document.body !== null
       })

@@ -17,17 +17,36 @@
         flex: 0 0 fit-content;
     }
 
-    .close-button {
-        cursor: pointer;
-        padding: 4px 8px;
-        color: #ff4444;
-        font-size: 16px;
+    .window-action-buttons {
+        display: flex;
+        flex-direction: row;
+        gap: 4px;
+        align-items: center;
         -webkit-app-region: no-drag;
-        user-select: none;
-        transition: opacity 0.15s ease;
 
-        &:hover {
-            opacity: 0.7;
+        .window-action-btn {
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 14px;
+            background: none;
+            border: none;
+            color: var(--secondary-text-color);
+            transition: opacity 0.15s ease, color 0.15s ease;
+            user-select: none;
+            -webkit-app-region: no-drag;
+
+            &:hover {
+                opacity: 0.7;
+                color: var(--main-text-color);
+            }
+
+            &.close-btn {
+                color: #ff4444;
+
+                &:hover {
+                    color: #ff6666;
+                }
+            }
         }
     }
 }

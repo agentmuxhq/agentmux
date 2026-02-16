@@ -73,19 +73,42 @@ const ConfigErrorIcon = forwardRef<HTMLElement>((_, ref) => {
     );
 });
 
-const CloseButton = memo(() => {
+const WindowActionButtons = memo(() => {
+    const handleMinimize = () => {
+        getApi().minimizeWindow();
+    };
+
+    const handleMaximize = () => {
+        getApi().maximizeWindow();
+    };
+
     const handleClose = () => {
         getApi().closeWindow();
     };
 
     return (
-        <div
-            className="close-button"
-            onClick={handleClose}
-            title="Close Window"
-            data-tauri-drag-region="false"
-        >
-            <i className="fa fa-times" />
+        <div className="window-action-buttons" data-tauri-drag-region="false">
+            <button
+                className="window-action-btn minimize-btn"
+                onClick={handleMinimize}
+                title="Minimize Window"
+            >
+                <i className="fa fa-window-minimize" />
+            </button>
+            <button
+                className="window-action-btn maximize-btn"
+                onClick={handleMaximize}
+                title="Maximize Window"
+            >
+                <i className="fa fa-window-maximize" />
+            </button>
+            <button
+                className="window-action-btn close-btn"
+                onClick={handleClose}
+                title="Close Window"
+            >
+                <i className="fa fa-times" />
+            </button>
         </div>
     );
 });
@@ -101,7 +124,7 @@ const SystemStatus = memo(({ updateStatusBannerRef, configErrorRef }: SystemStat
             <ActionWidgets />
             <UpdateStatusBanner ref={updateStatusBannerRef} />
             <ConfigErrorIcon ref={configErrorRef} />
-            <CloseButton />
+            <WindowActionButtons />
         </div>
     );
 });

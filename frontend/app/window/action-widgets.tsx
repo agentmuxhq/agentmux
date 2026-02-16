@@ -7,11 +7,10 @@
  */
 
 import { Tooltip } from "@/app/element/tooltip";
-import { NotificationPopover } from "@/app/notification/notificationpopover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, getApi, isDev } from "@/store/global";
+import { atoms, createBlock, getApi } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
@@ -139,7 +138,6 @@ const ActionWidgets = memo(() => {
             {widgets?.map((data, idx) => <ActionWidget key={`widget-${idx}`} widget={data} />)}
             {showHelp && <ActionWidget key="help" widget={helpWidget} />}
             <ActionWidget key="devtools" widget={devToolsWidget} />
-            {isDev() && <NotificationPopover />}
         </div>
     );
 });

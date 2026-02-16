@@ -10,6 +10,11 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
+### v0.28.5-fork (2026-02-15)
+- **Agent:** AgentO
+- **Changes:**
+  - Remove notification bell icon from widget bar (unused dev-only UI)
+
 ### v0.28.4-fork (2026-02-15)
 - **Agent:** AgentO
 - **Changes:**

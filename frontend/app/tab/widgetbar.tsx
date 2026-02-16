@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { NotificationPopover } from "@/app/notification/notificationpopover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { WindowService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, getApi, isDev } from "@/store/global";
+import { atoms, createBlock, getApi } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
@@ -151,7 +150,6 @@ const WidgetBar = memo(() => {
             {widgets?.map((data, idx) => <HorizontalWidget key={`widget-${idx}`} widget={data} />)}
             {showHelp && <HorizontalWidget key="help" widget={helpWidget} />}
             <HorizontalWidget key="devtools" widget={devToolsWidget} />
-            {isDev() && <NotificationPopover />}
         </div>
     );
 });

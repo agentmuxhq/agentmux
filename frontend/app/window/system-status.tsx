@@ -12,7 +12,7 @@ import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo } from "react";
 import { ActionWidgets } from "./action-widgets";
-import { UpdateStatusBanner } from "@/app/tab/updatebanner";
+import { UpdateStatusBanner } from "./update-banner";
 import "./system-status.scss";
 
 const ConfigErrorMessage = () => {

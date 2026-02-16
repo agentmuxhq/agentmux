@@ -5,7 +5,7 @@ import { AIPanel } from "@/app/aipanel/aipanel";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
-import { TabBar } from "@/app/tab/tabbar";
+import { WindowHeader } from "@/app/window/window-header";
 import { TabContent } from "@/app/tab/tabcontent";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, getApi } from "@/store/global";
@@ -47,7 +47,7 @@ const WorkspaceElem = memo(() => {
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            <TabBar key={ws.oid} workspace={ws} />
+            <WindowHeader key={ws.oid} workspace={ws} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
                     <PanelGroup

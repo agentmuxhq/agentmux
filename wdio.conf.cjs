@@ -5,6 +5,15 @@ const { spawn } = require('child_process')
 // Keep track of the tauri-driver process
 let tauriDriver
 
+// Platform detection
+const isWindows = os.platform() === 'win32'
+
+// Platform-aware configuration
+const getAppBinary = () => {
+  const basePath = path.resolve(__dirname, 'src-tauri/target/release/agentmux')
+  return isWindows ? `${basePath}.exe` : basePath
+}
+
 exports.config = {
   runner: 'local',
   specs: ['./test/specs/**/*.e2e.js'],
@@ -16,8 +25,10 @@ exports.config = {
     {
       maxInstances: 1,
       'tauri:options': {
-        application: path.resolve(__dirname, 'src-tauri/target/release/agentmux')
-      }
+        application: getAppBinary()
+      },
+      // Required for EdgeDriver 117+ on Windows
+      ...(isWindows && { webviewOptions: {} })
     }
   ],
   logLevel: 'info',

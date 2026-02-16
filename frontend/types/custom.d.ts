@@ -121,6 +121,11 @@ declare global {
         setKeyboardChordMode: () => void; // set-keyboard-chord-mode
         clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
         setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
+        // Claude Code auth commands
+        openClaudeCodeAuth: () => Promise<void>; // open-claude-code-auth
+        getClaudeCodeAuth: () => Promise<{ connected: boolean; email?: string; expires_at?: number }>; // get-claude-code-auth
+        disconnectClaudeCode: () => Promise<void>; // disconnect-claude-code
+        listen: (event: string, callback: (event: any) => void) => Promise<() => void>; // listen to events
     };
 
     type ElectronContextMenuItem = {

@@ -1,5 +1,3 @@
-#[cfg(feature = "rust-backend")]
-mod backend;
 mod commands;
 mod crash;
 mod heartbeat;

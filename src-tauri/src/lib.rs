@@ -245,7 +245,13 @@ pub fn run() {
 /// Handle deep link URLs (e.g., agentmux://auth?code=ABC123)
 #[allow(dead_code)]
 fn handle_deep_link(app: tauri::AppHandle, url: &str) {
-    tracing::info!("Processing deep link: {}", url);
+    // Redact sensitive params from logs
+    let safe_url = if url.contains("code=") {
+        url.split("code=").next().unwrap_or(url).to_string() + "code=[redacted]"
+    } else {
+        url.to_string()
+    };
+    tracing::info!("Processing deep link: {}", safe_url);
 
     // Parse the URL to extract the protocol and path
     if let Some(path_with_query) = url.strip_prefix("agentmux://") {

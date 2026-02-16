@@ -1,6 +1,6 @@
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthStatus {
@@ -82,7 +82,13 @@ pub async fn handle_auth_callback(
     app: AppHandle,
     code: String,
 ) -> Result<(), String> {
-    tracing::info!("Handling OAuth callback with code: {}...", &code[..8.min(code.len())]);
+    // Redact OAuth code from logs for security
+    let code_preview = if code.len() > 8 {
+        format!("{}...", &code.chars().take(8).collect::<String>())
+    } else {
+        "[redacted]".to_string()
+    };
+    tracing::info!("Handling OAuth callback with code: {}", code_preview);
 
     // TODO: Call backend RPC to exchange code for token
     // For now, just emit a mock success event

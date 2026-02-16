@@ -39,7 +39,6 @@ const WindowHeader = memo(({ workspace }: WindowHeaderProps) => {
         <div
             ref={windowHeaderRef}
             className="window-header"
-            data-tauri-drag-region
             onContextMenu={handleContextMenu}
         >
             <WindowDrag ref={draggerLeftRef} className="left" />

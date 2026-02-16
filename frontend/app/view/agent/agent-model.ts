@@ -5,7 +5,7 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getFileSubject, waveEventSubscribe } from "@/app/store/wps";
-import { atoms, globalStore, WOS } from "@/app/store/global";
+import { atoms, globalStore, WOS, getApi } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { base64ToArray, stringToBase64 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom } from "jotai";
@@ -13,6 +13,7 @@ import React from "react";
 import { Subscription } from "rxjs";
 import { AgentViewWrapper } from "./agent-view";
 import { ClaudeCodeStreamParser } from "./stream-parser";
+import { ClaudeCodeApiClient } from "./api-client";
 import {
     AgentAtoms,
     createAgentAtoms,
@@ -60,6 +61,9 @@ export class AgentViewModel implements ViewModel {
     private fileSubjectRef: any = null;
     private procStatusUnsub: (() => void) | null = null;
     private shellProcFullStatusAtom: PrimitiveAtom<BlockControllerRuntimeStatus>;
+    private apiClient: ClaudeCodeApiClient | null = null;
+    private useApiMode: boolean = false;
+    private conversationId: string;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
@@ -134,7 +138,47 @@ export class AgentViewModel implements ViewModel {
         });
 
         this.parser = new ClaudeCodeStreamParser();
-        this.connectToTerminal();
+        this.conversationId = `conv-${blockId}`;
+
+        // Initialize connection mode (API or local terminal)
+        this.initializeConnectionMode();
+    }
+
+    /**
+     * Initialize connection mode based on auth status
+     * Uses API mode if authenticated, falls back to local terminal mode otherwise
+     */
+    private async initializeConnectionMode(): Promise<void> {
+        try {
+            // Check if user is authenticated with Claude Code
+            const authStatus = await getApi().getClaudeCodeAuth();
+
+            if (authStatus.connected) {
+                // TODO: Get actual API key from backend
+                // For now, use a placeholder that will fail gracefully
+                console.log("[agent] Using API mode (connected to Claude Code)");
+                this.useApiMode = true;
+                // this.apiClient = new ClaudeCodeApiClient({
+                //     apiKey: "API_KEY_FROM_BACKEND",
+                // });
+
+                // API mode will be used when sending messages
+                globalStore.set(this.atoms.messageRouterAtom, {
+                    backend: "cloud",
+                    connected: true,
+                    endpoint: "api.anthropic.com",
+                });
+            } else {
+                // Fall back to local terminal mode
+                console.log("[agent] Using local terminal mode (not connected)");
+                this.useApiMode = false;
+                this.connectToTerminal();
+            }
+        } catch (error) {
+            console.error("[agent] Failed to check auth status, falling back to local mode:", error);
+            this.useApiMode = false;
+            this.connectToTerminal();
+        }
     }
 
     // --- Terminal connection ---
@@ -186,17 +230,48 @@ export class AgentViewModel implements ViewModel {
 
     // --- User actions ---
 
-    sendMessage = (text: string): void => {
+    sendMessage = async (text: string): Promise<void> => {
         if (!text.trim()) return;
 
-        const b64data = stringToBase64(text + "\n");
-        RpcApi.ControllerInputCommand(TabRpcClient, {
-            blockid: this.blockId,
-            inputdata64: b64data,
-        }).catch((e: any) => {
-            console.error("[agent] Failed to send input:", e);
-        });
+        if (this.useApiMode && this.apiClient) {
+            // Use API mode
+            await this.sendMessageViaAPI(text);
+        } else {
+            // Use local terminal mode
+            const b64data = stringToBase64(text + "\n");
+            RpcApi.ControllerInputCommand(TabRpcClient, {
+                blockid: this.blockId,
+                inputdata64: b64data,
+            }).catch((e: any) => {
+                console.error("[agent] Failed to send input:", e);
+            });
+        }
     };
+
+    /**
+     * Send message via Claude Code API
+     * Streams response and appends nodes to document
+     */
+    private async sendMessageViaAPI(text: string): Promise<void> {
+        if (!this.apiClient) {
+            console.error("[agent] API client not initialized");
+            return;
+        }
+
+        try {
+            // Stream response from API
+            for await (const event of this.apiClient.sendMessage(text, this.conversationId)) {
+                // Parse event and append to document
+                const nodes = await this.parser.parseEvent(event);
+                if (nodes.length > 0) {
+                    const currentDoc = globalStore.get(this.atoms.documentAtom);
+                    globalStore.set(this.atoms.documentAtom, [...currentDoc, ...nodes]);
+                }
+            }
+        } catch (error) {
+            console.error("[agent] Failed to send message via API:", error);
+        }
+    }
 
     exportDocument = (format: "markdown" | "html"): void => {
         const doc = globalStore.get(this.atoms.documentAtom);

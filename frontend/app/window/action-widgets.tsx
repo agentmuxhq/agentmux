@@ -133,6 +133,7 @@ const ActionWidgets = memo(() => {
     return (
         <div
             className="action-widgets"
+            data-testid="action-widgets"
             onContextMenu={handleWidgetsBarContextMenu}
         >
             {widgets?.map((data, idx) => <ActionWidget key={`widget-${idx}`} widget={data} />)}

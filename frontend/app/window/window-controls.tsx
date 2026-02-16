@@ -26,11 +26,12 @@ const WindowControls = memo(({ platform, showNativeControls }: WindowControlsPro
     };
 
     return (
-        <div className="window-controls" data-tauri-drag-region="false">
+        <div className="window-controls" data-tauri-drag-region="false" data-testid="window-controls">
             <button
                 className="window-control-btn new-window-btn"
                 onClick={handleNewWindow}
                 title="Open New Window"
+                data-testid="new-window-btn"
             >
                 <i className="fa fa-window-restore" />
                 <span>agentmux</span>

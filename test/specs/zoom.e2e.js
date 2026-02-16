@@ -2,6 +2,7 @@ import {
   getZoomFactor,
   setZoomFactor,
   waitForAppReady,
+  waitForZoomChange,
   captureScreenshot,
   getPlatform
 } from '../helpers/tauri-helpers.js'
@@ -24,7 +25,10 @@ describe('Zoom Functionality', () => {
     // Reset zoom to 1.0 before each test
     try {
       await setZoomFactor(1.0)
-      await browser.pause(500)
+      await browser.waitUntil(
+        async () => Math.abs((await getZoomFactor()) - 1.0) < 0.05,
+        { timeout: 3000 }
+      )
     } catch (error) {
       console.log('Could not reset zoom:', error.message)
     }
@@ -32,15 +36,13 @@ describe('Zoom Functionality', () => {
 
   describe('Keyboard Shortcuts - Ctrl', () => {
     it('should zoom in with Ctrl+=', async function() {
-      this.timeout(15000)
-
       console.log('Getting initial zoom...')
       const initialZoom = await getZoomFactor()
       console.log(`Initial zoom: ${initialZoom}`)
 
       console.log('Pressing Ctrl+=...')
       await browser.keys(['Control', '='])
-      await browser.pause(500)
+      await waitForZoomChange(initialZoom)
 
       console.log('Getting new zoom...')
       const newZoom = await getZoomFactor()
@@ -54,13 +56,11 @@ describe('Zoom Functionality', () => {
     })
 
     it('should zoom in with Ctrl++', async function() {
-      this.timeout(15000)
-
       const initialZoom = await getZoomFactor()
       console.log(`Initial zoom: ${initialZoom}`)
 
       await browser.keys(['Control', '+'])
-      await browser.pause(500)
+      await waitForZoomChange(initialZoom)
 
       const newZoom = await getZoomFactor()
       console.log(`New zoom after Ctrl++: ${newZoom}`)
@@ -69,17 +69,18 @@ describe('Zoom Functionality', () => {
     })
 
     it('should zoom out with Ctrl+-', async function() {
-      this.timeout(15000)
-
       // First zoom in
       await setZoomFactor(1.5)
-      await browser.pause(300)
+      await browser.waitUntil(
+        async () => Math.abs((await getZoomFactor()) - 1.5) < 0.05,
+        { timeout: 3000 }
+      )
 
       const initialZoom = await getZoomFactor()
       console.log(`Initial zoom: ${initialZoom}`)
 
       await browser.keys(['Control', '-'])
-      await browser.pause(500)
+      await waitForZoomChange(initialZoom)
 
       const newZoom = await getZoomFactor()
       console.log(`New zoom after Ctrl+-: ${newZoom}`)
@@ -88,17 +89,21 @@ describe('Zoom Functionality', () => {
     })
 
     it('should reset zoom with Ctrl+0', async function() {
-      this.timeout(15000)
-
       // First zoom in
       await setZoomFactor(1.5)
-      await browser.pause(300)
+      await browser.waitUntil(
+        async () => Math.abs((await getZoomFactor()) - 1.5) < 0.05,
+        { timeout: 3000 }
+      )
 
       const zoomedIn = await getZoomFactor()
       console.log(`Zoomed in to: ${zoomedIn}`)
 
       await browser.keys(['Control', '0'])
-      await browser.pause(500)
+      await browser.waitUntil(
+        async () => Math.abs((await getZoomFactor()) - 1.0) < 0.05,
+        { timeout: 5000 }
+      )
 
       const resetZoom = await getZoomFactor()
       console.log(`Reset zoom to: ${resetZoom}`)
@@ -109,10 +114,8 @@ describe('Zoom Functionality', () => {
 
   describe('Keyboard Shortcuts - Cmd (if macOS)', () => {
     it('should zoom in with Cmd+=', async function() {
-      this.timeout(15000)
-
       const platform = await getPlatform()
-      if (!platform.includes('Mac')) {
+      if (!platform.includes('Mac') && platform !== 'darwin') {
         this.skip()
       }
 
@@ -120,7 +123,7 @@ describe('Zoom Functionality', () => {
       console.log(`Initial zoom: ${initialZoom}`)
 
       await browser.keys(['Command', '='])
-      await browser.pause(500)
+      await waitForZoomChange(initialZoom)
 
       const newZoom = await getZoomFactor()
       console.log(`New zoom after Cmd+=: ${newZoom}`)
@@ -131,8 +134,6 @@ describe('Zoom Functionality', () => {
 
   describe('Mouse Wheel Zoom', () => {
     it('should zoom in with Ctrl+Wheel Up', async function() {
-      this.timeout(15000)
-
       const initialZoom = await getZoomFactor()
       console.log(`Initial zoom: ${initialZoom}`)
 
@@ -154,7 +155,7 @@ describe('Zoom Functionality', () => {
           window.dispatchEvent(event)
         })
 
-        await browser.pause(500)
+        await waitForZoomChange(initialZoom)
 
         const newZoom = await getZoomFactor()
         console.log(`New zoom after Ctrl+Wheel: ${newZoom}`)
@@ -173,11 +174,12 @@ describe('Zoom Functionality', () => {
     })
 
     it('should zoom out with Ctrl+Wheel Down', async function() {
-      this.timeout(15000)
-
       // First zoom in
       await setZoomFactor(1.5)
-      await browser.pause(300)
+      await browser.waitUntil(
+        async () => Math.abs((await getZoomFactor()) - 1.5) < 0.05,
+        { timeout: 3000 }
+      )
 
       const initialZoom = await getZoomFactor()
       console.log(`Initial zoom: ${initialZoom}`)
@@ -197,7 +199,7 @@ describe('Zoom Functionality', () => {
           window.dispatchEvent(event)
         })
 
-        await browser.pause(500)
+        await waitForZoomChange(initialZoom)
 
         const newZoom = await getZoomFactor()
         console.log(`New zoom after Ctrl+Wheel down: ${newZoom}`)
@@ -213,8 +215,6 @@ describe('Zoom Functionality', () => {
 
   describe('Direct API Tests', () => {
     it('should get initial zoom factor', async function() {
-      this.timeout(10000)
-
       const zoom = await getZoomFactor()
       console.log(`Current zoom factor: ${zoom}`)
 
@@ -223,10 +223,11 @@ describe('Zoom Functionality', () => {
     })
 
     it('should set zoom factor via API', async function() {
-      this.timeout(10000)
-
       await setZoomFactor(1.5)
-      await browser.pause(500)
+      await browser.waitUntil(
+        async () => Math.abs((await getZoomFactor()) - 1.5) < 0.05,
+        { timeout: 3000 }
+      )
 
       const zoom = await getZoomFactor()
       console.log(`Zoom after setting to 1.5: ${zoom}`)
@@ -235,11 +236,12 @@ describe('Zoom Functionality', () => {
     })
 
     it('should clamp zoom to valid range', async function() {
-      this.timeout(10000)
-
       // Try to set too high
       await setZoomFactor(5.0)
-      await browser.pause(300)
+      await browser.waitUntil(
+        async () => (await getZoomFactor()) <= 3.0,
+        { timeout: 3000 }
+      )
 
       let zoom = await getZoomFactor()
       console.log(`Zoom after setting to 5.0: ${zoom}`)
@@ -247,7 +249,10 @@ describe('Zoom Functionality', () => {
 
       // Try to set too low
       await setZoomFactor(0.1)
-      await browser.pause(300)
+      await browser.waitUntil(
+        async () => (await getZoomFactor()) >= 0.5,
+        { timeout: 3000 }
+      )
 
       zoom = await getZoomFactor()
       console.log(`Zoom after setting to 0.1: ${zoom}`)
@@ -257,8 +262,6 @@ describe('Zoom Functionality', () => {
 
   describe('Frontend State Tests', () => {
     it('should have zoom atom accessible', async function() {
-      this.timeout(10000)
-
       const hasZoomAtom = await browser.execute(() => {
         // Check if zoom module is loaded
         return typeof window !== 'undefined'
@@ -268,8 +271,6 @@ describe('Zoom Functionality', () => {
     })
 
     it('should have wheel event listener registered', async function() {
-      this.timeout(10000)
-
       const hasListener = await browser.execute(() => {
         // This is a basic check - can't directly check listeners
         return document.body !== null

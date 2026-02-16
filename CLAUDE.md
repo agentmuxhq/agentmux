@@ -152,6 +152,80 @@ If `verify-version.sh` reports errors:
 
 **Current version:** See [VERSION_HISTORY.md](VERSION_HISTORY.md)
 
+### Tauri Version Management
+
+**CRITICAL:** Tauri versions MUST be synchronized across all packages to prevent build failures.
+
+#### Why This Matters
+
+Tauri consists of three components that must align on the same **major.minor** version:
+- Rust crate `tauri` (backend) - in `src-tauri/Cargo.toml`
+- NPM package `@tauri-apps/cli` (build tool) - in `package.json`
+- NPM package `@tauri-apps/api` (frontend API) - in `package.json`
+
+**Example of valid alignment:**
+- ✅ All on 2.10.x (CLI: 2.10.0, API: 2.10.1, crate: 2.10.2)
+- ❌ Mix of 2.9.x and 2.10.x (FAILS with version mismatch error)
+
+#### Before ANY Build
+
+**ALWAYS verify Tauri versions before building:**
+```bash
+./scripts/verify-tauri-versions.sh
+```
+
+Expected output:
+```
+✅ All Tauri versions aligned on 2.10.x
+   This build should succeed!
+```
+
+If you see a mismatch error, **DO NOT** proceed with the build - fix versions first!
+
+#### Updating Tauri
+
+**NEVER** manually edit package.json or Cargo.toml for Tauri versions.
+
+**Use the update script:**
+```bash
+./scripts/update-tauri.sh 2.11.0
+```
+
+This automatically:
+1. Updates npm packages to exact versions (no ^)
+2. Updates Cargo.toml to match major.minor
+3. Updates both lock files
+4. Verifies alignment
+
+#### Version Pinning Strategy
+
+**package.json:** Uses exact versions (NO `^` prefix)
+```json
+"@tauri-apps/cli": "2.10.0",
+"@tauri-apps/api": "2.10.1"
+```
+
+**Cargo.toml:** Uses `=MAJOR.MINOR` range
+```toml
+tauri = { version = "=2.10", features = [...] }
+```
+
+This allows patch updates (2.10.2 → 2.10.3) but prevents minor version drift (2.10 → 2.11).
+
+#### Troubleshooting
+
+**Build fails with "version mismatch" error:**
+1. Run `./scripts/verify-tauri-versions.sh` to see versions
+2. Run `./scripts/update-tauri.sh <version>` to fix
+3. Commit **both** `package-lock.json` and `Cargo.lock`
+
+**After npm install, versions drift:**
+- This means package.json still has `^` prefixes
+- Remove `^` and pin exact versions
+- Run `npm install` to regenerate lock file
+
+**See:** [docs/RETRO_TAURI_VERSION_MISMATCH.md](docs/RETRO_TAURI_VERSION_MISMATCH.md) for detailed analysis
+
 ---
 
 ## Agent Workspace Pattern

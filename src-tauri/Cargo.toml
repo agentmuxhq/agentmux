@@ -25,7 +25,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "devtools", "custom-protocol"] }
+tauri = { version = "=2.10", features = ["tray-icon", "devtools", "custom-protocol"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"

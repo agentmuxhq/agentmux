@@ -1,15 +1,21 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * ActionWidgets - Right-aligned buttons for creating blocks
+ * Renamed from WidgetBar for clarity - these are action buttons, not traditional widgets
+ */
+
 import { Tooltip } from "@/app/element/tooltip";
+import { NotificationPopover } from "@/app/notification/notificationpopover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, getApi } from "@/store/global";
+import { atoms, createBlock, getApi, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
-import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
+import "./action-widgets.scss";
 
 function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetConfigType[] {
     if (wmap == null) {
@@ -32,7 +38,7 @@ async function handleWidgetSelect(widget: WidgetConfigType) {
     createBlock(blockDef, widget.magnified);
 }
 
-const HorizontalWidget = memo(({ widget }: { widget: WidgetConfigType }) => {
+const ActionWidget = memo(({ widget }: { widget: WidgetConfigType }) => {
     if (widget["display:hidden"]) {
         return null;
     }
@@ -56,7 +62,7 @@ const HorizontalWidget = memo(({ widget }: { widget: WidgetConfigType }) => {
     );
 });
 
-const WidgetBar = memo(() => {
+const ActionWidgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
 
     const helpWidget: WidgetConfigType = {
@@ -127,14 +133,15 @@ const WidgetBar = memo(() => {
 
     return (
         <div
-            className="flex flex-row items-center gap-1 h-full px-1 select-none"
+            className="action-widgets"
             onContextMenu={handleWidgetsBarContextMenu}
         >
-            {widgets?.map((data, idx) => <HorizontalWidget key={`widget-${idx}`} widget={data} />)}
-            {showHelp && <HorizontalWidget key="help" widget={helpWidget} />}
-            <HorizontalWidget key="devtools" widget={devToolsWidget} />
+            {widgets?.map((data, idx) => <ActionWidget key={`widget-${idx}`} widget={data} />)}
+            {showHelp && <ActionWidget key="help" widget={helpWidget} />}
+            <ActionWidget key="devtools" widget={devToolsWidget} />
+            {isDev() && <NotificationPopover />}
         </div>
     );
 });
 
-export { WidgetBar };
+export { ActionWidgets };

@@ -88,7 +88,9 @@ func MigrateOrphanedLayouts(ctx context.Context) error {
 			}
 		}
 
-		// Find orphaned blocks (in layout but not in tab.BlockIds OR deleted from DB)
+		// Find orphaned blocks (in layout but not in tab.BlockIds)
+		// Note: deletedBlockIds are already excluded from blockIdSet, so any
+		// deleted block that appears in LeafOrder will be caught here too.
 		orphanedBlocks := []string{}
 		if layout.LeafOrder != nil {
 			for _, leaf := range *layout.LeafOrder {
@@ -97,7 +99,6 @@ func MigrateOrphanedLayouts(ctx context.Context) error {
 				}
 			}
 		}
-		orphanedBlocks = append(orphanedBlocks, deletedBlockIds...)
 
 		// Log the comparison for debugging
 		if layout.LeafOrder != nil && len(*layout.LeafOrder) > 0 {

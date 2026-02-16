@@ -10,7 +10,7 @@ This document tracks the version history of the a5af/agentmux fork (formerly a5a
 
 ## Version History (Latest First)
 
-### v0.28.18-fork (2026-02-16)
+### v0.28.20-fork (2026-02-16)
 - **Agent:** AgentO
 - **Changes:**
   - Harden E2E tests: replace browser.pause() with proper waitUntil waits

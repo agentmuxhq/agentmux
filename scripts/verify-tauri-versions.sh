@@ -59,5 +59,61 @@ if [ "$NPM_CLI_MM" != "$NPM_API_MM" ] || [ "$NPM_CLI_MM" != "$CARGO_MM" ]; then
     exit 1
 fi
 
-echo "✅ All Tauri versions aligned on $NPM_CLI_MM.x"
-echo "   This build should succeed!"
+echo "✅ All Tauri core packages aligned on $NPM_CLI_MM.x"
+echo
+
+# Check plugin versions
+echo "🔌 Checking Tauri plugin alignment..."
+echo
+
+PLUGIN_ERRORS=0
+
+# List of plugins that have both npm and Rust versions
+PLUGINS_WITH_NPM=(
+    "shell"
+    "opener"
+    "fs"
+    "notification"
+)
+
+for plugin in "${PLUGINS_WITH_NPM[@]}"; do
+    npm_ver=$(npm list @tauri-apps/plugin-$plugin --depth=0 --json 2>/dev/null | jq -r ".dependencies[\"@tauri-apps/plugin-$plugin\"].version" 2>/dev/null || echo "not installed")
+    cargo_ver=$(awk "/^\[\[package\]\]/{p=0} /^name = \"tauri-plugin-$plugin\"$/{p=1} p && /^version =/{print \$3; exit}" src-tauri/Cargo.lock | tr -d '"' 2>/dev/null || echo "not found")
+
+    if [ "$npm_ver" = "not installed" ]; then
+        echo "  ⚠️  @tauri-apps/plugin-$plugin: not installed in npm"
+        continue
+    fi
+
+    if [ "$cargo_ver" = "not found" ]; then
+        echo "  ⚠️  tauri-plugin-$plugin: not found in Cargo.lock"
+        continue
+    fi
+
+    npm_mm=$(echo $npm_ver | cut -d. -f1,2)
+    cargo_mm=$(echo $cargo_ver | cut -d. -f1,2)
+
+    if [ "$npm_mm" != "$cargo_mm" ]; then
+        echo "  ❌ plugin-$plugin: npm $npm_ver (${npm_mm}.x) != cargo $cargo_ver (${cargo_mm}.x)"
+        PLUGIN_ERRORS=$((PLUGIN_ERRORS + 1))
+    else
+        echo "  ✅ plugin-$plugin: npm $npm_ver, cargo $cargo_ver (${npm_mm}.x)"
+    fi
+done
+
+echo
+
+if [ $PLUGIN_ERRORS -gt 0 ]; then
+    echo "❌ ERROR: $PLUGIN_ERRORS plugin version mismatch(es) found!"
+    echo
+    echo "   To fix:"
+    echo "   1. Update package.json plugin versions to match Cargo.lock"
+    echo "   2. Update Cargo.toml plugin versions (use =MAJOR.MINOR)"
+    echo "   3. Run: npm install && cd src-tauri && cargo update"
+    echo
+    echo "   Or use: ./scripts/update-tauri.sh <version> --plugins"
+    exit 1
+fi
+
+echo "✅ All Tauri packages and plugins aligned!"
+echo "   Build should succeed!"

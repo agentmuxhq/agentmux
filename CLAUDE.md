@@ -158,14 +158,24 @@ If `verify-version.sh` reports errors:
 
 #### Why This Matters
 
-Tauri consists of three components that must align on the same **major.minor** version:
+Tauri consists of **core packages** and **plugins** that must align on the same **major.minor** version:
+
+**Core packages:**
 - Rust crate `tauri` (backend) - in `src-tauri/Cargo.toml`
 - NPM package `@tauri-apps/cli` (build tool) - in `package.json`
 - NPM package `@tauri-apps/api` (frontend API) - in `package.json`
 
+**Plugins (examples):**
+- Rust crate `tauri-plugin-shell` + NPM `@tauri-apps/plugin-shell`
+- Rust crate `tauri-plugin-fs` + NPM `@tauri-apps/plugin-fs`
+- Rust crate `tauri-plugin-opener` + NPM `@tauri-apps/plugin-opener`
+- And 8+ more plugins...
+
 **Example of valid alignment:**
-- ✅ All on 2.10.x (CLI: 2.10.0, API: 2.10.1, crate: 2.10.2)
+- ✅ Core: All on 2.10.x (CLI: 2.10.0, API: 2.10.1, crate: 2.10.2)
+- ✅ Plugins: shell on 2.3.x, opener on 2.5.x (npm matches Cargo major.minor)
 - ❌ Mix of 2.9.x and 2.10.x (FAILS with version mismatch error)
+- ❌ Plugin shell npm 2.2.x but Cargo 2.3.x (FAILS with plugin version mismatch)
 
 #### Before ANY Build
 
@@ -176,8 +186,16 @@ Tauri consists of three components that must align on the same **major.minor** v
 
 Expected output:
 ```
-✅ All Tauri versions aligned on 2.10.x
-   This build should succeed!
+✅ All Tauri core packages aligned on 2.10.x
+
+🔌 Checking Tauri plugin alignment...
+  ✅ plugin-shell: npm 2.3.5, cargo 2.3.5 (2.3.x)
+  ✅ plugin-opener: npm 2.5.3, cargo 2.5.3 (2.5.x)
+  ✅ plugin-fs: npm 2.4.5, cargo 2.4.5 (2.4.x)
+  ✅ plugin-notification: npm 2.3.3, cargo 2.3.3 (2.3.x)
+
+✅ All Tauri packages and plugins aligned!
+   Build should succeed!
 ```
 
 If you see a mismatch error, **DO NOT** proceed with the build - fix versions first!
@@ -188,29 +206,40 @@ If you see a mismatch error, **DO NOT** proceed with the build - fix versions fi
 
 **Use the update script:**
 ```bash
+# Update core packages only
 ./scripts/update-tauri.sh 2.11.0
+
+# Update core packages AND plugins
+./scripts/update-tauri.sh 2.11.0 --plugins
 ```
 
 This automatically:
 1. Updates npm packages to exact versions (no ^)
 2. Updates Cargo.toml to match major.minor
 3. Updates both lock files
-4. Verifies alignment
+4. Optionally updates all plugins (with --plugins flag)
+5. Verifies alignment
 
 #### Version Pinning Strategy
 
 **package.json:** Uses exact versions (NO `^` prefix)
 ```json
 "@tauri-apps/cli": "2.10.0",
-"@tauri-apps/api": "2.10.1"
+"@tauri-apps/api": "2.10.1",
+"@tauri-apps/plugin-shell": "2.3.5",
+"@tauri-apps/plugin-opener": "2.5.3"
 ```
 
 **Cargo.toml:** Uses `=MAJOR.MINOR` range
 ```toml
 tauri = { version = "=2.10", features = [...] }
+tauri-plugin-shell = "=2.3"
+tauri-plugin-opener = "=2.5"
 ```
 
 This allows patch updates (2.10.2 → 2.10.3) but prevents minor version drift (2.10 → 2.11).
+
+**Important:** Both core packages AND plugins must use this pinning strategy to prevent build failures.
 
 #### Troubleshooting
 

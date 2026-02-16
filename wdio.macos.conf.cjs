@@ -36,7 +36,7 @@ exports.config = {
   // Inject Tauri IPC mocks before each test
   before: async function () {
     await browser.url('/')
-    await browser.execute((appVersion) => {
+    await browser.execute(function (appVersion) {
       if (!window.__TAURI_INTERNALS__) {
         // Mutable zoom state for get/set_zoom_factor
         let mockZoomFactor = 1.0

@@ -41,4 +41,5 @@ test-results/
 src-tauri/target/
 src-tauri/binaries/
 backend-test/
+src-tauri/gen/schemas/
 test/screenshots/

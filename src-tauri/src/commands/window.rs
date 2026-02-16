@@ -52,7 +52,7 @@ pub fn set_zoom_factor<R: Runtime>(
     let factor = factor.clamp(0.5, 3.0);
     *state.zoom_factor.lock().unwrap() = factor;
 
-    // Tauri uses webview.set_zoom() for zoom factor
+    // Use cross-platform zoom API
     window
         .set_zoom(factor)
         .map_err(|e| format!("Failed to set zoom: {}", e))?;

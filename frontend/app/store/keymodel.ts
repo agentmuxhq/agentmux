@@ -658,7 +658,7 @@ function registerGlobalKeys() {
         return true;
     });
 
-    // Zoom controls
+    // Zoom controls - macOS
     globalKeyMap.set("Cmd:=", () => {
         zoomIn(globalStore);
         return true;
@@ -672,6 +672,24 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:0", () => {
+        zoomReset(globalStore);
+        return true;
+    });
+
+    // Zoom controls - Linux/Windows
+    globalKeyMap.set("Ctrl:=", () => {
+        zoomIn(globalStore);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:+", () => {
+        zoomIn(globalStore);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:-", () => {
+        zoomOut(globalStore);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:0", () => {
         zoomReset(globalStore);
         return true;
     });

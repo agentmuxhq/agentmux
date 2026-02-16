@@ -55,7 +55,7 @@ var CurrentInstanceID = ""
 // ExpectedVersion is the version this binary should be running
 // This is auto-updated by bump-version.sh to match package.json
 // If WaveVersion != ExpectedVersion, it indicates a stale cached binary
-const ExpectedVersion = "0.28.8"
+const ExpectedVersion = "0.28.14"
 
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute

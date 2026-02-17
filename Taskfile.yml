@@ -199,16 +199,29 @@ tasks:
         platforms: [linux]
         cmds:
             - task: build:backend
+            - task: build:backend:rust
             - task: tauri:copy-sidecars
-            - npx tauri build --bundles appimage {{.CLI_ARGS}}
+            # Tauri prepares the AppDir but linuxdeploy crashes on some systems.
+            # We ignore the linuxdeploy failure and run appimagetool directly.
+            - npx tauri build --bundles appimage {{.CLI_ARGS}} 2>&1 | grep -v "failed to run linuxdeploy" || true
             - cmd: |
-                APPIMAGE=$(ls -t src-tauri/target/release/bundle/appimage/*.AppImage | head -1)
-                if [ -d "$HOME/Desktop" ]; then
-                  cp "$APPIMAGE" "$HOME/Desktop/"
-                  echo "Copied $(basename $APPIMAGE) to $HOME/Desktop"
-                else
-                  echo "AppImage created: $APPIMAGE"
+                APPDIR="src-tauri/target/release/bundle/appimage/AgentMux.AppDir"
+                if [ ! -d "$APPDIR" ]; then
+                  echo "❌ AppDir not found — Tauri build failed before linuxdeploy stage"
+                  exit 1
                 fi
+                # Ensure lowercase icon exists (desktop file references 'agentmux')
+                [ -f "$APPDIR/agentmux.png" ] || cp "$APPDIR/AgentMux.png" "$APPDIR/agentmux.png"
+                VERSION=$(node version.cjs)
+                OUTPUT="AgentMux_${VERSION}_amd64.AppImage"
+                ARCH=x86_64 appimagetool "$APPDIR" "$OUTPUT"
+                if [ -d "$HOME/Desktop" ]; then
+                  cp "$OUTPUT" "$HOME/Desktop/"
+                  echo "✅ Copied $OUTPUT to Desktop"
+                else
+                  echo "✅ AppImage created: $OUTPUT"
+                fi
+                rm -f "$OUTPUT"
         deps:
             - clean
             - npm:install

@@ -36,6 +36,11 @@
       "binaries/agentmuxsrv-rs",
       "binaries/wsh"
     ],
+    "resources": [
+      "binaries/bin/*",
+      "../dist/docsite",
+      "../dist/schema"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

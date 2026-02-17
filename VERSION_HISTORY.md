@@ -2,13 +2,21 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.29.0
+## Latest Version: 0.29.1
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.29.1-fork (2026-02-17)
+- **Agent:** AgentX
+- **Changes:**
+  - Fix Linux AppImage build: use appimagetool when linuxdeploy crashes
+  - Add agentmuxsrv-rs (Rust backend) to package:portable:linux build pipeline
+  - Fix icon naming issue in AppDir (AgentMux.png → agentmux.png for desktop file)
+  - Add scripts/build-appimage.sh with dynamic version and clear step ordering
 
 ### v0.29.0-fork (2026-02-16)
 - **Agent:** AgentO

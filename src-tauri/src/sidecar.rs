@@ -147,12 +147,24 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
 
     let shell = app.shell();
 
-    // Try to find agentmuxsrv in portable mode first (same dir as exe)
+    // Select backend binary based on AGENTMUX_BACKEND env var
+    let backend_name = match std::env::var("AGENTMUX_BACKEND").as_deref() {
+        Ok("rust") => {
+            tracing::info!("Using Rust backend (AGENTMUX_BACKEND=rust)");
+            "agentmuxsrv-rs"
+        }
+        _ => {
+            tracing::info!("Using Go backend (default)");
+            "agentmuxsrv"
+        }
+    };
+
+    // Try to find backend in portable mode first (same dir as exe)
     let portable_path = std::env::current_exe().ok().and_then(|exe_path| {
         let exe_dir = exe_path.parent()?;
-        let portable_binary = exe_dir.join("agentmuxsrv.x64.exe");
+        let portable_binary = exe_dir.join(format!("{}.x64.exe", backend_name));
         if portable_binary.exists() {
-            tracing::info!("Using portable agentmuxsrv at: {:?}", portable_binary);
+            tracing::info!("Using portable {} at: {:?}", backend_name, portable_binary);
             Some(portable_binary)
         } else {
             None
@@ -165,8 +177,8 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     } else {
         // Installer mode: use bundled sidecar
         shell
-            .sidecar("agentmuxsrv")
-            .map_err(|e| format!("Failed to find agentmuxsrv sidecar: {}", e))?
+            .sidecar(backend_name)
+            .map_err(|e| format!("Failed to find {} sidecar: {}", backend_name, e))?
     };
 
     // Resolve WAVETERM_APP_PATH and deploy wsh binary for the Go backend.

@@ -6,17 +6,6 @@ authors = ["a5af"]
 edition = "2021"
 rust-version = "1.77"
 
-[features]
-default = []
-rust-backend = [
-    "dep:rusqlite",
-    "dep:base64",
-    "dep:dirs",
-    "dep:libc",
-    "dep:subtle",
-    "dep:thiserror",
-]
-
 [lib]
 name = "agentmux_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
@@ -40,7 +29,6 @@ tauri-plugin-websocket = "=2.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
-rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 tracing = "0.1"
@@ -48,23 +36,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 whoami = "1"
 chrono = "0.4"
-thiserror = { version = "2", optional = true }
-base64 = { version = "0.22", optional = true }
-dirs = { version = "6", optional = true }
-libc = { version = "0.2", optional = true }
-subtle = { version = "2", optional = true }
 url = "2"
-
-[profile.release]
-strip = true
-lto = true
-codegen-units = 1
-opt-level = "s"
-
-# Fast release profile for testing (much faster compile, slightly larger binary)
-[profile.fast-release]
-inherits = "release"
-lto = "thin"        # Thin LTO - parallel and much faster than full LTO
-codegen-units = 16  # Parallel codegen - uses multiple CPU cores
-strip = true
-opt-level = 2       # Still optimized, but not as aggressive as "s"

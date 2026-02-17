@@ -33,6 +33,7 @@
     "targets": ["nsis"],
     "externalBin": [
       "binaries/agentmuxsrv",
+      "binaries/agentmuxsrv-rs",
       "binaries/wsh"
     ],
     "icon": [

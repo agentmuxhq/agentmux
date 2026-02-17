@@ -56,6 +56,8 @@ tasks:
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/target/release/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/debug/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/release/bin/ || true
+            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/debug/agentmuxsrv-rs || true
+            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/release/agentmuxsrv-rs || true
             - echo "✓ Synced agentmuxsrv + wsh to Tauri dev/release cache (macOS)"
 
     sync:dev:binaries:linux:
@@ -243,6 +245,37 @@ tasks:
             - tsunami/go.mod
             - tsunami/go.sum
             - tsunami/**/*.go
+
+    build:backend:rust:
+        desc: Build the agentmuxsrv-rs Rust backend binary.
+        cmds:
+            - task: build:backend:rust:{{OS}}
+
+    build:backend:rust:darwin:
+        internal: true
+        platforms: [darwin]
+        cmds:
+            - cargo build --release -p agentmuxsrv-rs
+            - mkdir -p dist/bin
+            - cp target/release/agentmuxsrv-rs dist/bin/agentmuxsrv-rs.arm64
+            - echo "✓ Built agentmuxsrv-rs for macOS"
+
+    build:backend:rust:linux:
+        internal: true
+        platforms: [linux]
+        cmds:
+            - cargo build --release -p agentmuxsrv-rs
+            - mkdir -p dist/bin
+            - cp target/release/agentmuxsrv-rs dist/bin/agentmuxsrv-rs.x64
+            - echo "✓ Built agentmuxsrv-rs for Linux"
+
+    build:backend:rust:windows:
+        internal: true
+        platforms: [windows]
+        cmds:
+            - cargo build --release -p agentmuxsrv-rs
+            - cmd: powershell -Command "New-Item -ItemType Directory -Force -Path dist/bin | Out-Null; Copy-Item target/release/agentmuxsrv-rs.exe dist/bin/agentmuxsrv-rs.x64.exe -Force"
+            - echo "✓ Built agentmuxsrv-rs for Windows"
 
     build:schema:
         desc: Build the schema for configuration.
@@ -693,6 +726,18 @@ tasks:
                 cp dist/bin/wsh-{{.VERSION}}-linux.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{end}}
                 echo "Copied binaries for $TRIPLE"
+                {{end}}
+            # Optionally copy agentmuxsrv-rs if it was built (fallback so Go-only builds still work)
+            - |
+                {{if eq OS "windows"}}
+                powershell -Command "if (Test-Path dist/bin/agentmuxsrv-rs.x64.exe) { Copy-Item dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied agentmuxsrv-rs for Windows' } else { Write-Host 'agentmuxsrv-rs not found, skipping' }"
+                {{else}}
+                TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
+                {{if eq OS "darwin"}}
+                cp dist/bin/agentmuxsrv-rs.arm64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || echo "agentmuxsrv-rs not found, skipping";
+                {{else}}
+                cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || echo "agentmuxsrv-rs not found, skipping";
+                {{end}}
                 {{end}}
             # Also create bin/ directory with versioned wsh names (backend expects WAVETERM_APP_PATH/bin/wsh-VERSION-OS.ARCH)
             - |

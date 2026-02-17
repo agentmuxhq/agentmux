@@ -2,13 +2,23 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.27.10
+## Latest Version: 0.29.0
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.29.0-fork (2026-02-16)
+- **Agent:** AgentO
+- **Changes:**
+  - Wire Rust backend (agentmuxsrv-rs): replace all 501 stubs with real handlers
+  - Implement full service dispatch (30+ methods: object, client, window, workspace, block, userinput)
+  - Wire file endpoint, 9 reactive endpoints, WebSocket, AI chat SSE streaming, schema/docsite
+  - Backend initialization: WaveStore, FileStore, EventBus, Broker, ReactiveHandler, Poller
+  - Binary 9x smaller (3.1MB vs 28.5MB), memory 3.6x lower, latency 19-44% faster than Go
+  - All 1089 unit tests + 4 integration tests pass
 
 ### v0.28.20-fork (2026-02-16)
 - **Agent:** AgentO

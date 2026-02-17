@@ -37,8 +37,9 @@ test-results.xml
 docsite/
 test-results/
 
-# Tauri
+# Tauri / Cargo workspace
 src-tauri/target/
+/target/
 src-tauri/binaries/
 backend-test/
 src-tauri/gen/schemas/

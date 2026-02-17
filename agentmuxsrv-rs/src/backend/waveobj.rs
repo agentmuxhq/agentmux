@@ -9,6 +9,29 @@ use std::collections::HashMap;
 
 use super::oref::ORef;
 
+// ---- Custom serde for MetaMapType ----
+// Go serializes nil maps as `null` and initialized maps as `{}`.
+// Rust's HashMap is always initialized (empty = `{}`), so we need
+// to serialize empty HashMap as `null` to match Go's wire format.
+// We also need to accept `null` on deserialization (from DB or network).
+fn serialize_meta_as_null_if_empty<S>(meta: &MetaMapType, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    if meta.is_empty() {
+        serializer.serialize_none()
+    } else {
+        meta.serialize(serializer)
+    }
+}
+
+fn deserialize_meta_or_null<'de, D>(deserializer: D) -> Result<MetaMapType, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<MetaMapType>::deserialize(deserializer).map(|opt| opt.unwrap_or_default())
+}
+
 // ---- OType constants (match Go's waveobj.OType_* constants) ----
 
 pub const OTYPE_CLIENT: &str = "client";
@@ -277,7 +300,7 @@ pub struct Client {
     pub version: i64,
     #[serde(default)]
     pub windowids: Vec<String>,
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_meta_as_null_if_empty", deserialize_with = "deserialize_meta_or_null")]
     pub meta: MetaMapType,
     #[serde(default, skip_serializing_if = "is_zero_i64")]
     pub tosagreed: i64,
@@ -304,7 +327,7 @@ pub struct Window {
     pub winsize: WinSize,
     #[serde(default)]
     pub lastfocusts: i64,
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_meta_as_null_if_empty", deserialize_with = "deserialize_meta_or_null")]
     pub meta: MetaMapType,
 }
 
@@ -327,11 +350,20 @@ pub struct Workspace {
     pub pinnedtabids: Vec<String>,
     #[serde(default)]
     pub activetabid: String,
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_meta_as_null_if_empty", deserialize_with = "deserialize_meta_or_null")]
     pub meta: MetaMapType,
 }
 
 impl_wave_obj!(Workspace, OTYPE_WORKSPACE);
+
+/// Go: `WorkspaceListEntry` in pkg/waveobj/wtype.go
+/// Used by ListWorkspaces — returns just {workspaceid, windowid}, not full workspace objects.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceListEntry {
+    pub workspaceid: String,
+    #[serde(default)]
+    pub windowid: String,
+}
 
 /// Go: `Tab` in pkg/waveobj/wtype.go
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -344,7 +376,7 @@ pub struct Tab {
     pub layoutstate: String,
     #[serde(default)]
     pub blockids: Vec<String>,
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_meta_as_null_if_empty", deserialize_with = "deserialize_meta_or_null")]
     pub meta: MetaMapType,
 }
 
@@ -406,7 +438,7 @@ pub struct Block {
     pub runtimeopts: Option<RuntimeOpts>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stickers: Option<Vec<StickerType>>,
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_meta_as_null_if_empty", deserialize_with = "deserialize_meta_or_null")]
     pub meta: MetaMapType,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subblockids: Option<Vec<String>>,
@@ -441,6 +473,16 @@ pub fn wave_obj_to_json<T: WaveObj>(obj: &T) -> Result<Vec<u8>, serde_json::Erro
         m.insert("otype".to_string(), serde_json::Value::String(T::get_otype().to_string()));
     }
     serde_json::to_vec(&map)
+}
+
+/// Serialize any WaveObj to a serde_json::Value, including the "otype" field.
+/// This matches Go's `waveobj.ToJsonMap()` — used by GetObject/GetObjects responses.
+pub fn wave_obj_to_value<T: WaveObj>(obj: &T) -> serde_json::Value {
+    let mut map = serde_json::to_value(obj).unwrap_or_default();
+    if let Some(m) = map.as_object_mut() {
+        m.insert("otype".to_string(), serde_json::Value::String(T::get_otype().to_string()));
+    }
+    map
 }
 
 /// Deserialize JSON bytes to a specific WaveObj type.

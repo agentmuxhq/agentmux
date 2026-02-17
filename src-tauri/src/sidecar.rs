@@ -149,13 +149,13 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
 
     // Select backend binary based on AGENTMUX_BACKEND env var
     let backend_name = match std::env::var("AGENTMUX_BACKEND").as_deref() {
-        Ok("rust") => {
-            tracing::info!("Using Rust backend (AGENTMUX_BACKEND=rust)");
-            "agentmuxsrv-rs"
+        Ok("go") => {
+            tracing::info!("Using Go backend (AGENTMUX_BACKEND=go)");
+            "agentmuxsrv"
         }
         _ => {
-            tracing::info!("Using Go backend (default)");
-            "agentmuxsrv"
+            tracing::info!("Using Rust backend (default)");
+            "agentmuxsrv-rs"
         }
     };
 

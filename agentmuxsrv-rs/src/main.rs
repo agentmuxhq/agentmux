@@ -16,6 +16,7 @@ use backend::reactive::{self, Poller, PollerConfig};
 use backend::storage::filestore::FileStore;
 use backend::storage::wstore::WaveStore;
 use backend::wps::Broker;
+use backend::wconfig;
 use backend::{docsite, wavebase, wcore};
 
 #[tokio::main]
@@ -106,6 +107,8 @@ async fn main() {
         docsite::set_docsite_dir(docsite_dir);
     }
 
+    let config_watcher = Arc::new(wconfig::ConfigWatcher::new());
+
     let state = AppState {
         auth_key: config.auth_key.clone(),
         version: version.clone(),
@@ -116,6 +119,7 @@ async fn main() {
         broker,
         reactive_handler,
         poller,
+        config_watcher,
     };
 
     // 5. Bind 2 TCP listeners on 127.0.0.1:0 (web + ws — separate ports matching Go)

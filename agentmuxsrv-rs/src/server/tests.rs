@@ -4,6 +4,7 @@ use axum::http::{Method, Request, StatusCode};
 use tower::ServiceExt;
 
 use crate::backend::reactive as backend_reactive;
+use crate::backend::wconfig;
 use crate::backend::wcore;
 
 fn test_state() -> AppState {
@@ -24,6 +25,8 @@ fn test_state() -> AppState {
     // Bootstrap initial data
     wcore::ensure_initial_data(&wstore).unwrap();
 
+    let config_watcher = Arc::new(wconfig::ConfigWatcher::new());
+
     AppState {
         auth_key: "test-secret-key".to_string(),
         version: "0.28.20".to_string(),
@@ -34,6 +37,7 @@ fn test_state() -> AppState {
         broker,
         reactive_handler,
         poller,
+        config_watcher,
     }
 }
 

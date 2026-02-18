@@ -174,8 +174,12 @@ async fn auth_middleware(
 
 async fn handle_service(
     State(state): State<AppState>,
-    Json(call): Json<WebCallType>,
+    body: axum::body::Bytes,
 ) -> Json<WebReturnType> {
+    let call: WebCallType = match serde_json::from_slice(&body) {
+        Ok(c) => c,
+        Err(e) => return Json(WebReturnType::error(format!("invalid request body: {e}"))),
+    };
     let result = dispatch_service(&state, &call);
     Json(result)
 }

@@ -50,6 +50,28 @@ async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
 
     let mut event_rx = state.event_bus.register_ws(&conn_id, &tab_id);
 
+    // Send initial "config" wave event via the RPC eventrecv path so the frontend
+    // populates fullConfigAtom (and shows the widget bar).
+    // Frontend only processes events via: {"eventtype":"rpc","data":{"command":"eventrecv","data":{"event":"config","data":{...}}}}
+    {
+        let config = state.config_watcher.get_full_config();
+        if let Ok(config_val) = serde_json::to_value(config.as_ref()) {
+            let config_event = json!({
+                "eventtype": "rpc",
+                "data": {
+                    "command": "eventrecv",
+                    "data": {
+                        "event": "config",
+                        "data": { "fullconfig": config_val }
+                    }
+                }
+            });
+            if let Ok(msg) = serde_json::to_string(&config_event) {
+                let _ = socket.send(Message::Text(msg.into())).await;
+            }
+        }
+    }
+
     // Create RPC engine for this connection
     let (engine, mut rpc_output_rx) = WshRpcEngine::new();
 

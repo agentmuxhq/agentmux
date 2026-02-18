@@ -59,14 +59,32 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
                 Some(id) if !id.is_empty() => id,
                 _ => return WebReturnType::error("missing uicontext.activetabid"),
             };
-            let block_def: BlockDef = match service::get_arg(args, 1) {
+            let block_def: BlockDef = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
             match wcore::create_block(store, &tab_id, block_def.meta) {
                 Ok(block) => {
-                    let data = serde_json::to_value(&block).unwrap_or_default();
-                    WebReturnType::success(data)
+                    let block_oid = block.oid.clone();
+                    let block_update = WaveObjUpdate {
+                        updatetype: "update".into(),
+                        otype: OTYPE_BLOCK.to_string(),
+                        oid: block.oid.clone(),
+                        obj: Some(wave_obj_to_value(&block)),
+                    };
+                    let updates = match store.must_get::<Tab>(&tab_id) {
+                        Ok(tab) => {
+                            let tab_update = WaveObjUpdate {
+                                updatetype: "update".into(),
+                                otype: OTYPE_TAB.to_string(),
+                                oid: tab_id.clone(),
+                                obj: Some(wave_obj_to_value(&tab)),
+                            };
+                            vec![block_update, tab_update]
+                        }
+                        Err(_) => vec![block_update],
+                    };
+                    WebReturnType::success_data_updates(serde_json::json!(block_oid), updates)
                 }
                 Err(e) => WebReturnType::error(e.to_string()),
             }
@@ -80,7 +98,7 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
                 Some(id) if !id.is_empty() => id,
                 _ => return WebReturnType::error("missing uicontext.activetabid"),
             };
-            let block_id: String = match service::get_arg(args, 1) {
+            let block_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -89,12 +107,32 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
                 Err(e) => WebReturnType::error(e.to_string()),
             }
         }
-        ("object", "UpdateObjectMeta") => {
-            let oref_str: String = match service::get_arg(args, 1) {
+        ("object", "UpdateObject") => {
+            let wave_obj_value: serde_json::Value = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let meta_update: MetaMapType = match service::get_arg(args, 2) {
+            match update_object(store, wave_obj_value) {
+                Ok((otype, oid, obj_val)) => {
+                    let update = WaveObjUpdate {
+                        updatetype: "update".into(),
+                        otype,
+                        oid,
+                        obj: Some(obj_val),
+                    };
+                    WebReturnType::success_with_updates(vec![update])
+                }
+                Err(e) => WebReturnType::error(e),
+            }
+        }
+        ("object", "UpdateObjectMeta") => {
+            // args[0] = oref string, args[1] = meta map
+            // (Go dispatcher strips UIContext from args; TS sends [oref, meta])
+            let oref_str: String = match service::get_arg(args, 0) {
+                Ok(v) => v,
+                Err(e) => return WebReturnType::error(e),
+            };
+            let meta_update: MetaMapType = match service::get_arg(args, 1) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -104,11 +142,11 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("object", "UpdateTabName") => {
-            let tab_id: String = match service::get_arg(args, 1) {
+            let tab_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let name: String = match service::get_arg(args, 2) {
+            let name: String = match service::get_arg(args, 1) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -183,7 +221,7 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("window", "CreateWindow") => {
-            let ws_id: String = match service::get_arg(args, 2) {
+            let ws_id: String = match service::get_arg(args, 1) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -200,7 +238,7 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("window", "CloseWindow") => {
-            let window_id: String = match service::get_arg(args, 1) {
+            let window_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -210,11 +248,11 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("window", "SwitchWorkspace") => {
-            let window_id: String = match service::get_arg(args, 1) {
+            let window_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let ws_id: String = match service::get_arg(args, 2) {
+            let ws_id: String = match service::get_arg(args, 1) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -224,12 +262,12 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("window", "SetWindowPosAndSize") => {
-            let window_id: String = match service::get_arg(args, 1) {
+            let window_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let pos: Option<Point> = service::get_optional_arg(args, 2).unwrap_or(None);
-            let size: Option<WinSize> = service::get_optional_arg(args, 3).unwrap_or(None);
+            let pos: Option<Point> = service::get_optional_arg(args, 1).unwrap_or(None);
+            let size: Option<WinSize> = service::get_optional_arg(args, 2).unwrap_or(None);
             match store.must_get::<Window>(&window_id) {
                 Ok(mut win) => {
                     if let Some(p) = pos {
@@ -249,9 +287,9 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
 
         // ---- WorkspaceService ----
         ("workspace", "CreateWorkspace") => {
-            let name: String = service::get_arg(args, 1).unwrap_or_default();
-            let icon: String = service::get_arg(args, 2).unwrap_or_default();
-            let color: String = service::get_arg(args, 3).unwrap_or_default();
+            let name: String = service::get_arg(args, 0).unwrap_or_default();
+            let icon: String = service::get_arg(args, 1).unwrap_or_default();
+            let color: String = service::get_arg(args, 2).unwrap_or_default();
             match wcore::create_workspace(store, &name, &icon, &color) {
                 Ok(ws) => WebReturnType::success(serde_json::to_value(&ws).unwrap_or_default()),
                 Err(e) => WebReturnType::error(e.to_string()),
@@ -306,11 +344,11 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("workspace", "CloseTab") => {
-            let ws_id: String = match service::get_arg(args, 1) {
+            let ws_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let tab_id: String = match service::get_arg(args, 2) {
+            let tab_id: String = match service::get_arg(args, 1) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -332,13 +370,13 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             WebReturnType::success(json!(wcore::WORKSPACE_ICONS))
         }
         ("workspace", "UpdateWorkspace") => {
-            let ws_id: String = match service::get_arg(args, 1) {
+            let ws_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let name: Option<String> = service::get_optional_arg(args, 2).unwrap_or(None);
-            let icon: Option<String> = service::get_optional_arg(args, 3).unwrap_or(None);
-            let color: Option<String> = service::get_optional_arg(args, 4).unwrap_or(None);
+            let name: Option<String> = service::get_optional_arg(args, 1).unwrap_or(None);
+            let icon: Option<String> = service::get_optional_arg(args, 2).unwrap_or(None);
+            let color: Option<String> = service::get_optional_arg(args, 3).unwrap_or(None);
             match store.must_get::<Workspace>(&ws_id) {
                 Ok(mut ws) => {
                     if let Some(n) = name {
@@ -359,15 +397,15 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("workspace", "UpdateTabIds") => {
-            let ws_id: String = match service::get_arg(args, 1) {
+            let ws_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let tab_ids: Vec<String> = match service::get_arg(args, 2) {
+            let tab_ids: Vec<String> = match service::get_arg(args, 1) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let pinned_tab_ids: Vec<String> = service::get_arg(args, 3).unwrap_or_default();
+            let pinned_tab_ids: Vec<String> = service::get_arg(args, 2).unwrap_or_default();
             match store.must_get::<Workspace>(&ws_id) {
                 Ok(mut ws) => {
                     ws.tabids = tab_ids;
@@ -381,15 +419,15 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             }
         }
         ("workspace", "ChangeTabPinning") => {
-            let ws_id: String = match service::get_arg(args, 1) {
+            let ws_id: String = match service::get_arg(args, 0) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let tab_id: String = match service::get_arg(args, 2) {
+            let tab_id: String = match service::get_arg(args, 1) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            let pinned: bool = match service::get_arg(args, 3) {
+            let pinned: bool = match service::get_arg(args, 2) {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
@@ -430,34 +468,60 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
 /// Resolve an "otype:oid" string to the corresponding wave object JSON.
 fn get_object_by_oref(store: &WaveStore, oref_str: &str) -> Result<serde_json::Value, String> {
     let oref = crate::backend::ORef::parse(oref_str).map_err(|e| e.to_string())?;
-    // Use wave_obj_to_value to include "otype" field, matching Go's ToJsonMap behavior
+
+    // Validate otype is known
     match oref.otype.as_str() {
-        OTYPE_CLIENT => store
-            .must_get::<Client>(&oref.oid)
-            .map(|o| wave_obj_to_value(&o))
-            .map_err(|e| e.to_string()),
-        OTYPE_WINDOW => store
-            .must_get::<Window>(&oref.oid)
-            .map(|o| wave_obj_to_value(&o))
-            .map_err(|e| e.to_string()),
-        OTYPE_WORKSPACE => store
-            .must_get::<Workspace>(&oref.oid)
-            .map(|o| wave_obj_to_value(&o))
-            .map_err(|e| e.to_string()),
-        OTYPE_TAB => store
-            .must_get::<Tab>(&oref.oid)
-            .map(|o| wave_obj_to_value(&o))
-            .map_err(|e| e.to_string()),
-        OTYPE_LAYOUT => store
-            .must_get::<LayoutState>(&oref.oid)
-            .map(|o| wave_obj_to_value(&o))
-            .map_err(|e| e.to_string()),
-        OTYPE_BLOCK => store
-            .must_get::<Block>(&oref.oid)
-            .map(|o| wave_obj_to_value(&o))
-            .map_err(|e| e.to_string()),
-        _ => Err(format!("unknown otype: {}", oref.otype)),
+        OTYPE_CLIENT | OTYPE_WINDOW | OTYPE_WORKSPACE | OTYPE_TAB | OTYPE_LAYOUT | OTYPE_BLOCK => {}
+        _ => return Err(format!("unknown otype: {}", oref.otype)),
     }
+
+    // Use raw JSON read to avoid strict struct deserialization issues
+    // (e.g. layout leaforder with embedded BlockDef objects).
+    // This matches Go's generic map-based GetObject behavior.
+    store
+        .get_raw(&oref.otype, &oref.oid)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("not found: {}", oref_str))
+}
+
+/// Update a wave object by replacing it wholesale in the store.
+/// The incoming value must have `otype` and `oid` fields.
+/// Matches Go's ObjectService.UpdateObject behavior.
+/// Returns (otype, oid, updated_value_with_new_version) on success.
+fn update_object(
+    store: &WaveStore,
+    mut value: serde_json::Value,
+) -> Result<(String, String, serde_json::Value), String> {
+    let otype = value
+        .get("otype")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "UpdateObject: missing otype field".to_string())?
+        .to_string();
+    let oid = value
+        .get("oid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "UpdateObject: missing oid field".to_string())?
+        .to_string();
+
+    // Validate the otype is known
+    match otype.as_str() {
+        OTYPE_CLIENT | OTYPE_WINDOW | OTYPE_WORKSPACE | OTYPE_TAB | OTYPE_LAYOUT | OTYPE_BLOCK => {}
+        _ => return Err(format!("UpdateObject: unsupported otype: {}", otype)),
+    }
+
+    // Use raw JSON storage (matching Go's generic map-based UpdateObject).
+    // The frontend sends the full replacement object; strict Rust struct deserialization
+    // can fail on dynamic fields (e.g. layout rootnode with embedded BlockDefs).
+    let new_version = store
+        .update_raw(&otype, &oid, &value)
+        .map_err(|e| format!("UpdateObject: {}", e))?;
+
+    // Update version in the value for the returned update event
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert("version".to_string(), serde_json::json!(new_version));
+    }
+
+    Ok((otype, oid, value))
 }
 
 /// Update object meta by oref string. Merges meta into existing object.

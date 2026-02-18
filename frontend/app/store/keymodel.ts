@@ -585,7 +585,7 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:g", () => {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        if (bcm.openSwitchConnection != null) {
+        if (bcm?.openSwitchConnection != null) {
             bcm.openSwitchConnection();
             return true;
         }
@@ -623,6 +623,7 @@ function registerGlobalKeys() {
     });
     function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm == null) return false;
         // Ctrl+f is reserved in most shells
         if (event.control && bcm.viewModel.viewType == "term") {
             return false;
@@ -635,6 +636,7 @@ function registerGlobalKeys() {
     }
     function deactivateSearch(): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm == null) return false;
         if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
             globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
             return true;

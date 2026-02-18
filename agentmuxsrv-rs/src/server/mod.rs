@@ -25,6 +25,7 @@ use crate::backend::eventbus::EventBus;
 use crate::backend::reactive::{Poller, ReactiveHandler};
 use crate::backend::storage::filestore::FileStore;
 use crate::backend::storage::wstore::WaveStore;
+use crate::backend::wconfig;
 use crate::backend::wps::Broker;
 
 // ---- AppState ----
@@ -40,6 +41,7 @@ pub struct AppState {
     pub broker: Arc<Broker>,
     pub reactive_handler: &'static ReactiveHandler,
     pub poller: Arc<Poller>,
+    pub config_watcher: Arc<wconfig::ConfigWatcher>,
 }
 
 /// Build the Axum router with all routes, auth middleware, and CORS.

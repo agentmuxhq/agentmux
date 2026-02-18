@@ -698,6 +698,31 @@ impl Default for ConfigWatcher {
     }
 }
 
+// ---- Default config builder ----
+
+/// Build the initial default configuration with embedded default assets.
+///
+/// Loads the bundled `widgets.json` (from `pkg/wconfig/defaultconfig/`) at compile time
+/// and populates `FullConfigType.widgets` so the frontend widget bar is populated on startup.
+pub fn build_default_config() -> FullConfigType {
+    let mut config = FullConfigType::default();
+
+    // Embed widgets.json at compile time (equivalent to Go's //go:embed)
+    const WIDGETS_JSON: &str =
+        include_str!("../../../pkg/wconfig/defaultconfig/widgets.json");
+
+    match serde_json::from_str::<HashMap<String, WidgetConfigType>>(WIDGETS_JSON) {
+        Ok(widgets) => {
+            config.widgets = widgets;
+        }
+        Err(e) => {
+            eprintln!("wconfig: failed to parse embedded widgets.json: {}", e);
+        }
+    }
+
+    config
+}
+
 // ---- Config loading helpers ----
 
 /// Read a JSON config file, returning default on missing/error.

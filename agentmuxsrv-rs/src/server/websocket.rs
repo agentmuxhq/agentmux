@@ -11,11 +11,15 @@ use axum::{
 use serde::Deserialize;
 use serde_json::json;
 
+use crate::backend::ai::chatstore::get_default_chat_store;
 use crate::backend::rpc::engine::WshRpcEngine;
 use crate::backend::rpc_types::{
-    RpcMessage, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB, COMMAND_EVENT_UNSUB_ALL,
-    COMMAND_GET_FULL_CONFIG, COMMAND_ROUTE_ANNOUNCE, COMMAND_ROUTE_UNANNOUNCE,
+    CommandSetMetaData, RpcMessage, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB,
+    COMMAND_EVENT_UNSUB_ALL, COMMAND_GET_FULL_CONFIG, COMMAND_GET_WAVE_AI_CHAT,
+    COMMAND_GET_WAVE_AI_RATE_LIMIT, COMMAND_ROUTE_ANNOUNCE, COMMAND_ROUTE_UNANNOUNCE,
+    COMMAND_SET_META,
 };
+use super::service::update_object_meta;
 
 use super::AppState;
 
@@ -46,12 +50,33 @@ async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
 
     let mut event_rx = state.event_bus.register_ws(&conn_id, &tab_id);
 
+    // Send initial "config" wave event via the RPC eventrecv path so the frontend
+    // populates fullConfigAtom (and shows the widget bar).
+    // Frontend only processes events via: {"eventtype":"rpc","data":{"command":"eventrecv","data":{"event":"config","data":{...}}}}
+    {
+        let config = state.config_watcher.get_full_config();
+        if let Ok(config_val) = serde_json::to_value(config.as_ref()) {
+            let config_event = json!({
+                "eventtype": "rpc",
+                "data": {
+                    "command": "eventrecv",
+                    "data": {
+                        "event": "config",
+                        "data": { "fullconfig": config_val }
+                    }
+                }
+            });
+            if let Ok(msg) = serde_json::to_string(&config_event) {
+                let _ = socket.send(Message::Text(msg.into())).await;
+            }
+        }
+    }
+
     // Create RPC engine for this connection
-    let config_watcher = state.config_watcher.clone();
     let (engine, mut rpc_output_rx) = WshRpcEngine::new();
 
     // Register handlers
-    register_handlers(&engine, config_watcher);
+    register_handlers(&engine, state.clone());
 
     // Periodic ping interval (10 seconds)
     let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(10));
@@ -182,8 +207,9 @@ async fn handle_incoming_text(
     Ok(())
 }
 
-fn register_handlers(engine: &Arc<WshRpcEngine>, config_watcher: Arc<crate::backend::wconfig::ConfigWatcher>) {
+fn register_handlers(engine: &Arc<WshRpcEngine>, state: AppState) {
     // getfullconfig → return full config as JSON
+    let config_watcher = state.config_watcher.clone();
     engine.register_handler(
         COMMAND_GET_FULL_CONFIG,
         Box::new(move |_data, _ctx| {
@@ -236,5 +262,64 @@ fn register_handlers(engine: &Arc<WshRpcEngine>, config_watcher: Arc<crate::back
     engine.register_handler(
         COMMAND_EVENT_UNSUB_ALL,
         Box::new(|_data, _ctx| Box::pin(async move { Ok(None) })),
+    );
+
+    // setmeta → update object metadata in the DB, broadcast update event
+    let wstore_sm = state.wstore.clone();
+    let event_bus_sm = state.event_bus.clone();
+    engine.register_handler(
+        COMMAND_SET_META,
+        Box::new(move |data, _ctx| {
+            let wstore = wstore_sm.clone();
+            let event_bus = event_bus_sm.clone();
+            Box::pin(async move {
+                let cmd: CommandSetMetaData =
+                    serde_json::from_value(data).map_err(|e| format!("setmeta: {e}"))?;
+                let oref_str = cmd.oref.to_string();
+                update_object_meta(&wstore, &oref_str, &cmd.meta)?;
+                // Broadcast waveobj:update so all WS clients refresh their atoms
+                event_bus.broadcast_event(&crate::backend::eventbus::WSEventType {
+                    eventtype: "waveobj:update".to_string(),
+                    oref: oref_str,
+                    data: None,
+                });
+                Ok(None)
+            })
+        }),
+    );
+
+    // getwaveaichat → return UIChat for the given chatid (null if not found)
+    engine.register_handler(
+        COMMAND_GET_WAVE_AI_CHAT,
+        Box::new(|data, _ctx| {
+            Box::pin(async move {
+                let obj: serde_json::Map<String, serde_json::Value> =
+                    serde_json::from_value(data).map_err(|e| format!("getwaveaichat: {e}"))?;
+                let chat_id = obj
+                    .get("chatid")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let result = get_default_chat_store().get_as_ui_chat(&chat_id);
+                Ok(result) // None → JSON null, Some(v) → JSON object
+            })
+        }),
+    );
+
+    // getwaveairatelimit → AgentMux has no rate limits; return unlimited/unknown
+    engine.register_handler(
+        COMMAND_GET_WAVE_AI_RATE_LIMIT,
+        Box::new(|_data, _ctx| {
+            Box::pin(async move {
+                Ok(Some(serde_json::json!({
+                    "req": 9999,
+                    "reqlimit": 9999,
+                    "preq": 9999,
+                    "preqlimit": 9999,
+                    "resetepoch": 0,
+                    "unknown": true
+                })))
+            })
+        }),
     );
 }

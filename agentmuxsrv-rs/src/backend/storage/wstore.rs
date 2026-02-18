@@ -81,6 +81,47 @@ impl WaveStore {
         self.get::<T>(oid)?.ok_or(StoreError::NotFound)
     }
 
+    /// Get a single object as raw JSON Value by otype and OID.
+    /// Used by GetObject/GetObjects to return data without strict struct deserialization.
+    pub fn get_raw(&self, otype: &str, oid: &str) -> Result<Option<serde_json::Value>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let table = format!("db_{}", otype);
+        let mut stmt =
+            conn.prepare(&format!("SELECT version, data FROM {table} WHERE oid = ?1"))?;
+
+        let result = stmt.query_row(params![oid], |row| {
+            let version: i64 = row.get(0)?;
+            let data: Vec<u8> = row.get(1)?;
+            Ok((version, data))
+        });
+
+        match result {
+            Ok((version, data)) => {
+                let mut val: serde_json::Value = serde_json::from_slice(&data)
+                    .map_err(|e| StoreError::Json(e))?;
+                if let Some(obj) = val.as_object_mut() {
+                    obj.insert("version".to_string(), serde_json::json!(version));
+                    obj.insert("otype".to_string(), serde_json::json!(otype));
+                }
+                Ok(Some(val))
+            }
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(StoreError::Sqlite(e)),
+        }
+    }
+
+    /// Check if an object exists (by otype and OID).
+    pub fn exists_raw(&self, otype: &str, oid: &str) -> Result<bool, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let table = format!("db_{}", otype);
+        let count: i64 = conn.query_row(
+            &format!("SELECT COUNT(*) FROM {table} WHERE oid = ?1"),
+            params![oid],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
+    }
+
     /// Insert a new object. Sets version to 1.
     pub fn insert<T: WaveObj>(&self, obj: &mut T) -> Result<(), StoreError> {
         let oid = obj.get_oid().to_string();
@@ -125,6 +166,26 @@ impl WaveStore {
         )?;
 
         obj.set_version(new_version);
+        Ok(new_version)
+    }
+
+    /// Update an object using raw JSON (bypasses struct deserialization).
+    /// Used by UpdateObject where the frontend sends the full replacement object.
+    /// This matches Go's generic map-based UpdateObject behavior.
+    pub fn update_raw(&self, otype: &str, oid: &str, value: &serde_json::Value) -> Result<i64, StoreError> {
+        if oid.is_empty() {
+            return Err(StoreError::EmptyOID);
+        }
+        let data = serde_json::to_vec(value)?;
+        let conn = self.conn.lock().unwrap();
+        let table = format!("db_{}", otype);
+        let new_version: i64 = conn.query_row(
+            &format!(
+                "UPDATE {table} SET data = ?1, version = version + 1 WHERE oid = ?2 RETURNING version"
+            ),
+            params![data, oid],
+            |row| row.get(0),
+        )?;
         Ok(new_version)
     }
 

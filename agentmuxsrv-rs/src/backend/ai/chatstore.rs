@@ -10,7 +10,7 @@
 //! - Per-chat API type/model validation
 
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{Arc, OnceLock, RwLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -139,6 +139,57 @@ impl ChatStore {
 impl Default for ChatStore {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// ---- Global singleton (matches Go's chatstore.DefaultChatStore) ----
+
+static GLOBAL_CHAT_STORE: OnceLock<Arc<ChatStore>> = OnceLock::new();
+
+/// Returns the process-wide default chat store.
+pub fn get_default_chat_store() -> &'static Arc<ChatStore> {
+    GLOBAL_CHAT_STORE.get_or_init(|| Arc::new(ChatStore::new()))
+}
+
+impl ChatStore {
+    /// Return the chat as a JSON value in UIChat format (matching Go's UIChat type).
+    /// Returns None if the chat doesn't exist.
+    ///
+    /// Output shape:
+    /// { chatid, apitype, model, apiversion, messages: [{id, role, parts}] }
+    pub fn get_as_ui_chat(&self, chat_id: &str) -> Option<serde_json::Value> {
+        let chat = self.get(chat_id)?;
+        let messages: Vec<serde_json::Value> = chat
+            .messages
+            .iter()
+            .map(|m| {
+                let role = m
+                    .data
+                    .get("role")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("user");
+                let content = m.data.get("content");
+                let parts = match content {
+                    Some(serde_json::Value::String(s)) => {
+                        serde_json::json!([{"type": "text", "text": s}])
+                    }
+                    Some(arr @ serde_json::Value::Array(_)) => arr.clone(),
+                    _ => serde_json::json!([]),
+                };
+                serde_json::json!({
+                    "id": m.messageid,
+                    "role": role,
+                    "parts": parts,
+                })
+            })
+            .collect();
+        Some(serde_json::json!({
+            "chatid": chat.chatid,
+            "apitype": chat.apitype,
+            "model": chat.model,
+            "apiversion": chat.apiversion,
+            "messages": messages,
+        }))
     }
 }
 

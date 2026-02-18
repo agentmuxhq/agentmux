@@ -107,7 +107,7 @@ async fn main() {
         docsite::set_docsite_dir(docsite_dir);
     }
 
-    let config_watcher = Arc::new(wconfig::ConfigWatcher::new());
+    let config_watcher = Arc::new(wconfig::ConfigWatcher::with_config(wconfig::build_default_config()));
 
     let state = AppState {
         auth_key: config.auth_key.clone(),

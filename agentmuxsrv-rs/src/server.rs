@@ -174,8 +174,12 @@ async fn auth_middleware(
 
 async fn handle_service(
     State(state): State<AppState>,
-    Json(call): Json<WebCallType>,
+    body: axum::body::Bytes,
 ) -> Json<WebReturnType> {
+    let call: WebCallType = match serde_json::from_slice(&body) {
+        Ok(c) => c,
+        Err(e) => return Json(WebReturnType::error(format!("invalid request body: {e}"))),
+    };
     let result = dispatch_service(&state, &call);
     Json(result)
 }
@@ -322,8 +326,9 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
             Err(e) => WebReturnType::error(e.to_string()),
         },
         ("client", "GetAllConnStatus") => {
-            // Return empty array — connection manager not yet wired
-            WebReturnType::success(json!([]))
+            // Return empty — connection manager not yet wired
+            // Go returns success with no data (nil slice omitted by omitempty)
+            WebReturnType::success_empty()
         }
         ("client", "TelemetryUpdate") => {
             // Accept but ignore — telemetry not implemented
@@ -589,30 +594,31 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
 /// Resolve an "otype:oid" string to the corresponding wave object JSON.
 fn get_object_by_oref(store: &WaveStore, oref_str: &str) -> Result<serde_json::Value, String> {
     let oref = crate::backend::ORef::parse(oref_str).map_err(|e| e.to_string())?;
+    // Use wave_obj_to_value to include "otype" field, matching Go's ToJsonMap behavior
     match oref.otype.as_str() {
         OTYPE_CLIENT => store
             .must_get::<Client>(&oref.oid)
-            .map(|o| serde_json::to_value(&o).unwrap_or_default())
+            .map(|o| wave_obj_to_value(&o))
             .map_err(|e| e.to_string()),
         OTYPE_WINDOW => store
             .must_get::<Window>(&oref.oid)
-            .map(|o| serde_json::to_value(&o).unwrap_or_default())
+            .map(|o| wave_obj_to_value(&o))
             .map_err(|e| e.to_string()),
         OTYPE_WORKSPACE => store
             .must_get::<Workspace>(&oref.oid)
-            .map(|o| serde_json::to_value(&o).unwrap_or_default())
+            .map(|o| wave_obj_to_value(&o))
             .map_err(|e| e.to_string()),
         OTYPE_TAB => store
             .must_get::<Tab>(&oref.oid)
-            .map(|o| serde_json::to_value(&o).unwrap_or_default())
+            .map(|o| wave_obj_to_value(&o))
             .map_err(|e| e.to_string()),
         OTYPE_LAYOUT => store
             .must_get::<LayoutState>(&oref.oid)
-            .map(|o| serde_json::to_value(&o).unwrap_or_default())
+            .map(|o| wave_obj_to_value(&o))
             .map_err(|e| e.to_string()),
         OTYPE_BLOCK => store
             .must_get::<Block>(&oref.oid)
-            .map(|o| serde_json::to_value(&o).unwrap_or_default())
+            .map(|o| wave_obj_to_value(&o))
             .map_err(|e| e.to_string()),
         _ => Err(format!("unknown otype: {}", oref.otype)),
     }

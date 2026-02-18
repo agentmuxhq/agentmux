@@ -141,7 +141,11 @@ async function bootstrap() {
             log("INFO", "✅ Main application loaded successfully");
         } catch (waveError) {
             log("ERROR", "Failed to load wave.ts:", waveError);
-            log("ERROR", "Wave error stack:", (waveError as Error).stack);
+            log("ERROR", "Wave error name:", (waveError as Error)?.name);
+            log("ERROR", "Wave error message:", (waveError as Error)?.message);
+            log("ERROR", "Wave error stack:", (waveError as Error)?.stack);
+            log("ERROR", "Wave error type:", typeof waveError);
+            log("ERROR", "Wave error constructor:", (waveError as any)?.constructor?.name);
             throw waveError;
         }
 

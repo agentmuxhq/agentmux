@@ -6,6 +6,7 @@
 //!
 //! Orchestrates WaveStore mutations with WPS event publishing.
 
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::oref::ORef;
@@ -73,15 +74,21 @@ pub fn ensure_initial_data(store: &WaveStore) -> Result<bool, StoreError> {
     // First launch: create client + window + workspace + tab
     let first_launch = true;
 
+    // Go inserts client first (version 1), then updates TempOID (version 2).
+    // We mirror that to keep the version counter in sync.
     let mut client = Client {
         oid: Uuid::new_v4().to_string(),
         windowids: vec![],
-        tempoid: Uuid::new_v4().to_string(),
+        tempoid: String::new(),
         meta: MetaMapType::new(),
         ..Default::default()
     };
 
     store.insert(&mut client)?;
+
+    // Separate update for TempOID (matches Go's version 2 update)
+    client.tempoid = Uuid::new_v4().to_string();
+    store.update(&mut client)?;
 
     // Create starter workspace
     let ws = create_workspace(
@@ -98,8 +105,8 @@ pub fn ensure_initial_data(store: &WaveStore) -> Result<bool, StoreError> {
     client.windowids.push(window.oid.clone());
     store.update(&mut client)?;
 
-    // Create initial tab in workspace
-    create_tab(store, &ws.oid)?;
+    // Create initial tab in workspace (pinned, matching Go's isInitialLaunch=true)
+    create_tab_with_opts(store, &ws.oid, "", true)?;
 
     Ok(first_launch)
 }
@@ -150,14 +157,54 @@ pub fn get_workspace(store: &WaveStore, ws_id: &str) -> Result<Workspace, StoreE
     store.must_get::<Workspace>(ws_id)
 }
 
-/// List all workspaces.
-pub fn list_workspaces(store: &WaveStore) -> Result<Vec<Workspace>, StoreError> {
-    store.get_all::<Workspace>()
+/// List all workspaces as WorkspaceListEntry (matching Go's behavior).
+/// Go returns [{workspaceid, windowid}] — filters out workspaces without name/icon/color.
+pub fn list_workspaces(store: &WaveStore) -> Result<Vec<WorkspaceListEntry>, StoreError> {
+    let workspaces = store.get_all::<Workspace>()?;
+    let windows = store.get_all::<Window>()?;
+
+    // Build workspace -> window mapping
+    let mut ws_to_window: HashMap<String, String> = HashMap::new();
+    for win in &windows {
+        ws_to_window.entry(win.workspaceid.clone()).or_insert_with(|| win.oid.clone());
+    }
+
+    let mut entries = Vec::new();
+    for ws in &workspaces {
+        // Go skips workspaces missing name, icon, or color
+        if ws.name.is_empty() || ws.icon.is_empty() || ws.color.is_empty() {
+            continue;
+        }
+        entries.push(WorkspaceListEntry {
+            workspaceid: ws.oid.clone(),
+            windowid: ws_to_window.get(&ws.oid).cloned().unwrap_or_default(),
+        });
+    }
+    Ok(entries)
 }
 
 /// Create a new tab in a workspace.
+/// If `tab_name` is empty, auto-generates "T1", "T2", etc. (matching Go).
+/// If `pinned` is true, the tab goes into `pinnedtabids` instead of `tabids`.
 pub fn create_tab(store: &WaveStore, ws_id: &str) -> Result<Tab, StoreError> {
+    create_tab_with_opts(store, ws_id, "", false)
+}
+
+/// Create a new tab with explicit name and pinned options.
+pub fn create_tab_with_opts(
+    store: &WaveStore,
+    ws_id: &str,
+    tab_name: &str,
+    pinned: bool,
+) -> Result<Tab, StoreError> {
     let mut ws = store.must_get::<Workspace>(ws_id)?;
+
+    // Auto-generate tab name if not provided (matches Go: "T" + count)
+    let name = if tab_name.is_empty() {
+        format!("T{}", ws.tabids.len() + ws.pinnedtabids.len() + 1)
+    } else {
+        tab_name.to_string()
+    };
 
     // Create layout state for the tab
     let mut layout = LayoutState {
@@ -174,7 +221,7 @@ pub fn create_tab(store: &WaveStore, ws_id: &str) -> Result<Tab, StoreError> {
 
     let mut tab = Tab {
         oid: Uuid::new_v4().to_string(),
-        name: String::new(),
+        name,
         layoutstate: layout.oid.clone(),
         blockids: vec![],
         meta: MetaMapType::new(),
@@ -182,8 +229,12 @@ pub fn create_tab(store: &WaveStore, ws_id: &str) -> Result<Tab, StoreError> {
     };
     store.insert(&mut tab)?;
 
-    // Add tab to workspace and set as active
-    ws.tabids.push(tab.oid.clone());
+    // Add tab to workspace (pinned or unpinned) and set as active
+    if pinned {
+        ws.pinnedtabids.push(tab.oid.clone());
+    } else {
+        ws.tabids.push(tab.oid.clone());
+    }
     if ws.activetabid.is_empty() {
         ws.activetabid = tab.oid.clone();
     }
@@ -237,10 +288,11 @@ pub fn set_active_tab(
     tab_id: &str,
 ) -> Result<(), StoreError> {
     let mut ws = store.must_get::<Workspace>(ws_id)?;
-    if !ws.tabids.contains(&tab_id.to_string()) {
+    let tab_str = tab_id.to_string();
+    if !ws.tabids.contains(&tab_str) && !ws.pinnedtabids.contains(&tab_str) {
         return Err(StoreError::NotFound);
     }
-    ws.activetabid = tab_id.to_string();
+    ws.activetabid = tab_str;
     store.update(&mut ws)?;
     Ok(())
 }
@@ -290,10 +342,11 @@ pub fn create_window(
     let mut window = Window {
         oid: Uuid::new_v4().to_string(),
         workspaceid: workspace_id.to_string(),
-        pos: Point { x: 100, y: 100 },
+        isnew: true,
+        pos: Point { x: 0, y: 0 },
         winsize: WinSize {
-            width: 1200,
-            height: 800,
+            width: 0,
+            height: 0,
         },
         meta: MetaMapType::new(),
         ..Default::default()
@@ -357,8 +410,8 @@ fn check_and_fix_window(store: &WaveStore, window_id: &str) -> Result<(), StoreE
         }
     };
 
-    // Ensure workspace has at least one tab
-    if ws.tabids.is_empty() {
+    // Ensure workspace has at least one tab (matches Go: checks both tabids and pinnedtabids)
+    if ws.tabids.is_empty() && ws.pinnedtabids.is_empty() {
         create_tab(store, &ws.oid)?;
     }
 
@@ -462,13 +515,23 @@ mod tests {
 
         let windows = store.get_all::<Window>().unwrap();
         assert_eq!(windows.len(), 1);
+        // Window should have pos:{0,0} and winsize:{0,0} (matching Go)
+        assert_eq!(windows[0].pos.x, 0);
+        assert_eq!(windows[0].pos.y, 0);
+        assert_eq!(windows[0].winsize.width, 0);
+        assert_eq!(windows[0].winsize.height, 0);
 
         let workspaces = store.get_all::<Workspace>().unwrap();
         assert_eq!(workspaces.len(), 1);
         assert_eq!(workspaces[0].name, "Starter workspace");
+        // Starter tab should be pinned (matching Go's isInitialLaunch=true)
+        assert_eq!(workspaces[0].pinnedtabids.len(), 1);
+        assert_eq!(workspaces[0].tabids.len(), 0);
 
         let tabs = store.get_all::<Tab>().unwrap();
         assert_eq!(tabs.len(), 1);
+        // Tab should be named "T1" (matching Go's auto-naming)
+        assert_eq!(tabs[0].name, "T1");
     }
 
     #[test]

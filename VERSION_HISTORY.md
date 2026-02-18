@@ -2,13 +2,22 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.29.1
+## Latest Version: 0.30.0
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.30.0-fork (2026-02-17)
+- **Agent:** AgentO
+- **Changes:**
+  - Rust backend parity fixes: match Go response shapes for all startup RPC calls
+  - Fix meta null/empty serialization, otype in GetObject, isnew/pos/winsize defaults
+  - Fix ListWorkspaces, GetAllConnStatus, tab naming, pinned tabs
+  - Add parity test harness (scripts/parity-test.sh) — 8/8 tests pass
+  - Default sidecar to Rust backend (agentmuxsrv-rs)
 
 ### v0.29.1-fork (2026-02-17)
 - **Agent:** AgentX

@@ -129,7 +129,6 @@ async function initTauriWave(): Promise<void> {
             windowId = windowData.oid;
         }
 
-
         // Get workspace
         let workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
 
@@ -139,7 +138,6 @@ async function initTauriWave(): Promise<void> {
             windowData = await WindowService.CreateWindow(null, "");
             workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
         }
-
 
         // Get active tab ID
         const tabId = workspace.activetabid ||
@@ -151,7 +149,6 @@ async function initTauriWave(): Promise<void> {
             throw new Error("No tab found in workspace");
         }
 
-
         // Create complete init options with ALL valid IDs
         const initOpts: AgentMuxInitOpts = {
             clientId: clientData.oid,
@@ -160,7 +157,6 @@ async function initTauriWave(): Promise<void> {
             activate: true,
             primaryTabStartup: true,
         };
-
 
         // Initialize wave (this will render the UI)
         await initWaveWrap(initOpts);
@@ -177,7 +173,7 @@ async function initTauriWave(): Promise<void> {
 
     } catch (error) {
         console.error("[initTauriWave] Initialization failed:", error);
-        pushFlashError("Failed to initialize AgentMux: " + String(error));
+        pushFlashError({ id: "", icon: "triangle-exclamation", title: "Startup Error", message: "Failed to initialize AgentMux: " + String(error), expiration: null });
         // Show window even on error so user can see the error message
         try {
             const { getCurrent } = await import("@tauri-apps/api/window");
@@ -251,7 +247,7 @@ async function initTauriNewWindow(): Promise<void> {
     } catch (error) {
         console.error("[initTauriNewWindow] Initialization failed:", error);
         getApi().sendLog(`[initTauriNewWindow] ❌ Error: ${error}`);
-        pushFlashError("Failed to initialize new window: " + String(error));
+        pushFlashError({ id: "", icon: "triangle-exclamation", title: "Startup Error", message: "Failed to initialize new window: " + String(error), expiration: null });
         // Show error UI instead of grey screen
         document.body.style.visibility = "visible";
         document.body.style.opacity = "1";

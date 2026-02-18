@@ -461,7 +461,7 @@ fn get_object_by_oref(store: &WaveStore, oref_str: &str) -> Result<serde_json::V
 }
 
 /// Update object meta by oref string. Merges meta into existing object.
-fn update_object_meta(
+pub(crate) fn update_object_meta(
     store: &WaveStore,
     oref_str: &str,
     meta_update: &MetaMapType,

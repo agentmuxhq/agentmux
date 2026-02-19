@@ -225,13 +225,8 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            match wcore::create_window(store, &ws_id) {
+            match wcore::create_window_full(store, &ws_id) {
                 Ok(win) => {
-                    // Add to client window list
-                    if let Ok(mut client) = wcore::get_client(store) {
-                        client.windowids.push(win.oid.clone());
-                        let _ = store.update(&mut client);
-                    }
                     WebReturnType::success(serde_json::to_value(&win).unwrap_or_default())
                 }
                 Err(e) => WebReturnType::error(e.to_string()),

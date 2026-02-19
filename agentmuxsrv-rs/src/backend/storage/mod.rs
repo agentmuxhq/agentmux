@@ -11,4 +11,4 @@ pub mod wstore;
 
 pub use error::StoreError;
 pub use filestore::FileStore;
-pub use wstore::WaveStore;
+pub use wstore::{WaveStore, StoreTx};

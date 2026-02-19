@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::oref::ORef;
-use super::storage::wstore::WaveStore;
+use super::storage::wstore::{WaveStore, StoreTx};
 use super::storage::StoreError;
 use super::waveobj::*;
 use super::wps::{self, Broker, WaveEvent};
@@ -333,15 +333,22 @@ pub fn delete_block(
 }
 
 /// Create a new window pointing to a workspace.
+/// If workspace_id is empty, auto-creates a new workspace + default tab (matches Go behavior).
 pub fn create_window(
     store: &WaveStore,
     workspace_id: &str,
 ) -> Result<Window, StoreError> {
-    // Validate workspace exists before creating window
-    let _ws = store.must_get::<Workspace>(workspace_id)?;
+    let ws_id = if workspace_id.is_empty() {
+        let ws = create_workspace(store, "", "", "")?;
+        let _tab = create_tab(store, &ws.oid)?;
+        ws.oid
+    } else {
+        let _ws = store.must_get::<Workspace>(workspace_id)?;
+        workspace_id.to_string()
+    };
     let mut window = Window {
         oid: Uuid::new_v4().to_string(),
-        workspaceid: workspace_id.to_string(),
+        workspaceid: ws_id,
         isnew: true,
         pos: Point { x: 0, y: 0 },
         winsize: WinSize {
@@ -353,6 +360,93 @@ pub fn create_window(
     };
     store.insert(&mut window)?;
     Ok(window)
+}
+
+/// Create a new window with all required objects in a single transaction.
+/// If workspace_id is empty, creates workspace + tab + window + updates client
+/// all in one BEGIN/COMMIT — reducing 8+ lock acquisitions and fsyncs to 1.
+///
+/// Returns the created Window.
+pub fn create_window_full(
+    store: &WaveStore,
+    workspace_id: &str,
+) -> Result<Window, StoreError> {
+    store.with_tx(|tx| {
+        let ws_id = if workspace_id.is_empty() {
+            // Create workspace
+            let mut ws = Workspace {
+                oid: Uuid::new_v4().to_string(),
+                name: String::new(),
+                icon: String::new(),
+                color: String::new(),
+                tabids: vec![],
+                pinnedtabids: vec![],
+                activetabid: String::new(),
+                meta: MetaMapType::new(),
+                ..Default::default()
+            };
+            tx.insert(&mut ws)?;
+
+            // Create layout state for tab
+            let mut layout = LayoutState {
+                oid: Uuid::new_v4().to_string(),
+                rootnode: None,
+                magnifiednodeid: String::new(),
+                focusednodeid: String::new(),
+                leaforder: None,
+                pendingbackendactions: None,
+                meta: None,
+                ..Default::default()
+            };
+            tx.insert(&mut layout)?;
+
+            // Create tab
+            let mut tab = Tab {
+                oid: Uuid::new_v4().to_string(),
+                name: format!("T{}", ws.tabids.len() + ws.pinnedtabids.len() + 1),
+                layoutstate: layout.oid.clone(),
+                blockids: vec![],
+                meta: MetaMapType::new(),
+                ..Default::default()
+            };
+            tx.insert(&mut tab)?;
+
+            // Link tab to workspace
+            ws.tabids.push(tab.oid.clone());
+            ws.activetabid = tab.oid.clone();
+            tx.update(&mut ws)?;
+
+            ws.oid
+        } else {
+            let _ws = tx.must_get::<Workspace>(workspace_id)?;
+            workspace_id.to_string()
+        };
+
+        // Create window
+        let mut window = Window {
+            oid: Uuid::new_v4().to_string(),
+            workspaceid: ws_id,
+            isnew: true,
+            pos: Point { x: 0, y: 0 },
+            winsize: WinSize {
+                width: 0,
+                height: 0,
+            },
+            meta: MetaMapType::new(),
+            ..Default::default()
+        };
+        tx.insert(&mut window)?;
+
+        // Update client with new window ID
+        let clients = tx.get_all::<Client>()?;
+        if let Some(client) = clients.into_iter().next() {
+            let mut client = client;
+            client.windowids.push(window.oid.clone());
+            tx.update(&mut client)?;
+        }
+
+        Ok(window)
+    })
 }
 
 /// Close a window and remove from client's window list.

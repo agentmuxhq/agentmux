@@ -41,6 +41,8 @@ tasks:
         cmds:
             - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/target/debug/agentmuxsrv-rs.exe -ErrorAction SilentlyContinue
             - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/target/release/agentmuxsrv-rs.exe -ErrorAction SilentlyContinue
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -ErrorAction SilentlyContinue
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -ErrorAction SilentlyContinue
             - echo "✓ Synced agentmuxsrv-rs to Tauri dev/release cache (Windows)"
 
     sync:dev:binaries:darwin:

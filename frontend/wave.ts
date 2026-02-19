@@ -289,11 +289,13 @@ async function initTauriNewWindow(): Promise<void> {
 
     } catch (error) {
         console.error("[initTauriNewWindow] Initialization failed:", error);
-        getApi().sendLog(`[initTauriNewWindow] ❌ Error: ${error}`);
-        pushFlashError({ id: "", icon: "triangle-exclamation", title: "Startup Error", message: "Failed to initialize new window: " + String(error), expiration: null });
-        // Show error UI instead of grey screen
-        document.body.style.visibility = "visible";
-        document.body.style.opacity = "1";
+        try { getApi().sendLog(`[initTauriNewWindow] ❌ Error: ${error}`); } catch {}
+        showStartupError("New window: " + String(error));
+        // Show Tauri window so user sees the error
+        try {
+            const { getCurrent } = await import("@tauri-apps/api/window");
+            await getCurrent().show();
+        } catch {}
     }
 }
 

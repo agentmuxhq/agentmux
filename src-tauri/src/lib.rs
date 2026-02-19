@@ -192,29 +192,40 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // Graceful shutdown: kill the backend sidecar
-                    let state = window.app_handle().state::<state::AppState>();
-                    let mut sidecar = state.sidecar_child.lock().unwrap();
-                    if let Some(child) = sidecar.take() {
-                        tracing::info!("Shutting down backend sidecar");
-                        let _ = child.kill();
+                    // Count remaining windows (excluding the one being closed)
+                    let closing_label = window.label().to_string();
+                    let remaining_windows = window.app_handle().webview_windows()
+                        .keys()
+                        .filter(|label| **label != closing_label)
+                        .count();
 
-                        // Clean up endpoints file to prevent stale file race conditions
-                        if let Ok(config_dir) = window.app_handle().path().app_config_dir() {
-                            let endpoints_file = config_dir.join("wave-endpoints.json");
-                            if endpoints_file.exists() {
-                                if let Err(e) = std::fs::remove_file(&endpoints_file) {
-                                    tracing::warn!("Failed to remove endpoints file on shutdown: {}", e);
-                                } else {
-                                    tracing::info!("Removed endpoints file on shutdown");
+                    tracing::info!("Window {} closing, {} other window(s) remaining", closing_label, remaining_windows);
+
+                    // Only shut down the backend sidecar when the last window is closing
+                    if remaining_windows == 0 {
+                        let state = window.app_handle().state::<state::AppState>();
+                        let mut sidecar = state.sidecar_child.lock().unwrap();
+                        if let Some(child) = sidecar.take() {
+                            tracing::info!("Shutting down backend sidecar (last window closing)");
+                            let _ = child.kill();
+
+                            // Clean up endpoints file to prevent stale file race conditions
+                            if let Ok(config_dir) = window.app_handle().path().app_config_dir() {
+                                let endpoints_file = config_dir.join("wave-endpoints.json");
+                                if endpoints_file.exists() {
+                                    if let Err(e) = std::fs::remove_file(&endpoints_file) {
+                                        tracing::warn!("Failed to remove endpoints file on shutdown: {}", e);
+                                    } else {
+                                        tracing::info!("Removed endpoints file on shutdown");
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Clean up heartbeat file
-                    if let Ok(data_dir) = window.app_handle().path().app_data_dir() {
-                        heartbeat::cleanup_heartbeat(&data_dir);
+                        // Clean up heartbeat file
+                        if let Ok(data_dir) = window.app_handle().path().app_data_dir() {
+                            heartbeat::cleanup_heartbeat(&data_dir);
+                        }
                     }
 
                     // Allow the close to proceed

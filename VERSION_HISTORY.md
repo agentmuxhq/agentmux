@@ -2,13 +2,20 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.30.5
+## Latest Version: 0.30.6
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.30.6-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix grey screen on startup: add 5s RPC timeouts and error recovery
+  - showStartupError() renders user-facing error instead of blank screen
+  - 30s safety-net timeout forces body visible if still hidden
 
 ### v0.30.5-fork (2026-02-19)
 - **Agent:** AgentA

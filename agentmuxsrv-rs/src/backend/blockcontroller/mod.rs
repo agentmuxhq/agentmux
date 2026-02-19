@@ -17,7 +17,9 @@ use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
 
+use super::eventbus::EventBus;
 use super::waveobj::{Block, MetaMapType, TermSize};
+use super::wps::Broker;
 
 // ---- Controller status constants (match Go) ----
 
@@ -233,6 +235,8 @@ pub fn resync_controller(
     tab_id: &str,
     rt_opts: Option<serde_json::Value>,
     force: bool,
+    broker: Option<Arc<Broker>>,
+    event_bus: Option<Arc<EventBus>>,
 ) -> Result<(), String> {
     let block_id = &block.oid;
     let block_meta = &block.meta;
@@ -278,6 +282,8 @@ pub fn resync_controller(
                 controller_type.clone(),
                 tab_id.to_string(),
                 block_id.to_string(),
+                broker,
+                event_bus,
             );
             let ctrl = Arc::new(ctrl);
             register_controller(block_id, ctrl.clone());
@@ -420,7 +426,7 @@ mod tests {
             ..Default::default()
         };
         // No "controller" key in meta = no-op
-        let result = resync_controller(&block, "tab-1", None, false);
+        let result = resync_controller(&block, "tab-1", None, false, None, None);
         assert!(result.is_ok());
     }
 
@@ -437,7 +443,7 @@ mod tests {
             meta,
             ..Default::default()
         };
-        let result = resync_controller(&block, "tab-1", None, false);
+        let result = resync_controller(&block, "tab-1", None, false, None, None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("unknown controller type"));
     }

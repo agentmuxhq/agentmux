@@ -14,10 +14,13 @@
 //! 3. Output/proxy loop: WSH messages → input channel
 //! 4. Wait loop: monitor process exit, update status
 
+use std::io::Read as _;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::sync::Mutex;
 
 use base64::Engine as _;
+use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use tokio::sync::mpsc;
 
 use super::{
@@ -26,6 +29,7 @@ use super::{
     META_KEY_CMD_CLOSE_ON_EXIT_FORCE, META_KEY_CMD_RUN_ONCE, META_KEY_CMD_RUN_ON_START,
     META_KEY_CONNECTION, STATUS_DONE, STATUS_INIT, STATUS_RUNNING,
 };
+use crate::backend::eventbus::EventBus;
 use crate::backend::shellexec::{ConnInterface, MockConn, ShellProc};
 use crate::backend::waveobj::{self, MetaMapType};
 use crate::backend::wps;
@@ -34,8 +38,6 @@ use crate::backend::wps;
 const SHELL_INPUT_CH_SIZE: usize = 32;
 
 /// PTY read buffer size (matches Go's 4096).
-/// Used when the PTY read loop is active (future integration).
-#[allow(dead_code)]
 const PTY_READ_BUF_SIZE: usize = 4096;
 
 /// Inner state protected by mutex.
@@ -63,36 +65,48 @@ pub type ConnFactory =
 pub struct ShellController {
     /// Controller type: "shell" or "cmd".
     controller_type: String,
-    /// Parent tab UUID (used by PTY I/O tasks in future integration).
-    #[allow(dead_code)]
+    /// Parent tab UUID.
     tab_id: String,
     /// Block UUID.
     block_id: String,
     /// Prevents concurrent run() calls.
-    run_lock: AtomicBool,
+    run_lock: Arc<AtomicBool>,
     /// Protected inner state.
-    inner: Mutex<ShellControllerInner>,
+    inner: Arc<Mutex<ShellControllerInner>>,
     /// Optional factory for creating ConnInterface (for testing).
     conn_factory: Mutex<Option<ConnFactory>>,
+    /// WPS broker for publishing events (blockfile, controllerstatus).
+    broker: Option<Arc<wps::Broker>>,
+    /// Event bus (unused for now, reserved for future event routing).
+    #[allow(dead_code)]
+    event_bus: Option<Arc<EventBus>>,
 }
 
 impl ShellController {
     /// Create a new ShellController.
-    pub fn new(controller_type: String, tab_id: String, block_id: String) -> Self {
+    pub fn new(
+        controller_type: String,
+        tab_id: String,
+        block_id: String,
+        broker: Option<Arc<wps::Broker>>,
+        event_bus: Option<Arc<EventBus>>,
+    ) -> Self {
         Self {
             controller_type,
             tab_id,
             block_id,
-            run_lock: AtomicBool::new(false),
-            inner: Mutex::new(ShellControllerInner {
+            run_lock: Arc::new(AtomicBool::new(false)),
+            inner: Arc::new(Mutex::new(ShellControllerInner {
                 proc_status: STATUS_INIT.to_string(),
                 proc_exit_code: 0,
                 status_version: 0,
                 conn_name: String::new(),
                 input_tx: None,
                 input_rx: None,
-            }),
+            })),
             conn_factory: Mutex::new(None),
+            broker,
+            event_bus,
         }
     }
 
@@ -174,10 +188,17 @@ impl ShellController {
         waveobj::meta_get_string(meta, META_KEY_CONNECTION, "local")
     }
 
-    /// Get the command string from block meta (used in full lifecycle integration).
-    #[allow(dead_code)]
+    /// Get the command string from block meta.
     fn get_cmd_str(meta: &MetaMapType) -> String {
         waveobj::meta_get_string(meta, META_KEY_CMD, "")
+    }
+
+    /// Publish current controller status via the WPS broker.
+    fn publish_status(&self) {
+        if let Some(ref broker) = self.broker {
+            let status = self.get_status_snapshot();
+            super::publish_controller_status(broker, &status);
+        }
     }
 }
 
@@ -201,78 +222,257 @@ impl Controller for ShellController {
         // Get connection info
         let conn_name = Self::get_conn_name(&block_meta);
 
-        // Update status to running
+        // Update status to running and publish
         {
             let mut inner = self.inner.lock().unwrap();
             Self::set_status(&mut inner, STATUS_RUNNING);
             inner.conn_name = conn_name.clone();
         }
+        self.publish_status();
 
-        // Create input channel — receiver is stored for the PTY input loop
+        // Create input channel
         let (input_tx, input_rx) = mpsc::channel(SHELL_INPUT_CH_SIZE);
         {
             let mut inner = self.inner.lock().unwrap();
             inner.input_tx = Some(input_tx);
-            inner.input_rx = Some(input_rx);
         }
 
-        // Create the process connection
-        let conn_result = {
-            let factory = self.conn_factory.lock().unwrap();
-            if let Some(ref factory) = *factory {
-                factory(&conn_name, &block_meta)
-            } else {
-                // Default: create a mock connection (real PTY deferred to Tauri integration)
-                Ok(Box::new(MockConn::new(0)) as Box<dyn ConnInterface>)
-            }
-        };
+        // Check if we have a conn_factory (test/mock path)
+        let has_factory = self.conn_factory.lock().unwrap().is_some();
 
-        let mut conn = match conn_result {
-            Ok(c) => c,
-            Err(e) => {
+        if has_factory {
+            // Mock path: use ConnInterface factory (synchronous, for tests)
+            let conn_result = {
+                let factory = self.conn_factory.lock().unwrap();
+                factory.as_ref().unwrap()(&conn_name, &block_meta)
+            };
+
+            let mut conn = match conn_result {
+                Ok(c) => c,
+                Err(e) => {
+                    let mut inner = self.inner.lock().unwrap();
+                    Self::set_status(&mut inner, STATUS_DONE);
+                    inner.proc_exit_code = -1;
+                    inner.input_tx = None;
+                    self.unlock_run();
+                    return Err(format!("failed to create connection: {e}"));
+                }
+            };
+
+            if let Err(e) = conn.start() {
                 let mut inner = self.inner.lock().unwrap();
                 Self::set_status(&mut inner, STATUS_DONE);
                 inner.proc_exit_code = -1;
+                inner.input_tx = None;
                 self.unlock_run();
-                return Err(format!("failed to create connection: {e}"));
+                return Err(format!("failed to start process: {e}"));
             }
+
+            let mut shell_proc = ShellProc::new(conn_name, conn);
+            let _done_rx = shell_proc.take_done_rx();
+            let exit_code = shell_proc.wait_and_signal();
+
+            {
+                let mut inner = self.inner.lock().unwrap();
+                inner.proc_exit_code = exit_code;
+                Self::set_status(&mut inner, STATUS_DONE);
+                inner.input_tx = None;
+            }
+            self.publish_status();
+            self.unlock_run();
+            return Ok(());
+        }
+
+        // Real PTY path
+        let pty_system = native_pty_system();
+        let pty_size = PtySize {
+            rows: 25,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
         };
 
-        // Start the process
-        if let Err(e) = conn.start() {
+        let pair = pty_system.openpty(pty_size).map_err(|e| {
             let mut inner = self.inner.lock().unwrap();
             Self::set_status(&mut inner, STATUS_DONE);
             inner.proc_exit_code = -1;
-            self.unlock_run();
-            return Err(format!("failed to start process: {e}"));
-        }
-
-        let mut shell_proc = ShellProc::new(conn_name, conn);
-        let _done_rx = shell_proc.take_done_rx();
-
-        // Note: In a full implementation, we would spawn 4 async tasks here:
-        // 1. PTY read loop: process stdout → FileStore + WPS event
-        // 2. Input write loop: input channel → process stdin
-        // 3. WSH proxy loop: WSH messages → input channel
-        // 4. Wait/exit loop: monitor process exit, update status
-        //
-        // For this phase, we set up the structure and the wait loop.
-        // Real PTY I/O will be wired in when portable-pty is integrated.
-
-        // For now, have the process immediately complete (mock behavior).
-        // The wait_and_signal call will use the mock's immediate return.
-        let exit_code = shell_proc.wait_and_signal();
-
-        // Update status after process exits
-        {
-            let mut inner = self.inner.lock().unwrap();
-            inner.proc_exit_code = exit_code;
-            Self::set_status(&mut inner, STATUS_DONE);
             inner.input_tx = None;
-            inner.input_rx = None;
-        }
-        self.unlock_run();
+            self.unlock_run();
+            format!("failed to open PTY: {e}")
+        })?;
 
+        // Determine shell command
+        let cmd_str = Self::get_cmd_str(&block_meta);
+        let mut cmd = if !cmd_str.is_empty() {
+            // "cmd" controller: run a specific command
+            if cfg!(windows) {
+                let mut c = CommandBuilder::new("cmd.exe");
+                c.args(["/C", &cmd_str]);
+                c
+            } else {
+                let mut c = CommandBuilder::new("/bin/sh");
+                c.args(["-c", &cmd_str]);
+                c
+            }
+        } else {
+            // "shell" controller: interactive shell
+            if cfg!(windows) {
+                CommandBuilder::new("cmd.exe")
+            } else {
+                let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+                CommandBuilder::new(shell)
+            }
+        };
+
+        // Set working directory if specified
+        let cwd = waveobj::meta_get_string(&block_meta, super::META_KEY_CMD_CWD, "");
+        if !cwd.is_empty() {
+            cmd.cwd(&cwd);
+        }
+
+        let mut child = pair.slave.spawn_command(cmd).map_err(|e| {
+            let mut inner = self.inner.lock().unwrap();
+            Self::set_status(&mut inner, STATUS_DONE);
+            inner.proc_exit_code = -1;
+            inner.input_tx = None;
+            self.unlock_run();
+            format!("failed to spawn command: {e}")
+        })?;
+
+        // Get reader/writer from master
+        let reader = pair.master.try_clone_reader().map_err(|e| {
+            let _ = child.kill();
+            let mut inner = self.inner.lock().unwrap();
+            Self::set_status(&mut inner, STATUS_DONE);
+            inner.proc_exit_code = -1;
+            inner.input_tx = None;
+            self.unlock_run();
+            format!("failed to clone PTY reader: {e}")
+        })?;
+
+        let writer = pair.master.take_writer().map_err(|e| {
+            let _ = child.kill();
+            let mut inner = self.inner.lock().unwrap();
+            Self::set_status(&mut inner, STATUS_DONE);
+            inner.proc_exit_code = -1;
+            inner.input_tx = None;
+            self.unlock_run();
+            format!("failed to take PTY writer: {e}")
+        })?;
+
+        // Spawn PTY read task (blocking I/O → spawn_blocking)
+        let block_id_read = self.block_id.clone();
+        let broker_read = self.broker.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut reader = reader;
+            let mut buf = [0u8; PTY_READ_BUF_SIZE];
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => {
+                        if let Some(ref broker) = broker_read {
+                            handle_append_block_file(
+                                broker,
+                                &block_id_read,
+                                "term",
+                                &buf[..n],
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::debug!("PTY read error for {}: {}", block_id_read, e);
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Spawn input task (routes input channel → PTY writer + resize + signals)
+        // Owns writer and master — dropping them closes the PTY, causing child to exit.
+        let master = pair.master;
+        tokio::spawn(async move {
+            let mut writer = writer;
+            let mut input_rx = input_rx;
+            while let Some(input) = input_rx.recv().await {
+                if let Some(data) = input.input_data {
+                    use std::io::Write;
+                    if let Err(e) = writer.write_all(&data) {
+                        tracing::debug!("PTY write error: {}", e);
+                        break;
+                    }
+                }
+                if let Some(ref size) = input.term_size {
+                    let pty_size = PtySize {
+                        rows: size.rows as u16,
+                        cols: size.cols as u16,
+                        pixel_width: 0,
+                        pixel_height: 0,
+                    };
+                    if let Err(e) = master.resize(pty_size) {
+                        tracing::debug!("PTY resize error: {}", e);
+                    }
+                }
+                if input.sig_name.is_some() {
+                    // Drop writer + master to close PTY, which terminates the child
+                    break;
+                }
+            }
+            // writer and master drop here → PTY closes → child gets EOF/terminates
+        });
+
+        // Spawn wait task (monitors process exit)
+        let inner_wait = Arc::clone(&self.inner);
+        let block_id_wait = self.block_id.clone();
+        let broker_wait = self.broker.clone();
+        let run_lock = Arc::clone(&self.run_lock);
+        tokio::task::spawn_blocking(move || {
+            let mut child = child;
+
+            // Wait for child to exit (blocking)
+            let exit_status = child.wait();
+            let exit_code = match exit_status {
+                Ok(status) => {
+                    if status.success() {
+                        0
+                    } else {
+                        // portable-pty ExitStatus doesn't expose raw code on all platforms
+                        1
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("wait error for block {}: {}", block_id_wait, e);
+                    -1
+                }
+            };
+
+            // Update inner state
+            {
+                let mut inner = inner_wait.lock().unwrap();
+                inner.proc_exit_code = exit_code;
+                ShellController::set_status(&mut inner, STATUS_DONE);
+                inner.input_tx = None;
+            }
+
+            // Publish done status
+            if let Some(ref broker) = broker_wait {
+                let status = {
+                    let inner = inner_wait.lock().unwrap();
+                    BlockControllerRuntimeStatus {
+                        blockid: block_id_wait.clone(),
+                        version: inner.status_version,
+                        shellprocstatus: inner.proc_status.clone(),
+                        shellprocconnname: inner.conn_name.clone(),
+                        shellprocexitcode: inner.proc_exit_code,
+                    }
+                };
+                super::publish_controller_status(broker, &status);
+            }
+
+            // Release run lock
+            run_lock.store(false, Ordering::SeqCst);
+        });
+
+        // Return immediately — PTY tasks run in background
         Ok(())
     }
 
@@ -402,6 +602,8 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
         assert_eq!(ctrl.controller_type(), "shell");
         assert_eq!(ctrl.block_id(), "block-1");
@@ -418,7 +620,14 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
+
+        // Use mock factory so we don't open a real PTY in tests
+        ctrl.set_conn_factory(Box::new(|_conn_name, _meta| {
+            Ok(Box::new(MockConn::new(0)) as Box<dyn ConnInterface>)
+        }));
 
         let meta = make_shell_meta();
         let result = ctrl.start(meta, None, false);
@@ -439,6 +648,8 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
 
         let mut meta = make_shell_meta();
@@ -461,7 +672,13 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
+
+        ctrl.set_conn_factory(Box::new(|_conn_name, _meta| {
+            Ok(Box::new(MockConn::new(0)) as Box<dyn ConnInterface>)
+        }));
 
         let mut meta = make_shell_meta();
         meta.insert(
@@ -484,6 +701,8 @@ mod tests {
             "cmd".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
 
         // Set a custom factory that returns a mock with exit code 42
@@ -506,6 +725,8 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
 
         ctrl.set_conn_factory(Box::new(|_conn_name, _meta| {
@@ -528,6 +749,8 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
 
         let result = ctrl.send_input(BlockInputUnion::data(b"hello".to_vec()));
@@ -541,7 +764,13 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         );
+
+        ctrl.set_conn_factory(Box::new(|_conn_name, _meta| {
+            Ok(Box::new(MockConn::new(0)) as Box<dyn ConnInterface>)
+        }));
 
         let v0 = ctrl.get_runtime_status().version;
 
@@ -559,6 +788,8 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
+            None,
         ));
 
         assert_eq!(ctrl.controller_type(), "shell");
@@ -653,6 +884,8 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "test-register-block".to_string(),
+            None,
+            None,
         ));
 
         super::super::register_controller("test-register-block", ctrl.clone());
@@ -675,6 +908,11 @@ mod tests {
             "controller".to_string(),
             serde_json::Value::String("shell".to_string()),
         );
+        // Disable auto-start so we don't open a real PTY in tests
+        meta.insert(
+            META_KEY_CMD_RUN_ON_START.to_string(),
+            serde_json::Value::Bool(false),
+        );
 
         let block = Block {
             oid: "resync-test-block".to_string(),
@@ -683,7 +921,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = super::super::resync_controller(&block, "tab-1", None, false);
+        let result = super::super::resync_controller(&block, "tab-1", None, false, None, None);
         assert!(result.is_ok());
 
         let ctrl = super::super::get_controller("resync-test-block");

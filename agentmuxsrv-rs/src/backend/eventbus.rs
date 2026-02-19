@@ -5,9 +5,11 @@
 //! Port of Go's pkg/eventbus/eventbus.go.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
+
+use super::wps::{WaveEvent, WpsClient};
 
 // ---- Event type constants (match Go) ----
 
@@ -136,6 +138,33 @@ impl EventBus {
 impl Default for EventBus {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Bridge from WPS Broker to EventBus.
+/// Wraps WaveEvents as RPC eventrecv messages and broadcasts them to all WS clients.
+pub struct EventBusBridge {
+    event_bus: Arc<EventBus>,
+}
+
+impl EventBusBridge {
+    pub fn new(event_bus: Arc<EventBus>) -> Self {
+        Self { event_bus }
+    }
+}
+
+impl WpsClient for EventBusBridge {
+    fn send_event(&self, _route_id: &str, event: WaveEvent) {
+        // Wrap as RPC eventrecv message (format expected by frontend)
+        let ws_event = WSEventType {
+            eventtype: WS_EVENT_RPC.to_string(),
+            oref: String::new(),
+            data: Some(serde_json::json!({
+                "command": "eventrecv",
+                "data": event
+            })),
+        };
+        self.event_bus.broadcast_event(&ws_event);
     }
 }
 

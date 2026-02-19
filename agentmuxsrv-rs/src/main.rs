@@ -90,6 +90,10 @@ async fn main() {
     let event_bus = Arc::new(EventBus::new());
     let broker = Arc::new(Broker::new());
 
+    // Bridge WPS events to WebSocket clients via EventBus
+    let bridge = backend::eventbus::EventBusBridge::new(event_bus.clone());
+    broker.set_client(Box::new(bridge));
+
     // Reactive handler (global singleton) + poller
     let reactive_handler = reactive::get_global_handler();
     let poller = Arc::new(Poller::new(

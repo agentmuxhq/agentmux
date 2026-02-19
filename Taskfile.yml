@@ -39,35 +39,31 @@ tasks:
         internal: true
         platforms: [windows]
         cmds:
-            - powershell Copy-Item -Force dist/bin/agentmuxsrv.x64.exe src-tauri/target/debug/agentmuxsrv.exe -ErrorAction SilentlyContinue
-            - powershell Copy-Item -Force dist/bin/agentmuxsrv.x64.exe src-tauri/target/release/agentmuxsrv.exe -ErrorAction SilentlyContinue
-            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (Windows)"
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/target/debug/agentmuxsrv-rs.exe -ErrorAction SilentlyContinue
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/target/release/agentmuxsrv-rs.exe -ErrorAction SilentlyContinue
+            - echo "✓ Synced agentmuxsrv-rs to Tauri dev/release cache (Windows)"
 
     sync:dev:binaries:darwin:
         internal: true
         platforms: [darwin]
         cmds:
             - mkdir -p src-tauri/target/debug/bin src-tauri/target/release/bin
-            - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/debug/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/release/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/debug/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/release/agentmuxsrv || true
+            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/debug/agentmuxsrv-rs || true
+            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/release/agentmuxsrv-rs || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/target/debug/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/target/release/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/debug/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/release/bin/ || true
-            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/debug/agentmuxsrv-rs || true
-            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/release/agentmuxsrv-rs || true
-            - echo "✓ Synced agentmuxsrv + wsh to Tauri dev/release cache (macOS)"
+            - echo "✓ Synced agentmuxsrv-rs + wsh to Tauri dev/release cache (macOS)"
 
     sync:dev:binaries:linux:
         internal: true
         platforms: [linux]
         cmds:
             - mkdir -p src-tauri/target/debug src-tauri/target/release
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/debug/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/release/agentmuxsrv || true
-            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (Linux)"
+            - cp -f dist/bin/agentmuxsrv-rs.x64 src-tauri/target/debug/agentmuxsrv-rs || true
+            - cp -f dist/bin/agentmuxsrv-rs.x64 src-tauri/target/release/agentmuxsrv-rs || true
+            - echo "✓ Synced agentmuxsrv-rs to Tauri dev/release cache (Linux)"
 
     start:
         desc: Build and run the Tauri application in production mode (no installer).
@@ -199,7 +195,6 @@ tasks:
         platforms: [linux]
         cmds:
             - task: build:backend
-            - task: build:backend:rust
             - task: tauri:copy-sidecars
             # Tauri prepares the AppDir but linuxdeploy crashes on some systems.
             # We ignore the linuxdeploy failure and run appimagetool directly.
@@ -240,9 +235,9 @@ tasks:
             - npm:install
 
     build:backend:
-        desc: Build the agentmuxsrv and wsh components.
+        desc: Build the agentmuxsrv-rs and wsh components.
         cmds:
-            - task: build:server
+            - task: build:backend:rust
             - task: build:wsh
 
     build:backend:quickdev:
@@ -723,34 +718,22 @@ tasks:
             - npm:install
 
     tauri:copy-sidecars:
-        desc: Copy Go binaries to src-tauri/binaries with target-specific names
+        desc: Copy agentmuxsrv-rs and wsh binaries to src-tauri/binaries with target-specific names
         cmds:
             - mkdir -p src-tauri/binaries
             - |
                 {{if eq OS "windows"}}
-                powershell -Command "Copy-Item dist/bin/agentmuxsrv.x64.exe src-tauri/binaries/agentmuxsrv-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"
+                powershell -Command "Copy-Item dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"
                 {{else}}
                 TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
                 {{if eq OS "darwin"}}
-                cp dist/bin/agentmuxsrv.arm64 src-tauri/binaries/agentmuxsrv-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
+                cp dist/bin/agentmuxsrv-rs.arm64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/binaries/wsh-$TRIPLE 2>/dev/null || cp dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{else}}
-                cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
+                cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-linux.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{end}}
                 echo "Copied binaries for $TRIPLE"
-                {{end}}
-            # Optionally copy agentmuxsrv-rs if it was built (fallback so Go-only builds still work)
-            - |
-                {{if eq OS "windows"}}
-                powershell -Command "if (Test-Path dist/bin/agentmuxsrv-rs.x64.exe) { Copy-Item dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied agentmuxsrv-rs for Windows' } else { Write-Host 'agentmuxsrv-rs not found, skipping' }"
-                {{else}}
-                TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
-                {{if eq OS "darwin"}}
-                cp dist/bin/agentmuxsrv-rs.arm64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || echo "agentmuxsrv-rs not found, skipping";
-                {{else}}
-                cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || echo "agentmuxsrv-rs not found, skipping";
-                {{end}}
                 {{end}}
             # Also create bin/ directory with versioned wsh names (backend expects WAVETERM_APP_PATH/bin/wsh-VERSION-OS.ARCH)
             - |

@@ -13,9 +13,7 @@ pub struct BackendSpawnResult {
     pub is_reused: bool,      // true if reusing an existing backend (not spawned by this process)
 }
 
-/// Spawn the agentmuxsrv Go backend as a Tauri sidecar.
-///
-/// Replaces emain/emain-agentmuxsrv.ts.
+/// Spawn the agentmuxsrv-rs Rust backend as a Tauri sidecar.
 ///
 /// The backend prints a line to stderr when ready:
 ///   WAVESRV-ESTART ws:<addr> web:<addr> version:<ver> buildtime:<time>
@@ -143,21 +141,11 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
     // Get auth key from app state
     let auth_key = app.state::<crate::state::AppState>().auth_key.lock().unwrap().clone();
     let key_preview = auth_key.chars().take(8).collect::<String>();
-    tracing::info!("Spawning agentmuxsrv with auth key: {}", key_preview);
+    tracing::info!("Spawning agentmuxsrv-rs with auth key: {}", key_preview);
 
     let shell = app.shell();
 
-    // Select backend binary based on AGENTMUX_BACKEND env var
-    let backend_name = match std::env::var("AGENTMUX_BACKEND").as_deref() {
-        Ok("go") => {
-            tracing::info!("Using Go backend (AGENTMUX_BACKEND=go)");
-            "agentmuxsrv"
-        }
-        _ => {
-            tracing::info!("Using Rust backend (default)");
-            "agentmuxsrv-rs"
-        }
-    };
+    let backend_name = "agentmuxsrv-rs";
 
     // Try to find backend in portable mode first (same dir as exe)
     let portable_path = std::env::current_exe().ok().and_then(|exe_path| {
@@ -240,7 +228,7 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         .env("WCLOUD_ENDPOINT", "https://api.waveterm.dev/central")
         .env("WCLOUD_WS_ENDPOINT", "wss://wsapi.waveterm.dev/")
         .spawn()
-        .map_err(|e| format!("Failed to spawn agentmuxsrv: {}", e))?;
+        .map_err(|e| format!("Failed to spawn agentmuxsrv-rs: {}", e))?;
 
     // Store child handle for graceful shutdown
     {
@@ -289,19 +277,19 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                         } else if let Some(event_data) = l.strip_prefix("WAVESRV-EVENT:") {
                             handle_backend_event(&app_handle, event_data);
                         } else {
-                            tracing::info!("[agentmuxsrv] {}", l);
+                            tracing::info!("[agentmuxsrv-rs] {}", l);
                         }
                     }
                 }
                 CommandEvent::Stdout(line) => {
                     let line = String::from_utf8_lossy(&line);
-                    tracing::info!("[agentmuxsrv stdout] {}", line.trim());
+                    tracing::info!("[agentmuxsrv-rs stdout] {}", line.trim());
                 }
                 CommandEvent::Error(err) => {
-                    tracing::error!("[agentmuxsrv error] {}", err);
+                    tracing::error!("[agentmuxsrv-rs error] {}", err);
                 }
                 CommandEvent::Terminated(status) => {
-                    tracing::warn!("[agentmuxsrv] terminated with status: {:?}", status);
+                    tracing::warn!("[agentmuxsrv-rs] terminated with status: {:?}", status);
                     // Emit quit event to frontend
                     if let Some(window) = app_handle.get_webview_window("main") {
                         let _ = window.emit("backend-terminated", serde_json::json!({
@@ -322,8 +310,8 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
         endpoint_rx.recv(),
     )
     .await
-    .map_err(|_| "Timeout waiting for agentmuxsrv to start (30s)".to_string())?
-    .ok_or_else(|| "agentmuxsrv channel closed before sending endpoints".to_string())?;
+    .map_err(|_| "Timeout waiting for agentmuxsrv-rs to start (30s)".to_string())?
+    .ok_or_else(|| "agentmuxsrv-rs channel closed before sending endpoints".to_string())?;
 
     let result = BackendSpawnResult {
         ws_endpoint: timeout.0,

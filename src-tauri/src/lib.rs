@@ -12,7 +12,7 @@ use tauri::Manager;
 /// Initialize and run the AgentMux Tauri application.
 ///
 /// This replaces the Electron main process (emain/emain.ts).
-/// The Go backend (agentmuxsrv) is spawned as a sidecar process,
+/// The Rust backend (agentmuxsrv-rs) is spawned as a sidecar process,
 /// and the React frontend connects to it via WebSocket/HTTP.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

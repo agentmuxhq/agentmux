@@ -2,13 +2,35 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.30.0
+## Latest Version: 0.30.5
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.30.5-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Modularize filestore.rs (1531 lines) into 7 focused files under filestore/ directory
+  - No behavior changes — pure mechanical extraction
+  - All 34 filestore tests pass
+
+### v0.30.4-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix widgets, config event, and object CRUD in Rust backend
+
+### v0.30.3-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Terminal I/O with real PTY support (portable-pty) in Rust backend
+  - Wire controllerresync, controllerinput RPC handlers
+  - Wire blockinput, setblocktermsize wscommands
+  - Wire eventsub/eventunsub/eventunsuball to WPS Broker
+  - Add EventBusBridge for Broker → EventBus → WebSocket event delivery
+  - Replace unsafe run_lock pointer with safe Arc<AtomicBool>
 
 ### v0.30.0-fork (2026-02-17)
 - **Agent:** AgentO

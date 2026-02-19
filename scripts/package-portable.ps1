@@ -13,7 +13,7 @@ if ($Version -eq "") {
 }
 
 $RepoRoot = Split-Path $PSScriptRoot
-$BuildDir = "$RepoRoot\src-tauri\target\release"
+$BuildDir = "$RepoRoot\target\release"
 $PortableDir = "$OutputDir\agentmux-$Version-x64-portable"
 $ZipPath = "$OutputDir\agentmux-$Version-x64-portable.zip"
 
@@ -22,7 +22,7 @@ Write-Host "Packaging AgentMux $Version Portable Build..." -ForegroundColor Cyan
 # Verify binaries exist
 $RequiredFiles = @(
     "$BuildDir\agentmux.exe",
-    "$RepoRoot\dist\bin\agentmuxsrv.x64.exe",
+    "$RepoRoot\dist\bin\agentmuxsrv-rs.x64.exe",
     "$RepoRoot\dist\bin\wsh-$Version-windows.x64.exe"
 )
 
@@ -54,8 +54,8 @@ Write-Host "  Copying agentmux.exe..." -ForegroundColor Gray
 Copy-Item "$BuildDir\agentmux.exe" "$PortableDir\agentmux.exe" -Force
 
 # Copy backend
-Write-Host "  Copying agentmuxsrv.x64.exe..." -ForegroundColor Gray
-Copy-Item "$RepoRoot\dist\bin\agentmuxsrv.x64.exe" "$PortableDir\agentmuxsrv.x64.exe" -Force
+Write-Host "  Copying agentmuxsrv-rs.x64.exe..." -ForegroundColor Gray
+Copy-Item "$RepoRoot\dist\bin\agentmuxsrv-rs.x64.exe" "$PortableDir\agentmuxsrv-rs.x64.exe" -Force
 
 # Copy wsh to bin subdirectory (backend expects it there)
 Write-Host "  Copying wsh-$Version-windows.x64.exe to bin/..." -ForegroundColor Gray
@@ -78,7 +78,7 @@ Requirements:
 
 Files:
 - agentmux.exe: Main application (Tauri frontend)
-- agentmuxsrv.x64.exe: Backend server (auto-launched)
+- agentmuxsrv-rs.x64.exe: Backend server (auto-launched)
 - bin/wsh-$Version-windows.x64.exe: Shell integration binary
 
 Support: https://github.com/a5af/agentmux
@@ -89,7 +89,7 @@ $ReadmeContent | Out-File "$PortableDir\README.txt" -Encoding UTF8
 
 # Get file sizes before cleanup
 $ExeSize = (Get-Item "$PortableDir\agentmux.exe").Length / 1MB
-$BackendSize = (Get-Item "$PortableDir\agentmuxsrv.x64.exe").Length / 1MB
+$BackendSize = (Get-Item "$PortableDir\agentmuxsrv-rs.x64.exe").Length / 1MB
 $WshSize = (Get-Item "$PortableDir\bin\wsh-$Version-windows.x64.exe").Length / 1MB
 
 # Create ZIP
@@ -107,9 +107,9 @@ Write-Host "  File: $ZipPath" -ForegroundColor White
 Write-Host "  Size: $([math]::Round($ZipSize, 2)) MB (compressed)" -ForegroundColor White
 Write-Host ""
 Write-Host "  Contents:" -ForegroundColor Gray
-Write-Host "    agentmux.exe:         $([math]::Round($ExeSize, 2)) MB" -ForegroundColor Gray
-Write-Host "    agentmuxsrv.x64.exe:  $([math]::Round($BackendSize, 2)) MB" -ForegroundColor Gray
-Write-Host "    wsh-$Version-*.exe:   $([math]::Round($WshSize, 2)) MB" -ForegroundColor Gray
+Write-Host "    agentmux.exe:            $([math]::Round($ExeSize, 2)) MB" -ForegroundColor Gray
+Write-Host "    agentmuxsrv-rs.x64.exe:  $([math]::Round($BackendSize, 2)) MB" -ForegroundColor Gray
+Write-Host "    wsh-$Version-*.exe:      $([math]::Round($WshSize, 2)) MB" -ForegroundColor Gray
 Write-Host "    README.txt" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Extract and run agentmux.exe to test." -ForegroundColor Cyan

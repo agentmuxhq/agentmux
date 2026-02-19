@@ -7,7 +7,7 @@ pub struct AppState {
     /// Can be updated after querying database for existing client
     pub auth_key: Mutex<String>,
 
-    /// Backend (agentmuxsrv) connection endpoints
+    /// Backend (agentmuxsrv-rs) connection endpoints
     pub backend_endpoints: Mutex<BackendEndpoints>,
 
     /// Handle to the sidecar child process for graceful shutdown

@@ -102,6 +102,48 @@ function updateZoomFactor(zoomFactor: number) {
     document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
 }
 
+/** Wrap a promise with a timeout. Rejects with a descriptive error if it takes too long. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout: ${label} did not respond within ${ms / 1000}s`)), ms)
+        ),
+    ]);
+}
+
+/** Make body visible and show an error message so the user never sees an infinite grey screen. */
+function showStartupError(message: string) {
+    document.body.style.visibility = "visible";
+    document.body.style.opacity = "1";
+    document.body.classList.remove("is-transparent");
+    // Remove the "Starting AgentMux..." loader
+    const loader = document.getElementById("startup-loading");
+    if (loader) loader.remove();
+    // Show error in the main div
+    const main = document.getElementById("main");
+    if (main) {
+        main.innerHTML = "";
+        const errorDiv = document.createElement("div");
+        errorDiv.style.cssText = "padding: 40px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #f7f7f7;";
+        const title = document.createElement("h2");
+        title.textContent = "AgentMux failed to start";
+        title.style.cssText = "color: #ff6b6b; margin-bottom: 16px;";
+        errorDiv.appendChild(title);
+        const msg = document.createElement("pre");
+        msg.textContent = message;
+        msg.style.cssText = "background: #1a1a1a; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; font-size: 13px;";
+        errorDiv.appendChild(msg);
+        const hint = document.createElement("p");
+        hint.textContent = "Press F12 for console details. Try closing and reopening the app.";
+        hint.style.cssText = "margin-top: 16px; color: rgba(255,255,255,0.5); font-size: 13px;";
+        errorDiv.appendChild(hint);
+        main.appendChild(errorDiv);
+    }
+}
+
+const RPC_TIMEOUT = 5_000; // 5 seconds for individual RPC calls
+
 /**
  * Initialize AgentMux in Tauri mode by fetching client/window/workspace/tab data
  * from backend, verifying objects exist, and creating missing ones if needed.
@@ -111,32 +153,32 @@ async function initTauriWave(): Promise<void> {
 
     try {
         // Get client data (like Electron's relaunchBrowserWindows)
-        const clientData = await ClientService.GetClientData();
+        const clientData = await withTimeout(ClientService.GetClientData(), RPC_TIMEOUT, "GetClientData");
 
         let windowId = clientData.windowids?.[0];
 
         // If no windows exist, create one
         if (!windowId) {
-            const newWindow = await WindowService.CreateWindow(null, "");
+            const newWindow = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
             windowId = newWindow.oid;
         }
 
         // Verify window exists
-        let windowData = await WindowService.GetWindow(windowId);
+        let windowData = await withTimeout(WindowService.GetWindow(windowId), RPC_TIMEOUT, "GetWindow");
 
         if (!windowData) {
-            windowData = await WindowService.CreateWindow(null, "");
+            windowData = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
             windowId = windowData.oid;
         }
 
         // Get workspace
-        let workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
+        let workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
 
         if (!workspace) {
             // Workspace missing → recreate entire window (like Electron does)
-            await WindowService.CloseWindow(windowData.oid, false);
-            windowData = await WindowService.CreateWindow(null, "");
-            workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
+            await withTimeout(WindowService.CloseWindow(windowData.oid, false), RPC_TIMEOUT, "CloseWindow");
+            windowData = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
+            workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
         }
 
         // Get active tab ID
@@ -173,7 +215,8 @@ async function initTauriWave(): Promise<void> {
 
     } catch (error) {
         console.error("[initTauriWave] Initialization failed:", error);
-        pushFlashError({ id: "", icon: "triangle-exclamation", title: "Startup Error", message: "Failed to initialize AgentMux: " + String(error), expiration: null });
+        getApi().sendLog(`[initTauriWave] ERROR: ${error}`);
+        showStartupError(String(error));
         // Show window even on error so user can see the error message
         try {
             const { getCurrent } = await import("@tauri-apps/api/window");
@@ -192,15 +235,15 @@ async function initTauriNewWindow(): Promise<void> {
         getApi().sendLog("[initTauriNewWindow] Creating new backend objects");
 
         // Get client data (reuse existing client)
-        const clientData = await ClientService.GetClientData();
+        const clientData = await withTimeout(ClientService.GetClientData(), RPC_TIMEOUT, "GetClientData");
         getApi().sendLog(`[initTauriNewWindow] Client ID: ${clientData.oid}`);
 
         // Create NEW window (not reuse)
-        const newWindow = await WindowService.CreateWindow(null, "");
+        const newWindow = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
         getApi().sendLog(`[initTauriNewWindow] Created Window ID: ${newWindow.oid}`);
 
         // Get the workspace that was auto-created with the window
-        const workspace = await WorkspaceService.GetWorkspace(newWindow.workspaceid);
+        const workspace = await withTimeout(WorkspaceService.GetWorkspace(newWindow.workspaceid), RPC_TIMEOUT, "GetWorkspace");
         if (!workspace) {
             throw new Error("Workspace not created with new window");
         }
@@ -312,9 +355,20 @@ async function initBare() {
             } catch (error) {
                 console.error("[initBare] Tauri initialization failed:", error);
                 getApi().sendLog(`Tauri init error: ${error}`);
+                showStartupError(String(error));
             }
         }
 
+        // Safety net: if body is still hidden after 30s, force it visible
+        setTimeout(() => {
+            if (document.body.style.visibility === "hidden") {
+                console.warn("[initBare] Safety timeout: forcing body visible after 30s");
+                getApi().sendLog("[initBare] Safety timeout: forcing body visible after 30s");
+                document.body.style.visibility = "visible";
+                document.body.style.opacity = "1";
+                document.body.classList.remove("is-transparent");
+            }
+        }, 30_000);
     });
 }
 
@@ -422,20 +476,28 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     const globalWS = initWshrpc(initOpts.tabId);
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
-    await loadConnStatus();
+    await withTimeout(loadConnStatus(), RPC_TIMEOUT, "loadConnStatus");
     initGlobalEventSubs(initOpts);
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
-    const [client, waveWindow, initialTab] = await Promise.all([
-        WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
-        WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
-        WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
-    ]);
-    const [ws, layoutState] = await Promise.all([
-        WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
-        WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
-    ]);
+    const [client, waveWindow, initialTab] = await withTimeout(
+        Promise.all([
+            WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
+            WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
+            WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
+        ]),
+        RPC_TIMEOUT,
+        "loadAndPin client/window/tab"
+    );
+    const [ws, layoutState] = await withTimeout(
+        Promise.all([
+            WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
+            WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
+        ]),
+        RPC_TIMEOUT,
+        "loadAndPin workspace/layout"
+    );
     loadAllWorkspaceTabs(ws);
     WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
 
@@ -445,7 +507,7 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
     await loadMonaco();
-    const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
+    const fullConfig = await withTimeout(RpcApi.GetFullConfigCommand(TabRpcClient), RPC_TIMEOUT, "GetFullConfig");
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
     console.log("Wave First Render");

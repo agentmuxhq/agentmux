@@ -4,5 +4,6 @@ pub mod claudecode;
 pub mod contextmenu;
 pub mod devtools;
 pub mod platform;
+pub mod providers;
 pub mod stubs;
 pub mod window;

@@ -25,6 +25,9 @@ import {
     createClearDocument,
     createUpdateFilter,
 } from "./state";
+import { getProvider, type ProviderDefinition } from "./providers";
+import { createTranslator } from "./providers/translator-factory";
+import type { OutputTranslator } from "./providers/translator";
 
 const TermFileName = "claude-code.jsonl";
 
@@ -57,6 +60,7 @@ export class AgentViewModel implements ViewModel {
 
     // Internal
     private parser: ClaudeCodeStreamParser;
+    private translator: OutputTranslator;
     private fileSubjectSub: Subscription | null = null;
     private fileSubjectRef: any = null;
     private procStatusUnsub: (() => void) | null = null;
@@ -138,46 +142,91 @@ export class AgentViewModel implements ViewModel {
         });
 
         this.parser = new ClaudeCodeStreamParser();
+        this.translator = createTranslator("claude-stream-json"); // default
         this.conversationId = `conv-${blockId}`;
 
-        // Initialize connection mode (API or local terminal)
-        this.initializeConnectionMode();
+        // Initialize provider (loads config, sets up translator, starts CLI)
+        this.initializeProvider();
     }
 
     /**
-     * Initialize connection mode based on auth status
-     * Uses API mode if authenticated, falls back to local terminal mode otherwise
+     * Initialize provider from persisted config.
+     * If setup is complete, starts the CLI session with the configured provider.
+     * If not, the view will show the SetupWizard.
      */
-    private async initializeConnectionMode(): Promise<void> {
+    private async initializeProvider(): Promise<void> {
         try {
-            // Check if user is authenticated with Claude Code
-            const authStatus = await getApi().getClaudeCodeAuth();
+            const config = await getApi().getProviderConfig();
+            globalStore.set(this.atoms.providerConfigAtom, config);
 
-            if (authStatus.connected) {
-                // TODO: Get actual API key from backend
-                // For now, use a placeholder that will fail gracefully
-                console.log("[agent] Using API mode (connected to Claude Code)");
-                this.useApiMode = true;
-                // this.apiClient = new ClaudeCodeApiClient({
-                //     apiKey: "API_KEY_FROM_BACKEND",
-                // });
-
-                // API mode will be used when sending messages
-                globalStore.set(this.atoms.messageRouterAtom, {
-                    backend: "cloud",
-                    connected: true,
-                    endpoint: "api.anthropic.com",
-                });
+            if (config.setup_complete) {
+                this.startWithProvider(config);
             } else {
-                // Fall back to local terminal mode
-                console.log("[agent] Using local terminal mode (not connected)");
-                this.useApiMode = false;
-                this.connectToTerminal();
+                console.log("[agent] Setup not complete, waiting for wizard");
             }
         } catch (error) {
-            console.error("[agent] Failed to check auth status, falling back to local mode:", error);
-            this.useApiMode = false;
+            console.error("[agent] Failed to load provider config:", error);
+            // Fall back to local terminal mode with default claude translator
             this.connectToTerminal();
+        }
+    }
+
+    /**
+     * Start the CLI session with the configured provider.
+     * Sets up the translator, updates block metadata, and connects to terminal.
+     */
+    startWithProvider(config: ProviderConfig): void {
+        const providerDef = getProvider(config.default_provider);
+        if (!providerDef) {
+            console.error("[agent] Unknown provider:", config.default_provider);
+            return;
+        }
+
+        console.log("[agent] Starting with provider:", providerDef.displayName);
+
+        // Update provider config atom so the view knows setup is complete
+        globalStore.set(this.atoms.providerConfigAtom, config);
+
+        // Create provider-specific translator
+        this.translator = createTranslator(providerDef.outputFormat);
+
+        // Update block metadata so the backend spawns the correct CLI
+        this.updateBlockMeta(providerDef);
+
+        // Update view icon and name based on provider
+        globalStore.set(this.viewIcon as PrimitiveAtom<string>, providerDef.icon);
+        globalStore.set(this.viewName as PrimitiveAtom<string>, providerDef.displayName);
+
+        // Connect to terminal output
+        this.connectToTerminal();
+
+        // Force restart the controller with updated metadata
+        RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: true,
+        }).catch((e: any) => {
+            console.error("[agent] Failed to start provider CLI:", e);
+        });
+    }
+
+    /**
+     * Update block meta to set the correct cmd and cmd:args for the provider.
+     */
+    private updateBlockMeta(providerDef: ProviderDefinition): void {
+        const oref = WOS.makeORef("block", this.blockId);
+        try {
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref,
+                meta: {
+                    "cmd": providerDef.cliCommand,
+                    "cmd:args": providerDef.defaultArgs,
+                },
+            }).catch((e: any) => {
+                console.error("[agent] Failed to update block meta:", e);
+            });
+        } catch (e) {
+            console.error("[agent] Failed to update block meta:", e);
         }
     }
 
@@ -205,21 +254,27 @@ export class AgentViewModel implements ViewModel {
     private async handleTerminalData(msg: any): Promise<void> {
         if (msg.fileop === "truncate") {
             this.parser.reset();
+            this.translator.reset();
             return;
         }
         if (msg.fileop === "append" && msg.data64) {
             const bytes = base64ToArray(msg.data64);
             const text = new TextDecoder().decode(bytes);
 
-            // Parse NDJSON stream and append to THIS instance's document
+            // Parse NDJSON stream, translate through provider-specific translator,
+            // then convert to document nodes
             const lines = text.split('\n').filter(line => line.trim());
             for (const line of lines) {
                 try {
-                    const event = JSON.parse(line);
-                    const nodes = await this.parser.parseEvent(event);
-                    if (nodes.length > 0) {
-                        const currentDoc = globalStore.get(this.atoms.documentAtom);
-                        globalStore.set(this.atoms.documentAtom, [...currentDoc, ...nodes]);
+                    const rawEvent = JSON.parse(line);
+                    // Translate raw CLI output to StreamEvent format
+                    const streamEvents = this.translator.translate(rawEvent);
+                    for (const se of streamEvents) {
+                        const nodes = await this.parser.parseEvent(se);
+                        if (nodes.length > 0) {
+                            const currentDoc = globalStore.get(this.atoms.documentAtom);
+                            globalStore.set(this.atoms.documentAtom, [...currentDoc, ...nodes]);
+                        }
                     }
                 } catch (err) {
                     console.warn("[agent] Failed to parse NDJSON line:", line, err);
@@ -355,5 +410,6 @@ export class AgentViewModel implements ViewModel {
             this.procStatusUnsub = null;
         }
         this.parser.reset();
+        this.translator.reset();
     }
 }

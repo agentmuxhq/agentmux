@@ -30,6 +30,7 @@ export interface AgentAtoms {
     messageRouterAtom: PrimitiveAtom<MessageRouterState>;
     authAtom: PrimitiveAtom<AuthState>;
     userInfoAtom: PrimitiveAtom<UserInfo | null>;
+    providerConfigAtom: PrimitiveAtom<ProviderConfig | null>;
 }
 
 /**
@@ -78,6 +79,7 @@ export function createAgentAtoms(agentId: string): AgentAtoms {
             status: "disconnected",
         }),
         userInfoAtom: atom<UserInfo | null>(null),
+        providerConfigAtom: atom<ProviderConfig | null>(null),
     };
 }
 

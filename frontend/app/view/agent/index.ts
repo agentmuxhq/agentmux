@@ -22,3 +22,11 @@ export { AgentHeader } from "./components/AgentHeader";
 export { AgentFooter } from "./components/AgentFooter";
 export { FilterControls } from "./components/FilterControls";
 export { ProcessControls } from "./components/ProcessControls";
+export { SetupWizard } from "./components/SetupWizard";
+export { ConnectionStatus } from "./components/ConnectionStatus";
+
+// Provider exports
+export { PROVIDERS, getProvider, getProviderList } from "./providers";
+export { createTranslator } from "./providers/translator-factory";
+export type { OutputTranslator } from "./providers/translator";
+export type { ProviderDefinition } from "./providers";

@@ -1,6 +1,6 @@
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthStatus {
@@ -90,8 +90,13 @@ pub async fn handle_auth_callback(
     };
     tracing::info!("Handling OAuth callback with code: {}", code_preview);
 
-    // TODO: Call backend RPC to exchange code for token
-    // For now, just emit a mock success event
+    // TODO: Exchange code for real token via backend RPC
+    // For now, store the code as token in provider config
+
+    // Store auth token via provider store
+    if let Err(e) = super::providers::set_provider_auth(app.clone(), "claude".to_string(), code).await {
+        tracing::warn!("Failed to store auth token in provider store: {}", e);
+    }
 
     // Emit success event to frontend
     let auth_status = AuthStatus {

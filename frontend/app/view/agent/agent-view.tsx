@@ -25,6 +25,7 @@ import { AgentHeader } from "./components/AgentHeader";
 import { AgentFooter } from "./components/AgentFooter";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { FilterControls } from "./components/FilterControls";
+import { SetupWizard } from "./components/SetupWizard";
 import "./agent-view.scss";
 
 interface AgentViewProps {
@@ -46,9 +47,23 @@ interface AgentViewProps {
 }
 
 /**
- * Wrapper component that adapts ViewComponentProps to AgentViewProps
+ * Wrapper component that adapts ViewComponentProps to AgentViewProps.
+ * Gates on provider setup_complete — shows SetupWizard if not configured.
  */
 export const AgentViewWrapper: React.FC<ViewComponentProps<AgentViewModel>> = memo(({ model }) => {
+    const providerConfig = useAtomValue(model.atoms.providerConfigAtom);
+
+    const handleSetupComplete = useCallback(
+        (config: ProviderConfig) => {
+            model.startWithProvider(config);
+        },
+        [model]
+    );
+
+    if (!providerConfig || !providerConfig.setup_complete) {
+        return <SetupWizard onSetupComplete={handleSetupComplete} />;
+    }
+
     return (
         <AgentViewInner
             agentId={model.agentIdValue}
@@ -209,7 +224,11 @@ export const AgentViewInner: React.FC<AgentViewProps> = memo(
 
                 {/* Footer: Show connection UI or message input based on auth state */}
                 {authState.status === "disconnected" ? (
-                    <ConnectionStatus authAtom={atoms.authAtom} userInfoAtom={atoms.userInfoAtom} />
+                    <ConnectionStatus
+                        authAtom={atoms.authAtom}
+                        userInfoAtom={atoms.userInfoAtom}
+                        providerConfigAtom={atoms.providerConfigAtom}
+                    />
                 ) : (
                     <AgentFooter agentId={agentId} onSendMessage={onSendMessage} />
                 )}

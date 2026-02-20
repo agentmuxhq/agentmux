@@ -85,6 +85,14 @@ pub fn run() {
             commands::stubs::set_window_init_status,
             commands::stubs::set_waveai_open,
             commands::stubs::install_update,
+            // Provider commands
+            commands::providers::detect_installed_clis,
+            commands::providers::get_provider_config,
+            commands::providers::save_provider_config,
+            commands::providers::get_provider_install_info,
+            commands::providers::set_provider_auth,
+            commands::providers::clear_provider_auth,
+            commands::providers::get_provider_auth_status,
         ])
         // Application setup
         .setup(|app| {

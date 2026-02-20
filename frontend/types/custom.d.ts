@@ -125,6 +125,14 @@ declare global {
         openClaudeCodeAuth: () => Promise<void>; // open-claude-code-auth
         getClaudeCodeAuth: () => Promise<{ connected: boolean; email?: string; expires_at?: number }>; // get-claude-code-auth
         disconnectClaudeCode: () => Promise<void>; // disconnect-claude-code
+        // Provider commands
+        detectInstalledClis: () => Promise<CliDetectionResult[]>;
+        getProviderConfig: () => Promise<ProviderConfig>;
+        saveProviderConfig: (config: ProviderConfig) => Promise<void>;
+        getProviderInstallInfo: (provider: string) => Promise<ProviderInstallInfo>;
+        setProviderAuth: (provider: string, token: string) => Promise<void>;
+        clearProviderAuth: (provider: string) => Promise<void>;
+        getProviderAuthStatus: (provider: string) => Promise<ProviderAuthStatus>;
         listen: (event: string, callback: (event: any) => void) => Promise<() => void>; // listen to events
     };
 
@@ -450,6 +458,41 @@ declare global {
     }
 
     type SuggestionsFnType = (query: string, reqContext: SuggestionRequestContext) => Promise<FetchSuggestionsResponse>;
+
+    // ---- Provider types ----
+
+    type CliDetectionResult = {
+        provider: string;
+        installed: boolean;
+        path: string | null;
+        version: string | null;
+    };
+
+    type ProviderConfig = {
+        default_provider: string;
+        providers: Record<string, ProviderSettings>;
+        setup_complete: boolean;
+    };
+
+    type ProviderSettings = {
+        cli_path: string | null;
+        auth_token: string | null;
+        auth_status: string; // "none" | "authenticated" | "expired"
+        output_format: string;
+        extra_args: string[];
+    };
+
+    type ProviderInstallInfo = {
+        provider: string;
+        install_command: string;
+        docs_url: string;
+    };
+
+    type ProviderAuthStatus = {
+        provider: string;
+        status: string; // "none" | "authenticated" | "expired"
+        error: string | null;
+    };
 
     type DraggedFile = {
         uri: string;

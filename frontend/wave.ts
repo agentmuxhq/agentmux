@@ -5,14 +5,12 @@ import { App } from "@/app/app";
 import {
     globalRefocus,
     registerControlShiftStateUpdateHandler,
-    registerElectronReinjectKeyHandler,
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import { ClientService, WindowService, WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
-import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
     atoms,
@@ -102,41 +100,101 @@ function updateZoomFactor(zoomFactor: number) {
     document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
 }
 
+/** Wrap a promise with a timeout. Rejects with a descriptive error if it takes too long. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout: ${label} did not respond within ${ms / 1000}s`)), ms)
+        ),
+    ]);
+}
+
+/** Make body visible and show an error message so the user never sees an infinite grey screen. */
+function showStartupError(message: string) {
+    document.body.style.visibility = "visible";
+    document.body.style.opacity = "1";
+    document.body.classList.remove("is-transparent");
+    // Remove the "Starting AgentMux..." loader
+    const loader = document.getElementById("startup-loading");
+    if (loader) loader.remove();
+    // Show error in the main div
+    const main = document.getElementById("main");
+    if (main) {
+        main.innerHTML = "";
+        const errorDiv = document.createElement("div");
+        errorDiv.style.cssText = "padding: 40px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #f7f7f7;";
+        const title = document.createElement("h2");
+        title.textContent = "AgentMux failed to start";
+        title.style.cssText = "color: #ff6b6b; margin-bottom: 16px;";
+        errorDiv.appendChild(title);
+        const msg = document.createElement("pre");
+        msg.textContent = message;
+        msg.style.cssText = "background: #1a1a1a; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; font-size: 13px;";
+        errorDiv.appendChild(msg);
+        const hint = document.createElement("p");
+        hint.textContent = "Press F12 for console details. Try closing and reopening the app.";
+        hint.style.cssText = "margin-top: 16px; color: rgba(255,255,255,0.5); font-size: 13px;";
+        errorDiv.appendChild(hint);
+        main.appendChild(errorDiv);
+    }
+}
+
+const RPC_TIMEOUT = 5_000; // 5 seconds for individual RPC calls
+
 /**
  * Initialize AgentMux in Tauri mode by fetching client/window/workspace/tab data
  * from backend, verifying objects exist, and creating missing ones if needed.
- * This mirrors Electron's relaunchBrowserWindows() pattern.
+ * Handles first-window and new-window creation.
  */
 async function initTauriWave(): Promise<void> {
+    const t0 = performance.now();
+    const tlog = (label: string, since: number) => {
+        const ms = (performance.now() - since).toFixed(1);
+        const total = (performance.now() - t0).toFixed(1);
+        console.log(`[startup-perf] ${label}: ${ms}ms (total: ${total}ms)`);
+    };
 
     try {
-        // Get client data (like Electron's relaunchBrowserWindows)
-        const clientData = await ClientService.GetClientData();
+        // Get client data
+        let t = performance.now();
+        const clientData = await withTimeout(ClientService.GetClientData(), RPC_TIMEOUT, "GetClientData");
+        tlog("GetClientData", t);
 
         let windowId = clientData.windowids?.[0];
 
         // If no windows exist, create one
         if (!windowId) {
-            const newWindow = await WindowService.CreateWindow(null, "");
+            t = performance.now();
+            const newWindow = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
+            tlog("CreateWindow (no windows)", t);
             windowId = newWindow.oid;
         }
 
         // Verify window exists
-        let windowData = await WindowService.GetWindow(windowId);
+        t = performance.now();
+        let windowData = await withTimeout(WindowService.GetWindow(windowId), RPC_TIMEOUT, "GetWindow");
+        tlog("GetWindow", t);
 
         if (!windowData) {
-            windowData = await WindowService.CreateWindow(null, "");
+            t = performance.now();
+            windowData = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
+            tlog("CreateWindow (fallback)", t);
             windowId = windowData.oid;
         }
 
         // Get workspace
-        let workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
+        t = performance.now();
+        let workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
+        tlog("GetWorkspace", t);
 
         if (!workspace) {
-            // Workspace missing → recreate entire window (like Electron does)
-            await WindowService.CloseWindow(windowData.oid, false);
-            windowData = await WindowService.CreateWindow(null, "");
-            workspace = await WorkspaceService.GetWorkspace(windowData.workspaceid);
+            // Workspace missing → recreate entire window
+            t = performance.now();
+            await withTimeout(WindowService.CloseWindow(windowData.oid), RPC_TIMEOUT, "CloseWindow");
+            windowData = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
+            workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
+            tlog("Recreate window+workspace", t);
         }
 
         // Get active tab ID
@@ -149,6 +207,8 @@ async function initTauriWave(): Promise<void> {
             throw new Error("No tab found in workspace");
         }
 
+        tlog("Phase 1 complete (discovery)", t0);
+
         // Create complete init options with ALL valid IDs
         const initOpts: AgentMuxInitOpts = {
             clientId: clientData.oid,
@@ -159,7 +219,10 @@ async function initTauriWave(): Promise<void> {
         };
 
         // Initialize wave (this will render the UI)
+        t = performance.now();
         await initWaveWrap(initOpts);
+        tlog("initWaveWrap", t);
+        tlog("TOTAL initTauriWave", t0);
 
         // Show the window now that it's fully initialized (Tauri starts hidden)
         try {
@@ -173,7 +236,8 @@ async function initTauriWave(): Promise<void> {
 
     } catch (error) {
         console.error("[initTauriWave] Initialization failed:", error);
-        pushFlashError({ id: "", icon: "triangle-exclamation", title: "Startup Error", message: "Failed to initialize AgentMux: " + String(error), expiration: null });
+        getApi().sendLog(`[initTauriWave] ERROR: ${error}`);
+        showStartupError(String(error));
         // Show window even on error so user can see the error message
         try {
             const { getCurrent } = await import("@tauri-apps/api/window");
@@ -188,23 +252,34 @@ async function initTauriWave(): Promise<void> {
  * this creates a fresh set for the new window.
  */
 async function initTauriNewWindow(): Promise<void> {
+    const t0 = performance.now();
+    const tlog = (label: string, since: number) => {
+        const ms = (performance.now() - since).toFixed(1);
+        const total = (performance.now() - t0).toFixed(1);
+        console.log(`[startup-perf] ${label}: ${ms}ms (total: ${total}ms)`);
+        getApi().sendLog(`[startup-perf] ${label}: ${ms}ms (total: ${total}ms)`);
+    };
+
     try {
         getApi().sendLog("[initTauriNewWindow] Creating new backend objects");
 
         // Get client data (reuse existing client)
-        const clientData = await ClientService.GetClientData();
-        getApi().sendLog(`[initTauriNewWindow] Client ID: ${clientData.oid}`);
+        let t = performance.now();
+        const clientData = await withTimeout(ClientService.GetClientData(), RPC_TIMEOUT, "GetClientData");
+        tlog("GetClientData", t);
 
         // Create NEW window (not reuse)
-        const newWindow = await WindowService.CreateWindow(null, "");
-        getApi().sendLog(`[initTauriNewWindow] Created Window ID: ${newWindow.oid}`);
+        t = performance.now();
+        const newWindow = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
+        tlog("CreateWindow", t);
 
         // Get the workspace that was auto-created with the window
-        const workspace = await WorkspaceService.GetWorkspace(newWindow.workspaceid);
+        t = performance.now();
+        const workspace = await withTimeout(WorkspaceService.GetWorkspace(newWindow.workspaceid), RPC_TIMEOUT, "GetWorkspace");
+        tlog("GetWorkspace", t);
         if (!workspace) {
             throw new Error("Workspace not created with new window");
         }
-        getApi().sendLog(`[initTauriNewWindow] Workspace ID: ${workspace.oid}`);
 
         // Get the active tab ID from the workspace
         const tabId = workspace.activetabid ||
@@ -215,7 +290,8 @@ async function initTauriNewWindow(): Promise<void> {
         if (!tabId) {
             throw new Error("No tab found in new workspace");
         }
-        getApi().sendLog(`[initTauriNewWindow] Tab ID: ${tabId}`);
+
+        tlog("Phase 1 complete (discovery)", t0);
 
         // Create complete init options with NEW IDs
         const initOpts: AgentMuxInitOpts = {
@@ -226,12 +302,11 @@ async function initTauriNewWindow(): Promise<void> {
             primaryTabStartup: false, // Not primary (main window is primary)
         };
 
-        getApi().sendLog("[initTauriNewWindow] Initializing wave with new objects");
-
         // Initialize wave (this will render the UI)
+        t = performance.now();
         await initWaveWrap(initOpts);
-
-        getApi().sendLog("[initTauriNewWindow] ✅ New window initialized successfully");
+        tlog("initWaveWrap", t);
+        tlog("TOTAL initTauriNewWindow", t0);
 
         // Show the window now that it's initialized
         try {
@@ -246,15 +321,19 @@ async function initTauriNewWindow(): Promise<void> {
 
     } catch (error) {
         console.error("[initTauriNewWindow] Initialization failed:", error);
-        getApi().sendLog(`[initTauriNewWindow] ❌ Error: ${error}`);
-        pushFlashError({ id: "", icon: "triangle-exclamation", title: "Startup Error", message: "Failed to initialize new window: " + String(error), expiration: null });
-        // Show error UI instead of grey screen
-        document.body.style.visibility = "visible";
-        document.body.style.opacity = "1";
+        try { getApi().sendLog(`[initTauriNewWindow] ❌ Error: ${error}`); } catch {}
+        showStartupError("New window: " + String(error));
+        // Show Tauri window so user sees the error
+        try {
+            const { getCurrent } = await import("@tauri-apps/api/window");
+            await getCurrent().show();
+        } catch {}
     }
 }
 
 async function initBare() {
+    const bareStart = performance.now();
+    (window as any).__startupPerfStart = bareStart;
     getApi().sendLog("Init Bare");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
@@ -264,7 +343,7 @@ async function initBare() {
     const isTauri = typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
     getApi().sendLog(`Init Bare - Tauri mode: ${isTauri}`);
 
-    // Electron uses onAgentMuxInit callback (backend emits wave-init event)
+    // Tauri uses onAgentMuxInit callback (backend emits wave-init event)
     // Tauri handles initialization in frontend after backend is ready
     if (!isTauri) {
         getApi().onAgentMuxInit(initWaveWrap);
@@ -287,6 +366,9 @@ async function initBare() {
     const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
 
     Promise.race([fontsPromise, timeoutPromise]).then(async () => {
+        const fontsMsg = `[startup-perf] initBare (fonts ready): ${(performance.now() - bareStart).toFixed(1)}ms`;
+        console.log(fontsMsg);
+        try { getApi().sendLog(fontsMsg); } catch {}
         getApi().sendLog("Init Bare Done");
         getApi().setWindowInitStatus("ready");
 
@@ -312,9 +394,20 @@ async function initBare() {
             } catch (error) {
                 console.error("[initBare] Tauri initialization failed:", error);
                 getApi().sendLog(`Tauri init error: ${error}`);
+                showStartupError(String(error));
             }
         }
 
+        // Safety net: if body is still hidden after 30s, force it visible
+        setTimeout(() => {
+            if (document.body.style.visibility === "hidden") {
+                console.warn("[initBare] Safety timeout: forcing body visible after 30s");
+                getApi().sendLog("[initBare] Safety timeout: forcing body visible after 30s");
+                document.body.style.visibility = "visible";
+                document.body.style.opacity = "1";
+                document.body.classList.remove("is-transparent");
+            }
+        }, 30_000);
     });
 }
 
@@ -396,6 +489,13 @@ function loadAllWorkspaceTabs(ws: Workspace) {
 }
 
 async function initWave(initOpts: AgentMuxInitOpts) {
+    const t0 = performance.now();
+    const tlog = (label: string, since: number) => {
+        const ms = (performance.now() - since).toFixed(1);
+        const total = (performance.now() - t0).toFixed(1);
+        console.log(`[startup-perf] initWave ${label}: ${ms}ms (total: ${total}ms)`);
+    };
+
     getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
     console.log(
         "Wave Init",
@@ -408,46 +508,75 @@ async function initWave(initOpts: AgentMuxInitOpts) {
         "platform",
         platform
     );
+    let t = performance.now();
     initGlobal({
         tabId: initOpts.tabId,
         clientId: initOpts.clientId,
         windowId: initOpts.windowId,
         platform,
-        environment: "renderer",
         primaryTabStartup: initOpts.primaryTabStartup,
     });
     (window as any).globalAtoms = atoms;
+    tlog("initGlobal", t);
 
     // Init WPS event handlers
+    t = performance.now();
     const globalWS = initWshrpc(initOpts.tabId);
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
-    await loadConnStatus();
+    tlog("initWshrpc", t);
+
+    t = performance.now();
+    await withTimeout(loadConnStatus(), RPC_TIMEOUT, "loadConnStatus");
+    tlog("loadConnStatus", t);
+
+    t = performance.now();
     initGlobalEventSubs(initOpts);
     subscribeToConnEvents();
+    tlog("initEventSubs", t);
 
     // ensures client/window/workspace are loaded into the cache before rendering
-    const [client, waveWindow, initialTab] = await Promise.all([
-        WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
-        WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
-        WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
-    ]);
-    const [ws, layoutState] = await Promise.all([
-        WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
-        WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
-    ]);
+    t = performance.now();
+    const [client, waveWindow, initialTab] = await withTimeout(
+        Promise.all([
+            WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
+            WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
+            WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
+        ]),
+        RPC_TIMEOUT,
+        "loadAndPin client/window/tab"
+    );
+    tlog("loadAndPin client/window/tab", t);
+
+    t = performance.now();
+    const [ws, layoutState] = await withTimeout(
+        Promise.all([
+            WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
+            WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
+        ]),
+        RPC_TIMEOUT,
+        "loadAndPin workspace/layout"
+    );
+    tlog("loadAndPin workspace/layout", t);
+
+    t = performance.now();
     loadAllWorkspaceTabs(ws);
     WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
+    tlog("loadAllWorkspaceTabs", t);
 
     document.title = `AgentMux ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
 
+    t = performance.now();
     registerGlobalKeys();
-    registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
-    await loadMonaco();
-    const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
-    console.log("fullconfig", fullConfig);
+    tlog("registerKeys", t);
+
+    t = performance.now();
+    const fullConfig = await withTimeout(RpcApi.GetFullConfigCommand(TabRpcClient), RPC_TIMEOUT, "GetFullConfig");
+    tlog("GetFullConfig", t);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
+
+    t = performance.now();
     console.log("Wave First Render");
     let firstRenderResolveFn: () => void = null;
     let firstRenderPromise = new Promise<void>((resolve) => {
@@ -458,7 +587,8 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     const root = createRoot(elem);
     root.render(reactElem);
     await firstRenderPromise;
-    console.log("Wave First Render Done");
+    tlog("React render", t);
+    tlog("TOTAL initWave", t0);
 
     // Hide startup loading message
     const startupLoading = document.getElementById("startup-loading");
@@ -467,4 +597,12 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     }
 
     getApi().setWindowInitStatus("wave-ready");
+
+    // Preload Monaco on idle so first editor open is instant
+    const preload = () => import("@/app/view/codeeditor/codeeditor").then((m) => m.loadMonaco());
+    if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(preload);
+    } else {
+        setTimeout(preload, 200);
+    }
 }

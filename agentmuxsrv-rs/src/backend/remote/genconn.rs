@@ -11,6 +11,8 @@
 //! - `build_shell_command()`: constructs sh -c compatible commands
 //! - `MockShellClient` / `MockProcessController`: for testing
 
+#![allow(dead_code)]
+
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, Once};

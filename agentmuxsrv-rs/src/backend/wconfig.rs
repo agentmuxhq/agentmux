@@ -8,6 +8,8 @@
 //! config watcher. The actual file system watching is deferred until
 //! integrated with the Tauri event loop.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -709,7 +711,7 @@ pub fn build_default_config() -> FullConfigType {
 
     // Embed widgets.json at compile time (equivalent to Go's //go:embed)
     const WIDGETS_JSON: &str =
-        include_str!("../../../pkg/wconfig/defaultconfig/widgets.json");
+        include_str!("../config/widgets.json");
 
     match serde_json::from_str::<HashMap<String, WidgetConfigType>>(WIDGETS_JSON) {
         Ok(widgets) => {

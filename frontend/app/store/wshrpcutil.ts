@@ -22,9 +22,9 @@ function initWshrpc(tabId: string): WSControl {
     // Browser WebSocket doesn't support custom headers, so wsutil.ts will
     // append it as a query parameter: ws://endpoint?authkey=xxx
     const authKey = getApi().getAuthKey();
-    const eoOpts = authKey ? { authKey } : undefined;
+    const authOpts = authKey ? { authKey } : undefined;
 
-    initGlobalWS(getWSServerEndpoint(), tabId, handleFn, eoOpts);
+    initGlobalWS(getWSServerEndpoint(), tabId, handleFn, authOpts);
     globalWS.connectNow("connectWshrpc");
     TabRpcClient = new TabClient(makeTabRouteId(tabId));
     DefaultRouter.registerRoute(TabRpcClient.routeId, TabRpcClient);
@@ -43,4 +43,4 @@ class UpstreamWshRpcProxy implements AbstractWshClient {
 }
 
 export { DefaultRouter, initWshrpc, TabRpcClient };
-export { initElectronWshrpc, sendRpcCommand, sendRpcResponse, shutdownWshrpc } from "./wshrpcutil-base";
+export { sendRpcCommand, sendRpcResponse, shutdownWshrpc } from "./wshrpcutil-base";

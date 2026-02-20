@@ -17,9 +17,8 @@ import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
-// Note: WebviewTag type removed (Electron dependency deleted, Tauri uses iframe)
-// TODO: Replace with Tauri-compatible webview implementation
-type WebviewTag = any; // Temporary placeholder for Electron WebviewTag
+// TODO: Replace with Tauri-native webview implementation
+type WebviewTag = any; // Placeholder until Tauri webview API is integrated
 import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import { Fragment, createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import "./webview.scss";

@@ -164,7 +164,7 @@ function simpleCloseStaticTab() {
     debugLog("simpleCloseStaticTab called");
     const ws = globalStore.get(atoms.workspace);
     const tabId = globalStore.get(atoms.staticTabId);
-    WorkspaceService.CloseTab(ws.oid, tabId, false).catch((e) => {
+    WorkspaceService.CloseTab(ws.oid, tabId).catch((e) => {
         console.error("[closeTab] failed:", e);
     });
     deleteLayoutModelForTab(tabId);
@@ -471,12 +471,6 @@ function registerControlShiftStateUpdateHandler() {
     });
 }
 
-function registerElectronReinjectKeyHandler() {
-    getApi().onReinjectKey((event: WaveKeyboardEvent) => {
-        appHandleKeyDown(event);
-    });
-}
-
 function tryReinjectKey(event: WaveKeyboardEvent): boolean {
     return appHandleKeyDown(event);
 }
@@ -734,7 +728,6 @@ export {
     globalRefocus,
     globalRefocusWithTimeout,
     registerControlShiftStateUpdateHandler,
-    registerElectronReinjectKeyHandler,
     registerGlobalKeys,
     tryReinjectKey,
     unsetControlShift,

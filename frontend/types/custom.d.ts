@@ -63,10 +63,10 @@ declare global {
         primaryTabStartup?: boolean;
     };
 
-    type ElectronApi = {
+    type AppApi = {
         getAuthKey(): string; // get-auth-key
         getIsDev(): boolean; // get-is-dev
-        getCursorPoint: () => Electron.Point; // get-cursor-point
+        getCursorPoint: () => { x: number; y: number }; // get-cursor-point
         getPlatform: () => NodeJS.Platform; // get-platform
         getEnv: (varName: string) => string; // get-env
         getUserName: () => string; // get-user-name
@@ -77,7 +77,7 @@ declare global {
         getAboutModalDetails: () => AboutModalDetails; // get-about-modal-details
         getDocsiteUrl: () => string; // get-docsite-url
         getZoomFactor: () => number; // get-zoom-factor
-        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void; // contextmenu-show
+        showContextMenu: (workspaceId: string, menu?: NativeContextMenuItem[]) => void; // contextmenu-show
         onContextMenuClick: (callback: (id: string) => void) => void; // contextmenu-click
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;
@@ -117,7 +117,7 @@ declare global {
         sendLog: (log: string) => void; // fe-log
         onQuicklook: (filePath: string) => void; // quicklook
         openNativePath(filePath: string): void; // open-native-path
-        captureScreenshot(rect: Electron.Rectangle): Promise<string>; // capture-screenshot
+        captureScreenshot(rect: { x: number; y: number; width: number; height: number }): Promise<string>; // capture-screenshot
         setKeyboardChordMode: () => void; // set-keyboard-chord-mode
         clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
         setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
@@ -128,12 +128,12 @@ declare global {
         listen: (event: string, callback: (event: any) => void) => Promise<() => void>; // listen to events
     };
 
-    type ElectronContextMenuItem = {
+    type NativeContextMenuItem = {
         id: string; // unique id, used for communication
         label: string;
-        role?: string; // electron role (optional)
+        role?: string; // menu role (optional)
         type?: "separator" | "normal" | "submenu" | "checkbox" | "radio";
-        submenu?: ElectronContextMenuItem[];
+        submenu?: NativeContextMenuItem[];
         checked?: boolean;
         visible?: boolean;
         enabled?: boolean;
@@ -143,7 +143,7 @@ declare global {
     type ContextMenuItem = {
         label?: string;
         type?: "separator" | "normal" | "submenu" | "checkbox" | "radio";
-        role?: string; // electron role (optional)
+        role?: string; // menu role (optional)
         click?: () => void; // not required if role is set
         submenu?: ContextMenuItem[];
         checked?: boolean;

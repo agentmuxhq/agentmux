@@ -4,6 +4,8 @@
 //! OSC (Operating System Command) encoding/decoding for terminal RPC messages.
 //! Port of Go's `pkg/wshutil/wshutil.go` — OSC escape sequence handling.
 
+#![allow(dead_code)]
+
 use base64::Engine;
 
 /// OSC number for AgentMux client messages.

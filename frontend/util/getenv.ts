@@ -9,7 +9,7 @@ function getProcess(): NodeJS.Process {
     return globalThis.process;
 }
 
-function getApi(): ElectronApi {
+function getApi(): AppApi {
     return (window as any).api;
 }
 

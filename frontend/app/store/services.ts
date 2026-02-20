@@ -98,7 +98,7 @@ export const UserInputService = new UserInputServiceType();
 
 // windowservice.WindowService (window)
 class WindowServiceType {
-    CloseWindow(windowId: string, fromElectron: boolean): Promise<void> {
+    CloseWindow(windowId: string): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
     CreateWindow(winSize: WinSize, workspaceId: string): Promise<WaveWindow> {
@@ -134,7 +134,7 @@ class WorkspaceServiceType {
     }
 
     // @returns CloseTabRtn (and object updates)
-    CloseTab(workspaceId: string, tabId: string, fromElectron: boolean): Promise<CloseTabRtnType> {
+    CloseTab(workspaceId: string, tabId: string): Promise<CloseTabRtnType> {
         return WOS.callBackendService("workspace", "CloseTab", Array.from(arguments))
     }
 

@@ -249,28 +249,6 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     return rtn;
 }
 
-function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
-    let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
-    if (event.type == "keyUp") {
-        rtn.type = "keyup";
-    } else if (event.type == "keyDown") {
-        rtn.type = "keydown";
-    } else {
-        rtn.type = "unknown";
-    }
-    rtn.control = event.control;
-    rtn.cmd = PLATFORM == PlatformMacOS ? event.meta : event.alt;
-    rtn.option = PLATFORM == PlatformMacOS ? event.alt : event.meta;
-    rtn.meta = event.meta;
-    rtn.alt = event.alt;
-    rtn.shift = event.shift;
-    rtn.repeat = event.isAutoRepeat;
-    rtn.location = event.location;
-    rtn.code = event.code;
-    rtn.key = event.key;
-    return rtn;
-}
-
 const keyMap = {
     Enter: "\r",
     Backspace: "\x7f",
@@ -322,7 +300,6 @@ function keyboardEventToASCII(event: WaveKeyboardEvent): string {
 }
 
 export {
-    adaptFromElectronKeyEvent,
     adaptFromReactOrNativeKeyEvent,
     checkKeyPressed,
     getKeyUtilPlatform,

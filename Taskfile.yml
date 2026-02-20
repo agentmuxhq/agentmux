@@ -11,7 +11,6 @@ vars:
     RM: '{{if eq OS "windows"}}powershell Remove-Item -Force -ErrorAction SilentlyContinue{{else}}rm -f{{end}}'
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
-    GO_LDFLAGS: '{{if eq OS "windows"}}-s -w -H windowsgui{{else}}-s -w{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
     RELEASES_BUCKET: dl.waveterm.dev/releases-w2
     WINGET_PACKAGE: CommandLine.Wave
@@ -39,35 +38,32 @@ tasks:
         internal: true
         platforms: [windows]
         cmds:
-            - powershell Copy-Item -Force dist/bin/agentmuxsrv.x64.exe src-tauri/target/debug/agentmuxsrv.exe -ErrorAction SilentlyContinue
-            - powershell Copy-Item -Force dist/bin/agentmuxsrv.x64.exe src-tauri/target/release/agentmuxsrv.exe -ErrorAction SilentlyContinue
-            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (Windows)"
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/target/debug/agentmuxsrv-rs.exe -ErrorAction SilentlyContinue
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/target/release/agentmuxsrv-rs.exe -ErrorAction SilentlyContinue
+            - powershell Copy-Item -Force dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -ErrorAction SilentlyContinue
+            - echo "✓ Synced agentmuxsrv-rs to Tauri dev/release cache (Windows)"
 
     sync:dev:binaries:darwin:
         internal: true
         platforms: [darwin]
         cmds:
             - mkdir -p src-tauri/target/debug/bin src-tauri/target/release/bin
-            - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/debug/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.arm64 src-tauri/target/release/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/debug/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/release/agentmuxsrv || true
+            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/debug/agentmuxsrv-rs || true
+            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/release/agentmuxsrv-rs || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/target/debug/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/target/release/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/debug/bin/ || true
             - cp -f dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/target/release/bin/ || true
-            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/debug/agentmuxsrv-rs || true
-            - cp -f dist/bin/agentmuxsrv-rs.arm64 src-tauri/target/release/agentmuxsrv-rs || true
-            - echo "✓ Synced agentmuxsrv + wsh to Tauri dev/release cache (macOS)"
+            - echo "✓ Synced agentmuxsrv-rs + wsh to Tauri dev/release cache (macOS)"
 
     sync:dev:binaries:linux:
         internal: true
         platforms: [linux]
         cmds:
             - mkdir -p src-tauri/target/debug src-tauri/target/release
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/debug/agentmuxsrv || true
-            - cp -f dist/bin/agentmuxsrv.x64 src-tauri/target/release/agentmuxsrv || true
-            - echo "✓ Synced agentmuxsrv to Tauri dev/release cache (Linux)"
+            - cp -f dist/bin/agentmuxsrv-rs.x64 src-tauri/target/debug/agentmuxsrv-rs || true
+            - cp -f dist/bin/agentmuxsrv-rs.x64 src-tauri/target/release/agentmuxsrv-rs || true
+            - echo "✓ Synced agentmuxsrv-rs to Tauri dev/release cache (Linux)"
 
     start:
         desc: Build and run the Tauri application in production mode (no installer).
@@ -82,11 +78,11 @@ tasks:
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     quickdev:
-        desc: Run the Tauri application in quick dev mode (no docsite, arm64 only, no generate, no wsh).
+        desc: Run the Tauri application in quick dev mode (no docsite, no wsh).
         cmd: tauri dev
         deps:
             - npm:install
-            - build:backend:quickdev
+            - build:backend:rust
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
@@ -199,7 +195,6 @@ tasks:
         platforms: [linux]
         cmds:
             - task: build:backend
-            - task: build:backend:rust
             - task: tauri:copy-sidecars
             # Tauri prepares the AppDir but linuxdeploy crashes on some systems.
             # We ignore the linuxdeploy failure and run appimagetool directly.
@@ -240,24 +235,14 @@ tasks:
             - npm:install
 
     build:backend:
-        desc: Build the agentmuxsrv and wsh components.
+        desc: Build the agentmuxsrv-rs and wsh-rs Rust components.
         cmds:
-            - task: build:server
+            - task: build:backend:rust
             - task: build:wsh
 
-    build:backend:quickdev:
-        desc: Build only the agentmuxsrv component for quickdev (arm64 macOS only, no generate, no wsh).
-        cmds:
-            - task: build:server:quickdev
-        sources:
-            - go.mod
-            - go.sum
-            - pkg/**/*.go
-            - pkg/**/*.sh
-            - cmd/**/*.go
-            - tsunami/go.mod
-            - tsunami/go.sum
-            - tsunami/**/*.go
+    # ========================================
+    # Rust Backend Build Tasks
+    # ========================================
 
     build:backend:rust:
         desc: Build the agentmuxsrv-rs Rust backend binary.
@@ -290,177 +275,45 @@ tasks:
             - cmd: powershell -Command "New-Item -ItemType Directory -Force -Path dist/bin | Out-Null; Copy-Item target/release/agentmuxsrv-rs.exe dist/bin/agentmuxsrv-rs.x64.exe -Force"
             - echo "✓ Built agentmuxsrv-rs for Windows"
 
-    build:schema:
-        desc: Build the schema for configuration.
-        sources:
-            - "cmd/generateschema/*.go"
-            - "pkg/wconfig/*.go"
-        generates:
-            - "dist/schema/**/*"
-        cmds:
-            - go run cmd/generateschema/main-generateschema.go
-            - cmd: '{{.RMRF}} "dist/schema"'
-              ignore_error: true
-            - task: copyfiles:'schema':'dist/schema'
-
-    build:server:
-        desc: Build the agentmuxsrv component.
-        cmds:
-            - task: build:server:linux
-            - task: build:server:macos
-            - task: build:server:windows
-        deps:
-            - go:mod:tidy
-            - generate
-        sources:
-            - "version.cjs"
-            - "cmd/server/*.go"
-            - "pkg/**/*.go"
-            - "pkg/**/*.json"
-            - "pkg/**/*.sh"
-            - tsunami/**/*.go
-        generates:
-            - dist/bin/agentmuxsrv.*
-
-    build:server:macos:
-        desc: Build the agentmuxsrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
-        platforms: [darwin]
-        cmds:
-            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
-              ignore_error: true
-            - task: build:server:internal
-              vars:
-                  ARCHS: arm64,amd64
-
-    build:server:quickdev:
-        desc: Build the agentmuxsrv component for quickdev (arm64 macOS only, no generate).
-        platforms: [darwin]
-        cmds:
-            - task: build:server:internal
-              vars:
-                  ARCHS: arm64
-        deps:
-            - go:mod:tidy
-        sources:
-            - "cmd/server/*.go"
-            - "pkg/**/*.go"
-            - "pkg/**/*.json"
-            - "pkg/**/*.sh"
-            - "tsunami/**/*.go"
-        generates:
-            - dist/bin/agentmuxsrv.*
-
-    build:server:windows:
-        desc: Build the agentmuxsrv component for Windows platforms (only generates artifacts for the current architecture).
-        platforms: [windows]
-        cmds:
-            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
-              ignore_error: true
-            - task: build:server:internal
-              vars:
-                  ARCHS:
-                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
-                  GO_ENV_VARS:
-                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-windows-gnu\"{{else}}CC=\"zig cc -target aarch64-windows-gnu\"{{end}}"
-
-    build:server:linux:
-        desc: Build the agentmuxsrv component for Linux platforms (only generates artifacts for the current architecture).
-        platforms: [linux]
-        cmds:
-            - cmd: "{{.RM}} dist/bin/agentmuxsrv*"
-              ignore_error: true
-            - task: build:server:internal
-              vars:
-                  ARCHS:
-                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
-                  GO_ENV_VARS:
-                      sh: echo "{{if eq "amd64" ARCH}}CC=\"gcc\"{{else}}CC=\"gcc\"{{end}}"
-
-    build:server:internal:
-        requires:
-            vars:
-                - ARCHS
-        cmd:
-            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/agentmuxsrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} ./cmd/server
-            for:
-                var: ARCHS
-                split: ","
-                as: GOARCH
-        internal: true
+    # ========================================
+    # wsh-rs (Rust) Build Tasks
+    # ========================================
 
     build:wsh:
-        desc: Build the wsh component for all possible targets.
+        desc: Build the wsh-rs component for the current platform.
         cmds:
-            - cmd: "{{.RM}} dist/bin/wsh*"
-              ignore_error: true
-            - task: build:wsh:internal
-              vars:
-                  GOOS: darwin
-                  GOARCH: arm64
-            - task: build:wsh:internal
-              vars:
-                  GOOS: darwin
-                  GOARCH: amd64
-            - task: build:wsh:internal
-              vars:
-                  GOOS: linux
-                  GOARCH: arm64
-            - task: build:wsh:internal
-              vars:
-                  GOOS: linux
-                  GOARCH: amd64
-            - task: build:wsh:internal
-              vars:
-                  GOOS: linux
-                  GOARCH: mips
-            - task: build:wsh:internal
-              vars:
-                  GOOS: linux
-                  GOARCH: mips64
-            - task: build:wsh:internal
-              vars:
-                  GOOS: windows
-                  GOARCH: amd64
-            - task: build:wsh:internal
-              vars:
-                  GOOS: windows
-                  GOARCH: arm64
-        deps:
-            - go:mod:tidy
-            - generate
+            - task: build:wsh:{{OS}}
         sources:
-            - "version.cjs"
-            - "cmd/wsh/**/*.go"
-            - "pkg/**/*.go"
+            - "wsh-rs/src/**/*.rs"
+            - "wsh-rs/Cargo.toml"
         generates:
             - "dist/bin/wsh*"
 
-    build:wsh:internal:
-        vars:
-            EXT:
-                sh: echo {{if eq .GOOS "windows"}}.exe{{end}}
-            NORMALIZEDARCH:
-                sh: echo {{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}
-        requires:
-            vars:
-                - GOOS
-                - GOARCH
-                - VERSION
-        cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+    build:wsh:windows:
         internal: true
-
-    generate:
-        desc: Generate Typescript bindings for the Go backend.
+        platforms: [windows]
         cmds:
-            - go run cmd/generatets/main-generatets.go
-            - go run cmd/generatego/main-generatego.go
-        deps:
-            - build:schema
-        sources:
-            - "cmd/generatego/*.go"
-            - "cmd/generatets/*.go"
-            - "pkg/**/*.go"
-        # don't add generates key (otherwise will always execute)
+            - cargo build --release -p wsh-rs
+            - cmd: powershell -Command "New-Item -ItemType Directory -Force -Path dist/bin | Out-Null; Copy-Item target/release/wsh.exe dist/bin/wsh-{{.VERSION}}-windows.x64.exe -Force"
+            - echo "✓ Built wsh-rs for Windows (dist/bin/wsh-{{.VERSION}}-windows.x64.exe)"
+
+    build:wsh:darwin:
+        internal: true
+        platforms: [darwin]
+        cmds:
+            - cargo build --release -p wsh-rs
+            - mkdir -p dist/bin
+            - cp target/release/wsh dist/bin/wsh-{{.VERSION}}-darwin.arm64
+            - echo "✓ Built wsh-rs for macOS (dist/bin/wsh-{{.VERSION}}-darwin.arm64)"
+
+    build:wsh:linux:
+        internal: true
+        platforms: [linux]
+        cmds:
+            - cargo build --release -p wsh-rs
+            - mkdir -p dist/bin
+            - cp target/release/wsh dist/bin/wsh-{{.VERSION}}-linux.x64
+            - echo "✓ Built wsh-rs for Linux (dist/bin/wsh-{{.VERSION}}-linux.x64)"
 
     outdated:
         desc: Check for outdated packages using npm-check-updates.
@@ -526,15 +379,13 @@ tasks:
             wingetcreate update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t {{.GITHUB_TOKEN}}
 
     dev:installwsh:
-        desc: quick shortcut to rebuild wsh and install for macos arm64
+        desc: Quick shortcut to rebuild wsh-rs and install for macOS arm64
+        platforms: [darwin]
         requires:
             vars:
                 - VERSION
         cmds:
-            - task: build:wsh:internal
-              vars:
-                  GOOS: darwin
-                  GOARCH: arm64
+            - task: build:wsh:darwin
             - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
 
     dev:clearconfig:
@@ -552,7 +403,6 @@ tasks:
         desc: Initialize the project for development.
         cmds:
             - npm install
-            - go mod tidy
             - cd docs && npm install
 
     dev:cleardata:windows:
@@ -580,15 +430,6 @@ tasks:
             - package-lock.json
             - package.json
         cmd: npm install
-
-    go:mod:tidy:
-        desc: Runs `go mod tidy`
-        internal: true
-        generates:
-            - go.sum
-        sources:
-            - go.mod
-        cmd: go mod tidy
 
     copyfiles:*:*:
         desc: Recursively copy directory and its contents.
@@ -690,10 +531,6 @@ tasks:
             - cmd: "{{.RMRF}} scaffold"
               ignore_error: true
 
-    godoc:
-        desc: Start the Go documentation server for the root module
-        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
-
     tsunami:godoc:
         desc: Start the Go documentation server for the tsunami module
         cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
@@ -723,34 +560,22 @@ tasks:
             - npm:install
 
     tauri:copy-sidecars:
-        desc: Copy Go binaries to src-tauri/binaries with target-specific names
+        desc: Copy agentmuxsrv-rs and wsh binaries to src-tauri/binaries with target-specific names
         cmds:
             - mkdir -p src-tauri/binaries
             - |
                 {{if eq OS "windows"}}
-                powershell -Command "Copy-Item dist/bin/agentmuxsrv.x64.exe src-tauri/binaries/agentmuxsrv-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"
+                powershell -Command "Copy-Item dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -Force; Copy-Item dist/bin/wsh-{{.VERSION}}-windows.x64.exe src-tauri/binaries/wsh-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied binaries for x86_64-pc-windows-msvc'"
                 {{else}}
                 TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
                 {{if eq OS "darwin"}}
-                cp dist/bin/agentmuxsrv.arm64 src-tauri/binaries/agentmuxsrv-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
+                cp dist/bin/agentmuxsrv-rs.arm64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 src-tauri/binaries/wsh-$TRIPLE 2>/dev/null || cp dist/bin/wsh-{{.VERSION}}-darwin.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{else}}
-                cp dist/bin/agentmuxsrv.x64 src-tauri/binaries/agentmuxsrv-$TRIPLE;
+                cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE;
                 cp dist/bin/wsh-{{.VERSION}}-linux.x64 src-tauri/binaries/wsh-$TRIPLE;
                 {{end}}
                 echo "Copied binaries for $TRIPLE"
-                {{end}}
-            # Optionally copy agentmuxsrv-rs if it was built (fallback so Go-only builds still work)
-            - |
-                {{if eq OS "windows"}}
-                powershell -Command "if (Test-Path dist/bin/agentmuxsrv-rs.x64.exe) { Copy-Item dist/bin/agentmuxsrv-rs.x64.exe src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe -Force; Write-Host 'Copied agentmuxsrv-rs for Windows' } else { Write-Host 'agentmuxsrv-rs not found, skipping' }"
-                {{else}}
-                TRIPLE=$(rustc -vV | grep host | awk '{print $2}');
-                {{if eq OS "darwin"}}
-                cp dist/bin/agentmuxsrv-rs.arm64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || echo "agentmuxsrv-rs not found, skipping";
-                {{else}}
-                cp dist/bin/agentmuxsrv-rs.x64 src-tauri/binaries/agentmuxsrv-rs-$TRIPLE 2>/dev/null || echo "agentmuxsrv-rs not found, skipping";
-                {{end}}
                 {{end}}
             # Also create bin/ directory with versioned wsh names (backend expects WAVETERM_APP_PATH/bin/wsh-VERSION-OS.ARCH)
             - |

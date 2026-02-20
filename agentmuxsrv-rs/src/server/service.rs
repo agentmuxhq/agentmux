@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use axum::{extract::State, response::Json};
 use serde_json::json;
 
@@ -12,11 +14,19 @@ pub(super) async fn handle_service(
     State(state): State<AppState>,
     body: axum::body::Bytes,
 ) -> Json<WebReturnType> {
+    let service_start = std::time::Instant::now();
     let call: WebCallType = match serde_json::from_slice(&body) {
         Ok(c) => c,
         Err(e) => return Json(WebReturnType::error(format!("invalid request body: {e}"))),
     };
     let result = dispatch_service(&state, &call);
+    let elapsed = service_start.elapsed();
+    tracing::info!(
+        "[http-perf] {}.{}: {:.2}ms",
+        call.service,
+        call.method,
+        elapsed.as_secs_f64() * 1000.0,
+    );
     Json(result)
 }
 
@@ -225,13 +235,8 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            match wcore::create_window(store, &ws_id) {
+            match wcore::create_window_full(store, &ws_id) {
                 Ok(win) => {
-                    // Add to client window list
-                    if let Ok(mut client) = wcore::get_client(store) {
-                        client.windowids.push(win.oid.clone());
-                        let _ = store.update(&mut client);
-                    }
                     WebReturnType::success(serde_json::to_value(&win).unwrap_or_default())
                 }
                 Err(e) => WebReturnType::error(e.to_string()),
@@ -324,8 +329,17 @@ fn dispatch_service(state: &AppState, call: &WebCallType) -> WebReturnType {
                 Ok(v) => v,
                 Err(e) => return WebReturnType::error(e),
             };
-            match wcore::create_tab(store, &ws_id) {
-                Ok(tab) => WebReturnType::success(serde_json::to_value(&tab).unwrap_or_default()),
+            let tab_name: String = service::get_arg(args, 1).unwrap_or_default();
+            let activate: bool = service::get_arg(args, 2).unwrap_or(true);
+            let pinned: bool = service::get_arg(args, 3).unwrap_or(false);
+            match wcore::create_tab_with_opts(store, &ws_id, &tab_name, pinned) {
+                Ok(tab) => {
+                    // If activate requested, set active tab
+                    if activate {
+                        let _ = wcore::set_active_tab(store, &ws_id, &tab.oid);
+                    }
+                    WebReturnType::success(serde_json::to_value(&tab.oid).unwrap_or_default())
+                }
                 Err(e) => WebReturnType::error(e.to_string()),
             }
         }

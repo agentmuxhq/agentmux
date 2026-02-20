@@ -17,10 +17,10 @@ class ContextMenuModelType {
         }
     }
 
-    _convertAndRegisterMenu(menu: ContextMenuItem[]): ElectronContextMenuItem[] {
-        const electronMenuItems: ElectronContextMenuItem[] = [];
+    _convertAndRegisterMenu(menu: ContextMenuItem[]): NativeContextMenuItem[] {
+        const nativeMenuItems: NativeContextMenuItem[] = [];
         for (const item of menu) {
-            const electronItem: ElectronContextMenuItem = {
+            const nativeItem: NativeContextMenuItem = {
                 role: item.role,
                 type: item.type,
                 label: item.label,
@@ -29,27 +29,27 @@ class ContextMenuModelType {
                 checked: item.checked,
             };
             if (item.visible === false) {
-                electronItem.visible = false;
+                nativeItem.visible = false;
             }
             if (item.enabled === false) {
-                electronItem.enabled = false;
+                nativeItem.enabled = false;
             }
             if (item.click) {
-                this.handlers.set(electronItem.id, item.click);
+                this.handlers.set(nativeItem.id, item.click);
             }
             if (item.submenu) {
-                electronItem.submenu = this._convertAndRegisterMenu(item.submenu);
+                nativeItem.submenu = this._convertAndRegisterMenu(item.submenu);
             }
-            electronMenuItems.push(electronItem);
+            nativeMenuItems.push(nativeItem);
         }
-        return electronMenuItems;
+        return nativeMenuItems;
     }
 
     showContextMenu(menu: ContextMenuItem[], ev: React.MouseEvent<any>): void {
         ev.stopPropagation();
         this.handlers.clear();
-        const electronMenuItems = this._convertAndRegisterMenu(menu);
-        getApi().showContextMenu(globalStore.get(atoms.workspace).oid, electronMenuItems);
+        const nativeMenuItems = this._convertAndRegisterMenu(menu);
+        getApi().showContextMenu(globalStore.get(atoms.workspace).oid, nativeMenuItems);
     }
 }
 

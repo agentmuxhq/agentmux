@@ -1,11 +1,11 @@
 // Copyright 2026, a5af.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Tauri API shim — provides the same window.api (ElectronApi) interface
+// Tauri API shim — provides the same window.api (AppApi) interface
 // using Tauri's invoke() and listen() APIs.
 //
-// This file is the Tauri equivalent of emain/preload.ts.
-// It must be loaded before the React app bootstraps.
+// Provides the AppApi interface via Tauri invoke/listen.
+// Must be loaded before the React app bootstraps.
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -15,8 +15,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 declare const __TAURI_APP_VERSION__: string | undefined;
 
 // Cache for "synchronous" values that are fetched once at startup.
-// In Electron, these were ipcRenderer.sendSync() calls.
-// In Tauri, all IPC is async, so we pre-fetch and cache.
+// All IPC is async, so we pre-fetch and cache.
 let cachedValues: {
     authKey: string;
     isDev: boolean;
@@ -103,14 +102,14 @@ export async function initTauriApi(): Promise<void> {
 }
 
 /**
- * Build the ElectronApi-compatible shim backed by Tauri invoke/listen.
+ * Build the AppApi-compatible shim backed by Tauri invoke/listen.
  */
-export function buildTauriApi(): ElectronApi {
+export function buildTauriApi(): AppApi {
     if (!cachedValues) {
         throw new Error("initTauriApi() must be called before buildTauriApi()");
     }
 
-    const api: ElectronApi = {
+    const api: AppApi = {
         // --- Synchronous getters (return cached values) ---
         getAuthKey: () => cachedValues!.authKey,
         getIsDev: () => cachedValues!.isDev,
@@ -131,9 +130,8 @@ export function buildTauriApi(): ElectronApi {
 
         // --- Cursor ---
         getCursorPoint: () => {
-            // Synchronous in Electron, but we return a default.
-            // The actual async version should be used where possible.
-            return { x: 0, y: 0 } as Electron.Point;
+            // Returns a default; the actual async version should be used where possible.
+            return { x: 0, y: 0 };
         },
 
         // --- About ---
@@ -142,7 +140,7 @@ export function buildTauriApi(): ElectronApi {
         },
 
         // --- Context menu ---
-        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => {
+        showContextMenu: (workspaceId: string, menu?: NativeContextMenuItem[]) => {
             invoke("show_context_menu", { workspaceId, menu }).catch(console.error);
         },
         onContextMenuClick: (callback: (id: string) => void) => {
@@ -305,7 +303,7 @@ export function buildTauriApi(): ElectronApi {
         },
 
         // --- Screenshot ---
-        captureScreenshot: async (_rect: Electron.Rectangle): Promise<string> => {
+        captureScreenshot: async (_rect: { x: number; y: number; width: number; height: number }): Promise<string> => {
             // No equivalent in Tauri — return empty string
             // If needed, can be implemented with html-to-image library
             return "";

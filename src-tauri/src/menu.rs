@@ -4,6 +4,8 @@
 // Application menu builder for Tauri.
 // Replaces emain/menu.ts from the Electron build.
 
+#![allow(dead_code)] // Menu builders disabled for frameless window build, see lib.rs
+
 use tauri::menu::*;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 

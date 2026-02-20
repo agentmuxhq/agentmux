@@ -8,11 +8,13 @@ set -eo pipefail
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 success() { echo -e "${GREEN}✓ $1${NC}"; }
 info() { echo -e "${CYAN}→ $1${NC}"; }
 error() { echo -e "${RED}✗ $1${NC}" >&2; }
+warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
 
 # Parse arguments
 TYPE=""
@@ -172,13 +174,18 @@ else
     error "$TAURI_CONF not found!"
 fi
 
-# Update Go backend ExpectedVersion in cmd/server/main-server.go
-MAIN_SERVER_GO="cmd/server/main-server.go"
-if [[ -f "$MAIN_SERVER_GO" ]]; then
-    sed -i "s/const ExpectedVersion = \"[0-9.]*\"/const ExpectedVersion = \"$NEW_VERSION\"/" "$MAIN_SERVER_GO"
-    success "Updated $MAIN_SERVER_GO ExpectedVersion"
-else
-    warn "$MAIN_SERVER_GO not found, skipping ExpectedVersion update"
+# Update agentmuxsrv-rs/Cargo.toml version
+AGENTMUXSRV_CARGO="agentmuxsrv-rs/Cargo.toml"
+if [[ -f "$AGENTMUXSRV_CARGO" ]]; then
+    sed -i "0,/^version = \"[0-9.]*\"/{s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/}" "$AGENTMUXSRV_CARGO"
+    success "Updated $AGENTMUXSRV_CARGO"
+fi
+
+# Update wsh-rs/Cargo.toml version
+WSH_CARGO="wsh-rs/Cargo.toml"
+if [[ -f "$WSH_CARGO" ]]; then
+    sed -i "0,/^version = \"[0-9.]*\"/{s/^version = \"[0-9.]*\"/version = \"$NEW_VERSION\"/}" "$WSH_CARGO"
+    success "Updated $WSH_CARGO"
 fi
 
 # Determine agent name
@@ -220,7 +227,7 @@ fi
 if [[ "$NO_COMMIT" != true ]]; then
     info "Committing version bump..."
 
-    git add package.json package-lock.json VERSION_HISTORY.md src-tauri/Cargo.toml src-tauri/tauri.conf.json
+    git add package.json package-lock.json VERSION_HISTORY.md src-tauri/Cargo.toml src-tauri/tauri.conf.json agentmuxsrv-rs/Cargo.toml wsh-rs/Cargo.toml
 
     if [[ -n "$MESSAGE" ]]; then
         COMMIT_MSG="chore: bump version to $NEW_VERSION
@@ -257,7 +264,7 @@ fi
 
 echo ""
 info "Next steps:"
-echo "  1. Rebuild binaries: task build:backend (to update wsh version)"
+echo "  1. Rebuild binaries: task build:backend (to update Rust binaries)"
 echo "  2. Review changes: git show HEAD"
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 echo "  3. Push to remote: git push origin $BRANCH"

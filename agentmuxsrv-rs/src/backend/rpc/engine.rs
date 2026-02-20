@@ -5,6 +5,8 @@
 //! and manages request/response lifecycle with timeouts and streaming.
 //! Port of Go's pkg/wshutil/wshrpc.go (WshRpc struct + handler dispatch).
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -348,6 +350,7 @@ impl WshRpcEngine {
     }
 
     async fn handle_request(self: Arc<Self>, msg: RpcMessage) {
+        let request_start = std::time::Instant::now();
         let timeout_ms = if msg.timeout > 0 {
             msg.timeout
         } else {
@@ -399,6 +402,8 @@ impl WshRpcEngine {
             }
         }
 
+        let dispatch_elapsed = request_start.elapsed();
+
         if !has_call && !has_stream {
             handler.send_error(&format!("unknown command: {}", command));
             self.cleanup_handler(&msg.reqid);
@@ -410,6 +415,7 @@ impl WshRpcEngine {
         if has_call {
             // Call handler: single response with timeout.
             // Create the future while holding the lock, then drop the lock before awaiting.
+            let handler_start = std::time::Instant::now();
             let fut = {
                 let inner = self.inner.lock().unwrap();
                 match inner.handlers.get(&command) {
@@ -418,6 +424,16 @@ impl WshRpcEngine {
                 }
             };
             let result = tokio::time::timeout(timeout_dur, fut).await;
+            let handler_elapsed = handler_start.elapsed();
+            let total_elapsed = request_start.elapsed();
+
+            tracing::info!(
+                "[rpc-perf] command={} dispatch={:.2}ms handler={:.2}ms total={:.2}ms",
+                command,
+                dispatch_elapsed.as_secs_f64() * 1000.0,
+                handler_elapsed.as_secs_f64() * 1000.0,
+                total_elapsed.as_secs_f64() * 1000.0,
+            );
 
             match result {
                 Ok(Ok(resp_data)) => handler.send_response(resp_data, true),

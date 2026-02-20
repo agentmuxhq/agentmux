@@ -8,17 +8,22 @@ use axum::{
     },
     response::Response,
 };
+use base64::Engine as _;
 use serde::Deserialize;
 use serde_json::json;
 
 use crate::backend::ai::chatstore::get_default_chat_store;
+use crate::backend::blockcontroller;
 use crate::backend::rpc::engine::WshRpcEngine;
 use crate::backend::rpc_types::{
-    CommandSetMetaData, RpcMessage, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB,
-    COMMAND_EVENT_UNSUB_ALL, COMMAND_GET_FULL_CONFIG, COMMAND_GET_WAVE_AI_CHAT,
+    CommandBlockInputData, CommandControllerResyncData, CommandEventReadHistoryData,
+    CommandGetMetaData, CommandSetMetaData, RpcMessage, COMMAND_CONTROLLER_INPUT,
+    COMMAND_CONTROLLER_RESYNC, COMMAND_EVENT_READ_HISTORY, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB,
+    COMMAND_EVENT_UNSUB_ALL, COMMAND_GET_FULL_CONFIG, COMMAND_GET_META, COMMAND_GET_WAVE_AI_CHAT,
     COMMAND_GET_WAVE_AI_RATE_LIMIT, COMMAND_ROUTE_ANNOUNCE, COMMAND_ROUTE_UNANNOUNCE,
-    COMMAND_SET_META,
+    COMMAND_SET_META, COMMAND_WAVE_INFO,
 };
+use crate::backend::waveobj::{Block, TermSize};
 use super::service::update_object_meta;
 
 use super::AppState;
@@ -35,6 +40,8 @@ struct WSIncoming {
     message: Option<RpcMessage>,
     // Fields for setblocktermsize / blockinput
     blockid: Option<String>,
+    inputdata64: Option<String>,
+    termsize: Option<serde_json::Value>,
 }
 
 pub(super) async fn handle_ws(
@@ -45,15 +52,18 @@ pub(super) async fn handle_ws(
 }
 
 async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
+    let ws_start = std::time::Instant::now();
     let conn_id = uuid::Uuid::new_v4().to_string();
     let tab_id = String::new();
 
     let mut event_rx = state.event_bus.register_ws(&conn_id, &tab_id);
+    tracing::info!("[ws-perf] register_ws: {:.2}ms", ws_start.elapsed().as_secs_f64() * 1000.0);
 
     // Send initial "config" wave event via the RPC eventrecv path so the frontend
     // populates fullConfigAtom (and shows the widget bar).
     // Frontend only processes events via: {"eventtype":"rpc","data":{"command":"eventrecv","data":{"event":"config","data":{...}}}}
     {
+        let t = std::time::Instant::now();
         let config = state.config_watcher.get_full_config();
         if let Ok(config_val) = serde_json::to_value(config.as_ref()) {
             let config_event = json!({
@@ -70,13 +80,17 @@ async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
                 let _ = socket.send(Message::Text(msg.into())).await;
             }
         }
+        tracing::info!("[ws-perf] send_initial_config: {:.2}ms", t.elapsed().as_secs_f64() * 1000.0);
     }
 
     // Create RPC engine for this connection
+    let t = std::time::Instant::now();
     let (engine, mut rpc_output_rx) = WshRpcEngine::new();
 
     // Register handlers
     register_handlers(&engine, state.clone());
+    tracing::info!("[ws-perf] create_engine+register_handlers: {:.2}ms", t.elapsed().as_secs_f64() * 1000.0);
+    tracing::info!("[ws-perf] TOTAL ws_setup: {:.2}ms", ws_start.elapsed().as_secs_f64() * 1000.0);
 
     // Periodic ping interval (10 seconds)
     let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(10));
@@ -190,13 +204,41 @@ async fn handle_incoming_text(
                     tracing::warn!("ws: rpc wscommand missing message field");
                 }
             }
-            "setblocktermsize" | "blockinput" => {
-                // Convert to controllerinput RPC — stub for now, log and ignore
-                tracing::debug!(
-                    "ws: {} for block {:?} (stub)",
-                    wscommand,
-                    incoming.blockid
-                );
+            "blockinput" => {
+                if let Some(ref block_id) = incoming.blockid {
+                    if let Some(ref data64) = incoming.inputdata64 {
+                        if !data64.is_empty() {
+                            match base64::engine::general_purpose::STANDARD.decode(data64) {
+                                Ok(data) => {
+                                    let input = blockcontroller::BlockInputUnion::data(data);
+                                    if let Err(e) = blockcontroller::send_input(block_id, input) {
+                                        tracing::debug!("ws: blockinput error: {}", e);
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!("ws: blockinput base64 decode error: {}", e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            "setblocktermsize" => {
+                if let Some(ref block_id) = incoming.blockid {
+                    if let Some(ref ts_val) = incoming.termsize {
+                        match serde_json::from_value::<TermSize>(ts_val.clone()) {
+                            Ok(ts) => {
+                                let input = blockcontroller::BlockInputUnion::resize(ts);
+                                if let Err(e) = blockcontroller::send_input(block_id, input) {
+                                    tracing::debug!("ws: setblocktermsize error: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!("ws: setblocktermsize parse error: {}", e);
+                            }
+                        }
+                    }
+                }
             }
             other => {
                 tracing::warn!("ws: unknown wscommand: {}", other);
@@ -241,27 +283,49 @@ fn register_handlers(engine: &Arc<WshRpcEngine>, state: AppState) {
         Box::new(|_data, _ctx| Box::pin(async move { Ok(None) })),
     );
 
-    // eventsub → accept, log, no-op
+    // eventsub → register subscription with the WPS broker
+    let broker_sub = state.broker.clone();
     engine.register_handler(
         COMMAND_EVENT_SUB,
-        Box::new(|data, _ctx| {
+        Box::new(move |data, _ctx| {
+            let broker = broker_sub.clone();
             Box::pin(async move {
-                tracing::debug!("eventsub: {:?}", data);
+                let sub: crate::backend::wps::SubscriptionRequest =
+                    serde_json::from_value(data).map_err(|e| format!("eventsub: {e}"))?;
+                tracing::debug!("eventsub: event={} scopes={:?} allscopes={}", sub.event, sub.scopes, sub.allscopes);
+                broker.subscribe("ws-main", sub);
                 Ok(None)
             })
         }),
     );
 
-    // eventunsub → accept, no-op
+    // eventunsub → unsubscribe from the WPS broker
+    let broker_unsub = state.broker.clone();
     engine.register_handler(
         COMMAND_EVENT_UNSUB,
-        Box::new(|_data, _ctx| Box::pin(async move { Ok(None) })),
+        Box::new(move |data, _ctx| {
+            let broker = broker_unsub.clone();
+            Box::pin(async move {
+                let event_name = data.as_str().unwrap_or("").to_string();
+                if !event_name.is_empty() {
+                    broker.unsubscribe("ws-main", &event_name);
+                }
+                Ok(None)
+            })
+        }),
     );
 
-    // eventunsuball → accept, no-op
+    // eventunsuball → unsubscribe all from the WPS broker
+    let broker_unsub_all = state.broker.clone();
     engine.register_handler(
         COMMAND_EVENT_UNSUB_ALL,
-        Box::new(|_data, _ctx| Box::pin(async move { Ok(None) })),
+        Box::new(move |_data, _ctx| {
+            let broker = broker_unsub_all.clone();
+            Box::pin(async move {
+                broker.unsubscribe_all("ws-main");
+                Ok(None)
+            })
+        }),
     );
 
     // setmeta → update object metadata in the DB, broadcast update event
@@ -284,6 +348,44 @@ fn register_handlers(engine: &Arc<WshRpcEngine>, state: AppState) {
                     data: None,
                 });
                 Ok(None)
+            })
+        }),
+    );
+
+    // getmeta → return metadata for a wave object
+    let wstore_gm = state.wstore.clone();
+    engine.register_handler(
+        COMMAND_GET_META,
+        Box::new(move |data, _ctx| {
+            let wstore = wstore_gm.clone();
+            Box::pin(async move {
+                let cmd: CommandGetMetaData =
+                    serde_json::from_value(data).map_err(|e| format!("getmeta: {e}"))?;
+                let obj: Option<serde_json::Value> = wstore
+                    .get_raw(&cmd.oref.otype, &cmd.oref.oid)
+                    .map_err(|e| format!("getmeta: {e}"))?;
+                match obj {
+                    Some(val) => {
+                        // Return the "meta" field if present, otherwise the full object
+                        let meta = val.get("meta").cloned().unwrap_or(val);
+                        Ok(Some(meta))
+                    }
+                    None => Err(format!("getmeta: object {} not found", cmd.oref)),
+                }
+            })
+        }),
+    );
+
+    // waveinfo → return version and build info
+    let version_info = state.version.clone();
+    engine.register_handler(
+        COMMAND_WAVE_INFO,
+        Box::new(move |_data, _ctx| {
+            let version = version_info.clone();
+            Box::pin(async move {
+                Ok(Some(serde_json::json!({
+                    "version": version,
+                })))
             })
         }),
     );
@@ -322,4 +424,85 @@ fn register_handlers(engine: &Arc<WshRpcEngine>, state: AppState) {
             })
         }),
     );
+
+    // controllerresync → load block from DB, create/restart controller with PTY
+    let wstore_resync = state.wstore.clone();
+    let broker_resync = state.broker.clone();
+    let event_bus_resync = state.event_bus.clone();
+    engine.register_handler(
+        COMMAND_CONTROLLER_RESYNC,
+        Box::new(move |data, _ctx| {
+            let wstore = wstore_resync.clone();
+            let broker = broker_resync.clone();
+            let event_bus = event_bus_resync.clone();
+            Box::pin(async move {
+                let cmd: CommandControllerResyncData = serde_json::from_value(data)
+                    .map_err(|e| format!("controllerresync: {e}"))?;
+                let block: Block = wstore
+                    .get(&cmd.blockid)
+                    .map_err(|e| format!("controllerresync: load block: {e}"))?
+                    .ok_or_else(|| format!("controllerresync: block {} not found", cmd.blockid))?;
+                blockcontroller::resync_controller(
+                    &block,
+                    &cmd.tabid,
+                    cmd.rtopts,
+                    cmd.forcerestart,
+                    Some(broker),
+                    Some(event_bus),
+                )?;
+                Ok(None)
+            })
+        }),
+    );
+
+    // controllerinput → route keyboard input / signals / resize to block controller
+    engine.register_handler(
+        COMMAND_CONTROLLER_INPUT,
+        Box::new(|data, _ctx| {
+            Box::pin(async move {
+                let cmd: CommandBlockInputData = serde_json::from_value(data)
+                    .map_err(|e| format!("controllerinput: {e}"))?;
+                let input = parse_block_input(&cmd)?;
+                blockcontroller::send_input(&cmd.blockid, input)?;
+                Ok(None)
+            })
+        }),
+    );
+
+    // eventreadhistory → read persisted event history from the WPS broker
+    let broker_history = state.broker.clone();
+    engine.register_handler(
+        COMMAND_EVENT_READ_HISTORY,
+        Box::new(move |data, _ctx| {
+            let broker = broker_history.clone();
+            Box::pin(async move {
+                let cmd: CommandEventReadHistoryData = serde_json::from_value(data)
+                    .map_err(|e| format!("eventreadhistory: {e}"))?;
+                let max_items = if cmd.maxitems == 0 { 1024 } else { cmd.maxitems };
+                let events = broker.read_event_history(&cmd.event, &cmd.scope, max_items);
+                Ok(Some(serde_json::to_value(&events).unwrap_or_default()))
+            })
+        }),
+    );
+}
+
+/// Parse a CommandBlockInputData into a BlockInputUnion.
+fn parse_block_input(
+    cmd: &CommandBlockInputData,
+) -> Result<blockcontroller::BlockInputUnion, String> {
+    if !cmd.inputdata64.is_empty() {
+        let data = base64::engine::general_purpose::STANDARD
+            .decode(&cmd.inputdata64)
+            .map_err(|e| format!("controllerinput: base64 decode: {e}"))?;
+        return Ok(blockcontroller::BlockInputUnion::data(data));
+    }
+    if !cmd.signame.is_empty() {
+        return Ok(blockcontroller::BlockInputUnion::signal(&cmd.signame));
+    }
+    if let Some(ref ts_val) = cmd.termsize {
+        let ts: TermSize =
+            serde_json::from_value(ts_val.clone()).map_err(|e| format!("controllerinput: {e}"))?;
+        return Ok(blockcontroller::BlockInputUnion::resize(ts));
+    }
+    Err("controllerinput: no input data, signal, or termsize".to_string())
 }

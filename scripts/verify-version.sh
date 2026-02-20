@@ -183,11 +183,12 @@ info "Scanning for outdated version references..."
 OUTDATED_REFS=$(grep -r "0\.1[0-9]\.[0-9]" \
     --include="*.ts" \
     --include="*.tsx" \
-    --include="*.go" \
+    --include="*.rs" \
     --exclude-dir=node_modules \
     --exclude-dir=.git \
     --exclude-dir=dist \
     --exclude-dir=make \
+    --exclude-dir=target \
     . 2>/dev/null | grep -v "$EXPECTED_VERSION" | grep -v "package-lock.json" || true)
 
 if [[ -n "$OUTDATED_REFS" ]]; then

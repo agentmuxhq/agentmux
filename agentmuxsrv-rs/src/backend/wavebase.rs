@@ -4,6 +4,8 @@
 //! Wave base utilities: directory management, lock files, environment, platform detection.
 //! Port of Go's pkg/wavebase/.
 
+#![allow(dead_code)]
+
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};

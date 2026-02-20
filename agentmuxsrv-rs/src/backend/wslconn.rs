@@ -3,6 +3,8 @@
 
 //! WSL connection types and status constants.
 //! Port of Go's `pkg/wslconn/wslconn.go` — wire types only.
+
+#![allow(dead_code)]
 //!
 //! The full connection lifecycle (Connect, Reconnect, etc.) involves system-level
 //! operations that will be wired in later. This module provides the type definitions

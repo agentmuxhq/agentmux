@@ -9,6 +9,8 @@
 //! of configurable size, rebuffering as needed. Supports line-level
 //! navigation (next/previous line).
 
+#![allow(dead_code)]
+
 use std::io::{self, Read, Seek, SeekFrom};
 
 /// Error indicating beginning-of-file was reached.

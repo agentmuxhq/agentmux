@@ -107,8 +107,7 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     usp.set("service", service);
     usp.set("method", method);
 
-    // For Tauri: add auth key as query parameter (Electron injects via session.webRequest)
-    // Only in browser context (not Electron main process)
+    // Add auth key as query parameter for Tauri backend
     if (globalThis.window != null) {
         const authKey = getApi()?.getAuthKey?.();
         if (authKey) {

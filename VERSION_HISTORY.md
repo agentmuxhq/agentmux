@@ -2,13 +2,61 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.30.0
+## Latest Version: 0.31.0
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.31.0-fork (2026-02-20)
+- **Agent:** AgentA
+- **Changes:**
+  - 100% Rust release: removed all Go source code (cmd/, pkg/, go.mod, go.sum)
+  - wsh rewritten in Rust (wsh-rs crate): 1.1 MB binary vs 11 MB Go (90% size reduction)
+  - Added sysinfo data collection to Rust backend (CPU, memory, network graphs)
+  - Added getmeta, setmeta, waveinfo RPC handlers to Rust backend
+  - Updated build system: all build tasks now use cargo (no Go/CGO dependency)
+  - Binary size: agentmuxsrv-rs 4.4 MB + wsh 1.1 MB = 5.5 MB total (vs ~25 MB Go)
+
+### v0.30.8-fork (2026-02-20)
+- **Agent:** AgentA
+- **Changes:**
+  - Tree shake: delete 8 dead Rust modules (wcloud, shellutil, webhookdelivery, suggestion, telemetry, faviconcache, blocklogger, authkey)
+  - Suppress 911 compiler warnings with #![allow(dead_code)] on Go-port modules
+  - Remove all Electron references from frontend (rename ElectronApi → AppApi, ElectronContextMenuItem → NativeContextMenuItem, etc.)
+  - Archive old docs/specs, reorganize debug scripts
+  - Net removal of 3,449 lines of dead code
+
+### v0.30.6-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix grey screen on startup: add 5s RPC timeouts and error recovery
+  - showStartupError() renders user-facing error instead of blank screen
+  - 30s safety-net timeout forces body visible if still hidden
+
+### v0.30.5-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Modularize filestore.rs (1531 lines) into 7 focused files under filestore/ directory
+  - No behavior changes — pure mechanical extraction
+  - All 34 filestore tests pass
+
+### v0.30.4-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix widgets, config event, and object CRUD in Rust backend
+
+### v0.30.3-fork (2026-02-19)
+- **Agent:** AgentA
+- **Changes:**
+  - Terminal I/O with real PTY support (portable-pty) in Rust backend
+  - Wire controllerresync, controllerinput RPC handlers
+  - Wire blockinput, setblocktermsize wscommands
+  - Wire eventsub/eventunsub/eventunsuball to WPS Broker
+  - Add EventBusBridge for Broker → EventBus → WebSocket event delivery
+  - Replace unsafe run_lock pointer with safe Arc<AtomicBool>
 
 ### v0.30.0-fork (2026-02-17)
 - **Agent:** AgentO

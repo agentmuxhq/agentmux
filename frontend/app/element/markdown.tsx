@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
 import {
     MarkdownContentBlockType,
@@ -33,7 +34,11 @@ const initializeMermaid = async () => {
     if (!mermaidInitialized) {
         const mermaid = await import("mermaid");
         mermaidInstance = mermaid.default;
-        mermaidInstance.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+        mermaidInstance.initialize({
+            startOnLoad: false,
+            theme: "dark",
+            securityLevel: "strict",
+        });
         mermaidInitialized = true;
     }
 };
@@ -68,64 +73,83 @@ const Heading = ({ props, hnum }: { props: React.HTMLAttributes<HTMLHeadingEleme
     );
 };
 
+let mermaidRenderCount = 0;
+
 const Mermaid = ({ chart }: { chart: string }) => {
     const ref = useRef<HTMLDivElement>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [svgContent, setSvgContent] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
         const renderMermaid = async () => {
             try {
-                setIsLoading(true);
                 setError(null);
+                setSvgContent(null);
 
                 await initializeMermaid();
-                if (!ref.current || !mermaidInstance) {
+                if (cancelled || !mermaidInstance) {
                     return;
                 }
 
                 // Normalize the chart text
-                let normalizedChart = chart
-                    .replace(/<br\s*\/?>/gi, "\n") // Convert <br/> and <br> to newlines
-                    .replace(/\r\n?/g, "\n") // Normalize \r \r\n to \n
-                    .replace(/\n+$/, ""); // Remove final newline
+                const normalizedChart = chart
+                    .replace(/<br\s*\/?>/gi, "\n")
+                    .replace(/\r\n?/g, "\n")
+                    .replace(/\n+$/, "");
 
-                ref.current.removeAttribute("data-processed");
-                ref.current.textContent = normalizedChart;
-                // console.log("mermaid", normalizedChart);
-                await mermaidInstance.run({ nodes: [ref.current] });
-                setIsLoading(false);
+                // Use render() instead of run() to avoid async MessagePort/ELK errors.
+                // render() returns SVG directly without the async scheduler.
+                const id = `mermaid-${++mermaidRenderCount}`;
+                const { svg } = await mermaidInstance.render(id, normalizedChart);
+                if (!cancelled) {
+                    setSvgContent(svg);
+                }
             } catch (err) {
                 console.error("Error rendering mermaid diagram:", err);
-                setError(`Failed to render diagram: ${err.message || err}`);
-                setIsLoading(false);
+                if (!cancelled) {
+                    setError(err.message || String(err));
+                }
             }
         };
 
         renderMermaid();
+        return () => {
+            cancelled = true;
+        };
     }, [chart]);
 
-    useEffect(() => {
-        if (!ref.current) return;
+    if (error) {
+        return (
+            <div className="mermaid error">
+                <div style={{ color: "var(--error-color, #f44)", marginBottom: 8 }}>Failed to render diagram</div>
+                <pre style={{ whiteSpace: "pre-wrap", opacity: 0.7, fontSize: "0.85em" }}>{chart}</pre>
+            </div>
+        );
+    }
 
-        if (error) {
-            ref.current.textContent = `Error: ${error}`;
-            ref.current.className = "mermaid error";
-        } else if (isLoading) {
-            ref.current.textContent = "Loading diagram...";
-            ref.current.className = "mermaid";
-        } else {
-            ref.current.className = "mermaid";
-        }
-    }, [isLoading, error]);
+    if (!svgContent) {
+        return <div className="mermaid">Loading diagram...</div>;
+    }
 
-    return <div className="mermaid" ref={ref} />;
+    return <div className="mermaid" ref={ref} dangerouslySetInnerHTML={{ __html: svgContent }} />;
 };
+
+const MermaidErrorFallback = ({ error, chart }: { error?: Error; chart: string }) => (
+    <div className="mermaid error">
+        <div style={{ color: "var(--error-color, #f44)", marginBottom: 8 }}>Failed to render diagram</div>
+        <pre style={{ whiteSpace: "pre-wrap", opacity: 0.7, fontSize: "0.85em" }}>{chart}</pre>
+    </div>
+);
 
 const Code = ({ className = "", children }: { className?: string; children: React.ReactNode }) => {
     if (/\blanguage-mermaid\b/.test(className)) {
         const text = Array.isArray(children) ? children.join("") : String(children ?? "");
-        return <Mermaid chart={text} />;
+        return (
+            <ErrorBoundary fallback={<MermaidErrorFallback chart={text} />}>
+                <Mermaid chart={text} />
+            </ErrorBoundary>
+        );
     }
     return <code className={className}>{children}</code>;
 };
@@ -381,7 +405,11 @@ const Markdown = ({
         };
 
         const chartText = getTextContent(props.children);
-        return <Mermaid chart={chartText} />;
+        return (
+            <ErrorBoundary fallback={<MermaidErrorFallback chart={chartText} />}>
+                <Mermaid chart={chartText} />
+            </ErrorBoundary>
+        );
     };
 
     const toc = useMemo(() => {

@@ -3,6 +3,8 @@
 
 //! Incremental JSON (iJSON): path-based operations on JSON data.
 //! Port of Go's pkg/ijson/ijson.go.
+
+#![allow(dead_code)]
 //!
 //! iJSON allows expressing JSON updates as a series of commands:
 //! - `set`: Set a value at a path

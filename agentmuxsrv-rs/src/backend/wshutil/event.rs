@@ -7,6 +7,8 @@
 //! Provides a pub/sub event system that converts WaveEvents into
 //! a listener-based API with register/unregister support.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 use uuid::Uuid;

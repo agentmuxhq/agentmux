@@ -386,6 +386,9 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
                     return;
                 }
                 const dataItem = convertWaveEventToDataItem(event);
+                if (dataItem == null) {
+                    return;
+                }
                 const prevData = globalStore.get(model.dataAtom);
                 const prevLastTs = prevData[prevData.length - 1]?.ts ?? 0;
                 if (dataItem.ts - prevLastTs > 2000) {
@@ -434,6 +437,9 @@ function SingleLinePlot({
     const domRect = useDimensionsWithExistingRef(containerRef, 300);
     const plotHeight = domRect?.height ?? 0;
     const plotWidth = domRect?.width ?? 0;
+    if (plotData == null || plotData.length === 0) {
+        return <div ref={containerRef} className="min-h-[100px]" />;
+    }
     const marks: Plot.Markish[] = [];
     let decimalPlaces = yvalMeta?.decimalPlaces ?? 0;
     let color = yvalMeta?.color;

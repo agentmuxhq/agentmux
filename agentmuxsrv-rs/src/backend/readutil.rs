@@ -7,6 +7,8 @@
 //! Provides line-based file reading with support for line counts,
 //! byte limits, line skipping, and progressive tail reading.
 
+#![allow(dead_code)]
+
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom};
 
 /// Stop reason: beginning of file reached.

@@ -437,6 +437,9 @@ function SingleLinePlot({
     const domRect = useDimensionsWithExistingRef(containerRef, 300);
     const plotHeight = domRect?.height ?? 0;
     const plotWidth = domRect?.width ?? 0;
+    if (plotData == null || plotData.length === 0) {
+        return <div ref={containerRef} className="min-h-[100px]" />;
+    }
     const marks: Plot.Markish[] = [];
     let decimalPlaces = yvalMeta?.decimalPlaces ?? 0;
     let color = yvalMeta?.color;

@@ -34,7 +34,11 @@ const initializeMermaid = async () => {
     if (!mermaidInitialized) {
         const mermaid = await import("mermaid");
         mermaidInstance = mermaid.default;
-        mermaidInstance.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+        mermaidInstance.initialize({
+            startOnLoad: false,
+            theme: "dark",
+            securityLevel: "strict",
+        });
         mermaidInitialized = true;
     }
 };

@@ -16,11 +16,11 @@ use crate::backend::ai::chatstore::get_default_chat_store;
 use crate::backend::blockcontroller;
 use crate::backend::rpc::engine::WshRpcEngine;
 use crate::backend::rpc_types::{
-    CommandBlockInputData, CommandControllerResyncData, CommandSetMetaData, RpcMessage,
-    COMMAND_CONTROLLER_INPUT, COMMAND_CONTROLLER_RESYNC, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB,
-    COMMAND_EVENT_UNSUB_ALL, COMMAND_GET_FULL_CONFIG, COMMAND_GET_WAVE_AI_CHAT,
-    COMMAND_GET_WAVE_AI_RATE_LIMIT, COMMAND_ROUTE_ANNOUNCE, COMMAND_ROUTE_UNANNOUNCE,
-    COMMAND_SET_META,
+    CommandBlockInputData, CommandControllerResyncData, CommandEventReadHistoryData,
+    CommandSetMetaData, RpcMessage, COMMAND_CONTROLLER_INPUT, COMMAND_CONTROLLER_RESYNC,
+    COMMAND_EVENT_READ_HISTORY, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB, COMMAND_EVENT_UNSUB_ALL,
+    COMMAND_GET_FULL_CONFIG, COMMAND_GET_WAVE_AI_CHAT, COMMAND_GET_WAVE_AI_RATE_LIMIT,
+    COMMAND_ROUTE_ANNOUNCE, COMMAND_ROUTE_UNANNOUNCE, COMMAND_SET_META,
 };
 use crate::backend::waveobj::{Block, TermSize};
 use super::service::update_object_meta;
@@ -419,6 +419,22 @@ fn register_handlers(engine: &Arc<WshRpcEngine>, state: AppState) {
                 let input = parse_block_input(&cmd)?;
                 blockcontroller::send_input(&cmd.blockid, input)?;
                 Ok(None)
+            })
+        }),
+    );
+
+    // eventreadhistory → read persisted event history from the WPS broker
+    let broker_history = state.broker.clone();
+    engine.register_handler(
+        COMMAND_EVENT_READ_HISTORY,
+        Box::new(move |data, _ctx| {
+            let broker = broker_history.clone();
+            Box::pin(async move {
+                let cmd: CommandEventReadHistoryData = serde_json::from_value(data)
+                    .map_err(|e| format!("eventreadhistory: {e}"))?;
+                let max_items = if cmd.maxitems == 0 { 1024 } else { cmd.maxitems };
+                let events = broker.read_event_history(&cmd.event, &cmd.scope, max_items);
+                Ok(Some(serde_json::to_value(&events).unwrap_or_default()))
             })
         }),
     );

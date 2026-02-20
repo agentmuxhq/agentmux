@@ -29,6 +29,7 @@ pub mod schema;
 pub mod service;
 pub mod shellexec;
 pub mod sigutil;
+pub mod sysinfo;
 pub mod storage;
 pub mod syncbuf;
 pub mod tarcopy;

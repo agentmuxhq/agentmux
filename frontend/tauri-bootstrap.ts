@@ -179,5 +179,13 @@ async function bootstrap() {
     }
 }
 
+// Capture unhandled errors to backend log for debugging
+window.addEventListener("error", (event) => {
+    log("UNCAUGHT-ERROR", event.message, "at", event.filename, "line", String(event.lineno));
+});
+window.addEventListener("unhandledrejection", (event) => {
+    log("UNHANDLED-REJECTION", event.reason?.message ?? String(event.reason));
+});
+
 // Start bootstrap
 bootstrap();

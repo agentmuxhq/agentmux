@@ -17,7 +17,7 @@ use backend::storage::filestore::FileStore;
 use backend::storage::wstore::WaveStore;
 use backend::wps::Broker;
 use backend::wconfig;
-use backend::{docsite, wavebase, wcore};
+use backend::{docsite, sysinfo, wavebase, wcore};
 
 #[tokio::main]
 async fn main() {
@@ -93,6 +93,12 @@ async fn main() {
     // Bridge WPS events to WebSocket clients via EventBus
     let bridge = backend::eventbus::EventBusBridge::new(event_bus.clone());
     broker.set_client(Box::new(bridge));
+
+    // Start sysinfo collection loop (CPU/memory/network metrics at 1s intervals)
+    let sysinfo_broker = broker.clone();
+    tokio::spawn(async move {
+        sysinfo::run_sysinfo_loop(sysinfo_broker, "local".to_string()).await;
+    });
 
     // Reactive handler (global singleton) + poller
     let reactive_handler = reactive::get_global_handler();

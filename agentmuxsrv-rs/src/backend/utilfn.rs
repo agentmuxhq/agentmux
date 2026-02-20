@@ -3,6 +3,8 @@
 
 //! Utility functions ported from Go's `pkg/util/utilfn/utilfn.go`.
 //!
+
+#![allow(dead_code)]
 //! Includes null encoding/decoding, hashing, binary detection, star matching,
 //! slice operations, string helpers, and atomic file operations.
 

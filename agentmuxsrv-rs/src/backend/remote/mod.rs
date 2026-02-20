@@ -10,15 +10,13 @@
 //! - `conncontroller`: Connection state machine (init→connecting→connected→disconnected)
 //! - `genconn`: Generic ShellClient/ShellProcessController traits
 
+#![allow(dead_code)]
+
 pub mod conncontroller;
 pub mod connparse;
 pub mod genconn;
 pub mod sshclient;
 
-// Re-export commonly used types
-pub use connparse::Connection;
-pub use genconn::{CommandSpec, ShellClient, ShellProcessController};
-pub use sshclient::SSHOpts;
 
 // ---- Connection type constants ----
 

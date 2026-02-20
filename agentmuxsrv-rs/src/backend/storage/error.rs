@@ -3,6 +3,8 @@
 
 //! Error types for the storage layer.
 
+#![allow(dead_code)]
+
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
     #[error("not found")]

@@ -8,6 +8,8 @@
 //! rate limiting, message sanitization, audit logging, and cross-host
 //! polling via AgentMux cloud service.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};

@@ -4,6 +4,8 @@
 //! RPC message router: acts like a network switch, routing messages between
 //! named endpoints (routes). Port of Go's pkg/wshutil/wshrouter.go.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 

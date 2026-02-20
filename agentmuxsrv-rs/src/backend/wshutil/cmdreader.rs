@@ -7,6 +7,8 @@
 //! Reads JSON-RPC messages from stdin for the `wsh` CLI tool.
 //! Supports both single-shot commands and interactive mode.
 
+#![allow(dead_code)]
+
 use std::io::{BufRead, BufReader, Read};
 use tokio::sync::mpsc;
 

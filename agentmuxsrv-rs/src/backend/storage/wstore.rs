@@ -7,6 +7,8 @@
 //! Uses `Mutex<Connection>` matching Go's `MaxOpenConns(1)`.
 //! SQLite WAL mode + 5s busy timeout (same as Go).
 
+#![allow(dead_code)]
+
 use std::path::Path;
 use std::sync::Mutex;
 

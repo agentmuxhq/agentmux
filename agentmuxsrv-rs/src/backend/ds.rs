@@ -7,6 +7,8 @@
 //! - `SyncMap<T>`: Thread-safe generic map with test-and-set.
 //! - `ExpMap<T>`: Thread-safe map with auto-expiring entries.
 
+#![allow(dead_code)]
+
 use std::collections::{BinaryHeap, HashMap};
 use std::sync::Mutex;
 use std::time::Instant;

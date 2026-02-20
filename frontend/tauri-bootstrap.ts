@@ -131,7 +131,7 @@ async function bootstrap() {
             }
             log("INFO", "No backend startup errors detected");
         } else {
-            log("INFO", "Running in Electron mode, skipping Tauri init");
+            log("INFO", "Not running in Tauri, skipping Tauri init");
         }
 
         // Now dynamically import wave.ts

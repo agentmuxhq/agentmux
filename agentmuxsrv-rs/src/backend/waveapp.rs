@@ -9,6 +9,8 @@
 //! The runtime (Client, RPC communication, component registration)
 //! is deferred until the sidecar is replaced.
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
 use super::vdom::{VDomBackendOpts, VDomTargetToolbar};

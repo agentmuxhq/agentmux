@@ -4,6 +4,8 @@
 //! ORef: typed object reference in "otype:oid" string format.
 //! Custom serde: serializes as a JSON string, not an object.
 
+#![allow(dead_code)]
+
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use uuid::Uuid;

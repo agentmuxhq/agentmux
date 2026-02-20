@@ -8,6 +8,8 @@
 //! into a map of property name → value. Handles quoted strings, nested
 //! parentheses, and escape sequences.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 /// CSS style attribute parser.

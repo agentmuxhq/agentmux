@@ -21,8 +21,3 @@ pub mod rpcio;
 pub mod wshrpc;
 pub mod cmdreader;
 
-pub use osc::*;
-pub use event::EventListener;
-pub use proxy::{WshRpcProxy, WshMultiProxy};
-pub use wshrpc::WshRpc;
-pub use cmdreader::CmdReader;

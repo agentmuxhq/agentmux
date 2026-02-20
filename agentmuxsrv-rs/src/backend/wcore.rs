@@ -6,11 +6,13 @@
 //!
 //! Orchestrates WaveStore mutations with WPS event publishing.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::oref::ORef;
-use super::storage::wstore::{WaveStore, StoreTx};
+use super::storage::wstore::WaveStore;
 use super::storage::StoreError;
 use super::waveobj::*;
 use super::wps::{self, Broker, WaveEvent};

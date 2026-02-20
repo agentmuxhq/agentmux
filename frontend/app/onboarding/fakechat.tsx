@@ -19,12 +19,12 @@ const chatConfigs: ChatConfig[] = [
         markdownResponse: `Here's a quick, file-structure–driven overview of this repo (AgentMux):
 
 ## What it is
-- Electron + React front end with a Go backend ("agentmuxsrv"). Provides a terminal with GUI widgets, previews, web, and AI. (README.md)
+- Tauri v2 + React front end with a Go backend ("agentmuxsrv"). Provides a terminal with GUI widgets, previews, web, and AI. (README.md)
 - Licensed Apache-2.0. (LICENSE)
 
 ## Architecture at a glance
-- **Electron main process:** \`emain/*.ts\` configures windows, menus, preload scripts, updater, and ties into the Go backend via local RPC. (\`emain/\`)
-- **Renderer UI:** React/TS built with Vite, Tailwind. (\`frontend/\`, \`index.html\`, \`electron.vite.config.ts\`)
+- **Tauri main process:** \`src-tauri/\` Rust app with webview, window management, and IPC. Ties into the Go backend via local RPC.
+- **Renderer UI:** React/TS built with Vite, Tailwind. (\`frontend/\`, \`index.html\`, \`vite.config.ts\`)
 - **Go backend ("agentmuxsrv"):** starts services, web and websocket listeners, telemetry loops, config watcher, local RPC, filestore and SQLite-backed object store. (\`cmd/server/main-server.go\`, \`pkg/*\`)
 - **CLI/helper ("wsh"):** built for multiple OS/arch; used for shell integration and remote operations. (\`cmd/wsh/\`, \`Taskfile.yml build:wsh\`)
 

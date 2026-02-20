@@ -5,7 +5,6 @@ import { App } from "@/app/app";
 import {
     globalRefocus,
     registerControlShiftStateUpdateHandler,
-    registerElectronReinjectKeyHandler,
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
@@ -147,12 +146,12 @@ const RPC_TIMEOUT = 5_000; // 5 seconds for individual RPC calls
 /**
  * Initialize AgentMux in Tauri mode by fetching client/window/workspace/tab data
  * from backend, verifying objects exist, and creating missing ones if needed.
- * This mirrors Electron's relaunchBrowserWindows() pattern.
+ * Handles first-window and new-window creation.
  */
 async function initTauriWave(): Promise<void> {
 
     try {
-        // Get client data (like Electron's relaunchBrowserWindows)
+        // Get client data
         const clientData = await withTimeout(ClientService.GetClientData(), RPC_TIMEOUT, "GetClientData");
 
         let windowId = clientData.windowids?.[0];
@@ -175,8 +174,8 @@ async function initTauriWave(): Promise<void> {
         let workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
 
         if (!workspace) {
-            // Workspace missing → recreate entire window (like Electron does)
-            await withTimeout(WindowService.CloseWindow(windowData.oid, false), RPC_TIMEOUT, "CloseWindow");
+            // Workspace missing → recreate entire window
+            await withTimeout(WindowService.CloseWindow(windowData.oid), RPC_TIMEOUT, "CloseWindow");
             windowData = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
             workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
         }
@@ -309,7 +308,7 @@ async function initBare() {
     const isTauri = typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
     getApi().sendLog(`Init Bare - Tauri mode: ${isTauri}`);
 
-    // Electron uses onAgentMuxInit callback (backend emits wave-init event)
+    // Tauri uses onAgentMuxInit callback (backend emits wave-init event)
     // Tauri handles initialization in frontend after backend is ready
     if (!isTauri) {
         getApi().onAgentMuxInit(initWaveWrap);
@@ -469,7 +468,6 @@ async function initWave(initOpts: AgentMuxInitOpts) {
         clientId: initOpts.clientId,
         windowId: initOpts.windowId,
         platform,
-        environment: "renderer",
         primaryTabStartup: initOpts.primaryTabStartup,
     });
     (window as any).globalAtoms = atoms;
@@ -506,7 +504,6 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     document.title = `AgentMux ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
 
     registerGlobalKeys();
-    registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
     await loadMonaco();
     const fullConfig = await withTimeout(RpcApi.GetFullConfigCommand(TabRpcClient), RPC_TIMEOUT, "GetFullConfig");

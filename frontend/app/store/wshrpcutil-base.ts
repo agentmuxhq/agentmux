@@ -5,7 +5,7 @@ import { wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
 import { WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
-import { addWSReconnectHandler, ElectronOverrideOpts, globalWS, initGlobalWS } from "./ws";
+import { addWSReconnectHandler, globalWS, initGlobalWS } from "./ws";
 
 let DefaultRouter: WshRouter;
 
@@ -111,20 +111,6 @@ if (globalThis.window != null) {
     globalThis["consumeGenerator"] = consumeGenerator;
 }
 
-function initElectronWshrpc(electronClient: WshClient, eoOpts: ElectronOverrideOpts) {
-    setDefaultRouter(new WshRouter(new UpstreamWshRpcProxy()));
-    const handleFn = (event: WSEventType) => {
-        DefaultRouter.recvRpcMessage(event.data);
-    };
-    initGlobalWS(getWSServerEndpoint(), "electron", handleFn, eoOpts);
-    globalWS.connectNow("connectWshrpc");
-    DefaultRouter.registerRoute(electronClient.routeId, electronClient);
-    addWSReconnectHandler(() => {
-        DefaultRouter.reannounceRoutes();
-    });
-    addWSReconnectHandler(wpsReconnectHandler);
-}
-
 function shutdownWshrpc() {
     globalWS?.shutdown();
 }
@@ -136,4 +122,4 @@ class UpstreamWshRpcProxy implements AbstractWshClient {
     }
 }
 
-export { DefaultRouter, initElectronWshrpc, sendRpcCommand, sendRpcResponse, setDefaultRouter, shutdownWshrpc };
+export { DefaultRouter, sendRpcCommand, sendRpcResponse, setDefaultRouter, shutdownWshrpc };

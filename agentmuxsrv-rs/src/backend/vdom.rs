@@ -3,6 +3,8 @@
 
 //! Virtual DOM types and wire protocol.
 //! Port of Go's pkg/vdom/.
+
+#![allow(dead_code)]
 //!
 //! Defines the VDOM element types, protocol messages for frontend-backend
 //! communication, event types, and transfer format conversion utilities.

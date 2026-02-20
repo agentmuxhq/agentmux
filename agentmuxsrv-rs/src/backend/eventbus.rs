@@ -4,6 +4,8 @@
 //! Event bus: WebSocket event dispatching to connected clients.
 //! Port of Go's pkg/eventbus/eventbus.go.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

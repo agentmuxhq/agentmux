@@ -3,6 +3,8 @@
 
 //! Environment variable utilities: null-delimited encoding/decoding and validation.
 //! Port of Go's pkg/util/envutil/envutil.go.
+
+#![allow(dead_code)]
 //!
 //! Environment strings use null-byte (`\0`) as delimiter between `KEY=VALUE` entries.
 

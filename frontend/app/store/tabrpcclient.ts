@@ -36,12 +36,12 @@ export class TabClient extends WshClient {
         const containerRect = displayContainer.getBoundingClientRect();
         const additionalProps = layoutModel.getNodeAdditionalProperties(node);
 
-        let electronRect: Electron.Rectangle;
+        let captureRect: { x: number; y: number; width: number; height: number };
 
         if (!additionalProps?.rect) {
             // Bug: rect is not set when there is only one block in the layout
             // In this case, use the full container rect
-            electronRect = {
+            captureRect = {
                 x: Math.round(containerRect.x),
                 y: Math.round(containerRect.y),
                 width: Math.round(containerRect.width),
@@ -49,7 +49,7 @@ export class TabClient extends WshClient {
             };
         } else {
             const blockRect = additionalProps.rect;
-            electronRect = {
+            captureRect = {
                 x: Math.round(containerRect.x + blockRect.left),
                 y: Math.round(containerRect.y + blockRect.top),
                 width: Math.round(blockRect.width),
@@ -57,7 +57,7 @@ export class TabClient extends WshClient {
             };
         }
 
-        return await getApi().captureScreenshot(electronRect);
+        return await getApi().captureScreenshot(captureRect);
     }
 
     async handle_waveaiaddcontext(rh: RpcResponseHelper, data: CommandWaveAIAddContextData): Promise<void> {

@@ -8,6 +8,8 @@
 //! config watcher. The actual file system watching is deferred until
 //! integrated with the Tauri event loop.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};

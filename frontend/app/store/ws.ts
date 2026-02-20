@@ -27,7 +27,7 @@ function removeWSReconnectHandler(handler: () => void) {
 
 type WSEventCallback = (arg0: WSEventType) => void;
 
-type ElectronOverrideOpts = {
+type WSAuthOpts = {
     authKey: string;
 };
 
@@ -44,7 +44,7 @@ class WSControl {
     wsLog: string[] = [];
     baseHostPort: string;
     lastReconnectTime: number = 0;
-    eoOpts: ElectronOverrideOpts;
+    authOpts: WSAuthOpts;
     noReconnect: boolean = false;
     onOpenTimeoutId: NodeJS.Timeout = null;
 
@@ -52,13 +52,13 @@ class WSControl {
         baseHostPort: string,
         tabId: string,
         messageCallback: WSEventCallback,
-        electronOverrideOpts?: ElectronOverrideOpts
+        wsAuthOpts?: WSAuthOpts
     ) {
         this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
         this.tabId = tabId;
         this.open = false;
-        this.eoOpts = electronOverrideOpts;
+        this.authOpts = wsAuthOpts;
         setInterval(this.sendPing.bind(this), 5000);
     }
 
@@ -76,9 +76,9 @@ class WSControl {
         this.opening = true;
         this.wsConn = newWebSocket(
             this.baseHostPort + "/ws?tabid=" + this.tabId,
-            this.eoOpts
+            this.authOpts
                 ? {
-                      [AuthKeyHeader]: this.eoOpts.authKey,
+                      [AuthKeyHeader]: this.authOpts.authKey,
                   }
                 : null
         );
@@ -233,9 +233,9 @@ function initGlobalWS(
     baseHostPort: string,
     tabId: string,
     messageCallback: WSEventCallback,
-    electronOverrideOpts?: ElectronOverrideOpts
+    wsAuthOpts?: WSAuthOpts
 ) {
-    globalWS = new WSControl(baseHostPort, tabId, messageCallback, electronOverrideOpts);
+    globalWS = new WSControl(baseHostPort, tabId, messageCallback, wsAuthOpts);
 }
 
 function sendRawRpcMessage(msg: RpcMessage) {
@@ -255,5 +255,5 @@ export {
     removeWSReconnectHandler,
     sendRawRpcMessage,
     sendWSCommand,
-    type ElectronOverrideOpts,
+    type WSAuthOpts,
 };

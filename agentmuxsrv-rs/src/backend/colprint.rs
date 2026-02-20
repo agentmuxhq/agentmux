@@ -8,6 +8,8 @@
 //! values to determine column width, then prints all values using that width.
 //! Handles values that span multiple columns when they are too wide.
 
+#![allow(dead_code)]
+
 use std::io::{self, Write};
 
 /// Print an iterator of values in columns.

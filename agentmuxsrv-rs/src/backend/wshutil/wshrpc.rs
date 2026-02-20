@@ -11,6 +11,8 @@
 //! - Context cancellation propagation
 //! - Auth token injection
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -154,7 +156,7 @@ pub struct WshRpc {
 impl WshRpc {
     /// Create a new WshRpc client with input/output channels.
     pub fn new(debug_name: &str) -> (Self, mpsc::Receiver<Vec<u8>>, mpsc::Sender<Vec<u8>>) {
-        let (input_tx, input_rx) = mpsc::channel(DEFAULT_INPUT_CH_SIZE);
+        let (input_tx, _input_rx) = mpsc::channel(DEFAULT_INPUT_CH_SIZE);
         let (output_tx, output_rx) = mpsc::channel(DEFAULT_OUTPUT_CH_SIZE);
 
         let input_tx_clone = input_tx.clone();

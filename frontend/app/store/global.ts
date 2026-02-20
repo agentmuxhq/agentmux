@@ -26,7 +26,6 @@ import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribe } from "./wps";
 
 let atoms: GlobalAtomsType;
-let globalEnvironment: "electron" | "renderer";
 let globalPrimaryTabStartup: boolean = false;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
@@ -39,12 +38,10 @@ type GlobalInitOptions = {
     platform: NodeJS.Platform;
     windowId: string;
     clientId: string;
-    environment: "electron" | "renderer";
     primaryTabStartup?: boolean;
 };
 
 function initGlobal(initOpts: GlobalInitOptions) {
-    globalEnvironment = initOpts.environment;
     globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
     setPlatform(initOpts.platform);
     initGlobalAtoms(initOpts);
@@ -429,7 +426,7 @@ function useBlockDataLoaded(blockId: string): boolean {
 /**
  * Get the preload api.
  */
-function getApi(): ElectronApi {
+function getApi(): AppApi {
     return (window as any).api;
 }
 

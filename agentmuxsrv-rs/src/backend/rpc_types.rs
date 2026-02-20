@@ -4,6 +4,8 @@
 //! RPC wire format types: Rust equivalents of Go structs from
 //! pkg/wshutil/wshrpc.go and pkg/wshrpc/wshrpctypes.go.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};

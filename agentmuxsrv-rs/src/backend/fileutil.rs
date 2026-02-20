@@ -4,6 +4,8 @@
 //! File utilities: path normalization, MIME type detection, init script validation.
 //! Port of Go's pkg/util/fileutil/.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;

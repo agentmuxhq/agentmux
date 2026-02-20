@@ -45,7 +45,7 @@ export interface TileLayoutProps {
     contents: TileLayoutContents;
 
     /**
-     * A callback for getting the cursor point in reference to the current window. This removes Electron as a runtime dependency, allowing for better integration with Storybook.
+     * A callback for getting the cursor point in reference to the current window. This allows for better integration with Storybook.
      * @returns The cursor position relative to the current window.
      */
     getCursorPoint?: () => Point;

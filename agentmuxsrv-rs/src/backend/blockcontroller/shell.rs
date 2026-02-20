@@ -14,6 +14,8 @@
 //! 3. Output/proxy loop: WSH messages → input channel
 //! 4. Wait loop: monitor process exit, update status
 
+#![allow(dead_code)]
+
 use std::io::Read as _;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -30,7 +32,7 @@ use super::{
     META_KEY_CONNECTION, STATUS_DONE, STATUS_INIT, STATUS_RUNNING,
 };
 use crate::backend::eventbus::EventBus;
-use crate::backend::shellexec::{ConnInterface, MockConn, ShellProc};
+use crate::backend::shellexec::{ConnInterface, ShellProc};
 use crate::backend::waveobj::{self, MetaMapType};
 use crate::backend::wps;
 
@@ -572,6 +574,7 @@ pub fn handle_truncate_block_file(broker: &wps::Broker, block_id: &str, filename
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::backend::shellexec::MockConn;
     use std::sync::Arc;
 
     fn make_shell_meta() -> MetaMapType {

@@ -386,6 +386,9 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
                     return;
                 }
                 const dataItem = convertWaveEventToDataItem(event);
+                if (dataItem == null) {
+                    return;
+                }
                 const prevData = globalStore.get(model.dataAtom);
                 const prevLastTs = prevData[prevData.length - 1]?.ts ?? 0;
                 if (dataItem.ts - prevLastTs > 2000) {

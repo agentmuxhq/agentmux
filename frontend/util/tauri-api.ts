@@ -354,6 +354,9 @@ export function buildTauriApi(): AppApi {
         getProviderAuthStatus: async (provider: string) => {
             return await invoke<ProviderAuthStatus>("get_provider_auth_status", { provider });
         },
+        checkCliAuthStatus: async (provider: string) => {
+            return await invoke<CliAuthStatus>("check_cli_auth_status", { provider });
+        },
 
         listen: async (event: string, callback: (event: any) => void) => {
             const unlisten = await listen(event, callback);

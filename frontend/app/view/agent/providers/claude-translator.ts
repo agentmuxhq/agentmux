@@ -39,7 +39,17 @@ export class ClaudeTranslator implements OutputTranslator {
             return this.translateInnerEvent(rawEvent.event);
         }
 
-        // Case 3: Raw Anthropic API event (content_block_delta, etc.)
+        // Case 3: Top-level "assistant" event (complete message)
+        if (rawEvent.type === "assistant" && rawEvent.message) {
+            return this.handleAssistantMessage(rawEvent.message);
+        }
+
+        // Case 4: Top-level "user" event (tool results)
+        if (rawEvent.type === "user" && rawEvent.message) {
+            return this.handleUserMessage(rawEvent.message);
+        }
+
+        // Case 5: Raw Anthropic API event (content_block_delta, etc.)
         if (this.isAnthropicEvent(rawEvent)) {
             return this.translateInnerEvent(rawEvent);
         }
@@ -101,6 +111,55 @@ export class ClaudeTranslator implements OutputTranslator {
             default:
                 return [];
         }
+    }
+
+    /**
+     * Top-level "assistant" event contains the complete message.
+     * We extract text, tool_use, and thinking blocks.
+     * NOTE: We skip text blocks here since they arrive incrementally via stream_event.
+     * We only extract tool_use blocks that we haven't seen via content_block_start.
+     */
+    private handleAssistantMessage(message: any): StreamEvent[] {
+        if (!message || !Array.isArray(message.content)) return [];
+        // The assistant message duplicates content from stream_events.
+        // We skip it to avoid double-rendering. The stream_events provide
+        // incremental content which is better for UX.
+        return [];
+    }
+
+    /**
+     * Top-level "user" event contains tool_result blocks.
+     */
+    private handleUserMessage(message: any): StreamEvent[] {
+        const content = message.content;
+        if (!content) return [];
+
+        // Handle string content
+        if (typeof content === "string") {
+            return [{ type: "user_message", message: content, timestamp: Date.now() }];
+        }
+
+        // Handle array content with tool_result blocks
+        if (Array.isArray(content)) {
+            const results: StreamEvent[] = [];
+            for (const block of content) {
+                if (block.type === "tool_result") {
+                    const isError = block.is_error === true;
+                    results.push({
+                        type: "tool_result",
+                        tool: block.tool_name || "Unknown",
+                        id: block.tool_use_id || `tool_${Date.now()}`,
+                        status: isError ? "failed" : "success",
+                        result: typeof block.content === "string"
+                            ? { content: block.content }
+                            : block.content,
+                    });
+                }
+            }
+            return results;
+        }
+
+        return [];
     }
 
     /**

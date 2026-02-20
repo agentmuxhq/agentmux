@@ -265,3 +265,65 @@ pub async fn get_provider_auth_status(
         error: None,
     })
 }
+
+// ---- CLI auth status (runs the CLI's own auth check) ----
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CliAuthStatus {
+    pub logged_in: bool,
+    pub auth_method: Option<String>,
+    pub api_provider: Option<String>,
+    pub email: Option<String>,
+    pub subscription_type: Option<String>,
+}
+
+/// Check CLI authentication status by running `<cli> auth status --json`.
+///
+/// This runs the provider's own auth check command (e.g. `claude auth status --json`)
+/// and parses the JSON output. Returns a structured result indicating whether
+/// the user is logged in and with what method.
+#[tauri::command]
+pub async fn check_cli_auth_status(provider: String) -> Result<CliAuthStatus, String> {
+    let cli_name = match provider.as_str() {
+        "claude" => "claude",
+        "gemini" => "gemini",
+        "codex" => "codex",
+        _ => return Err(format!("Unknown provider: {provider}")),
+    };
+
+    let result = tokio::task::spawn_blocking(move || {
+        let output = std::process::Command::new(cli_name)
+            .args(["auth", "status", "--json"])
+            .output()
+            .map_err(|e| format!("Failed to run `{cli_name} auth status`: {e}"))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let trimmed = stdout.trim();
+
+        if trimmed.is_empty() {
+            return Ok(CliAuthStatus {
+                logged_in: false,
+                auth_method: None,
+                api_provider: None,
+                email: None,
+                subscription_type: None,
+            });
+        }
+
+        // Parse the JSON output — Claude uses camelCase field names
+        let json: serde_json::Value = serde_json::from_str(trimmed)
+            .map_err(|e| format!("Failed to parse auth status JSON: {e}"))?;
+
+        Ok(CliAuthStatus {
+            logged_in: json.get("loggedIn").and_then(|v| v.as_bool()).unwrap_or(false),
+            auth_method: json.get("authMethod").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            api_provider: json.get("apiProvider").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            email: json.get("email").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            subscription_type: json.get("subscriptionType").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        })
+    })
+    .await
+    .map_err(|e| format!("Auth check task failed: {e}"))?;
+
+    result
+}

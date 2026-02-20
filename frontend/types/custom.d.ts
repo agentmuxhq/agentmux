@@ -133,6 +133,7 @@ declare global {
         setProviderAuth: (provider: string, token: string) => Promise<void>;
         clearProviderAuth: (provider: string) => Promise<void>;
         getProviderAuthStatus: (provider: string) => Promise<ProviderAuthStatus>;
+        checkCliAuthStatus: (provider: string) => Promise<CliAuthStatus>;
         listen: (event: string, callback: (event: any) => void) => Promise<() => void>; // listen to events
     };
 
@@ -492,6 +493,14 @@ declare global {
         provider: string;
         status: string; // "none" | "authenticated" | "expired"
         error: string | null;
+    };
+
+    type CliAuthStatus = {
+        logged_in: boolean;
+        auth_method: string | null;   // "claude.ai" | "api-key" | null
+        api_provider: string | null;  // "firstParty" | "anthropic" | null
+        email: string | null;
+        subscription_type: string | null; // "max" | "pro" | "teams" | "enterprise" | null
     };
 
     type DraggedFile = {

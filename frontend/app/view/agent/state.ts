@@ -31,6 +31,7 @@ export interface AgentAtoms {
     authAtom: PrimitiveAtom<AuthState>;
     userInfoAtom: PrimitiveAtom<UserInfo | null>;
     providerConfigAtom: PrimitiveAtom<ProviderConfig | null>;
+    sessionIdAtom: PrimitiveAtom<string>;  // CLI session ID from system.init
 }
 
 /**
@@ -80,6 +81,7 @@ export function createAgentAtoms(agentId: string): AgentAtoms {
         }),
         userInfoAtom: atom<UserInfo | null>(null),
         providerConfigAtom: atom<ProviderConfig | null>(null),
+        sessionIdAtom: atom<string>(""),
     };
 }
 

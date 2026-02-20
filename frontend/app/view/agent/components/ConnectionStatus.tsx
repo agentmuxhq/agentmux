@@ -4,13 +4,19 @@
 /**
  * ConnectionStatus - Provider-aware connection state
  *
- * Displays auth UI appropriate for the current provider:
- * - Claude: OAuth button (browser flow)
- * - Gemini/Codex: API key input field
+ * Auth flow (Claude/OAuth providers):
+ *   1. Agent model runs `claude auth status --json` → checks loggedIn
+ *   2. If not logged in → shows "Not Authenticated" + Login button
+ *   3. Login button → agent model spawns `claude auth login` in PTY
+ *   4. User completes browser auth → process exits → model re-checks
+ *   5. If logged in → model spawns session CLI
+ *
+ * Auth flow (Gemini/Codex/API-key providers):
+ *   User enters API key → saved to provider store → passed as env var
  */
 
 import { useAtomValue, useSetAtom, atom as jotaiAtom } from "jotai";
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { getApi } from "@/app/store/global";
 import type { PrimitiveAtom } from "jotai";
 import type { AuthState, UserInfo } from "../types";
@@ -23,10 +29,12 @@ interface ConnectionStatusProps {
     authAtom: PrimitiveAtom<AuthState>;
     userInfoAtom: PrimitiveAtom<UserInfo | null>;
     providerConfigAtom?: PrimitiveAtom<ProviderConfig | null>;
+    onRestart?: () => void;
+    onStartLogin?: () => void;
 }
 
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(
-    ({ authAtom, userInfoAtom, providerConfigAtom }) => {
+    ({ authAtom, userInfoAtom, providerConfigAtom, onRestart, onStartLogin }) => {
         const authState = useAtomValue(authAtom);
         const userInfo = useAtomValue(userInfoAtom);
         const providerConfig = useAtomValue(providerConfigAtom ?? fallbackProviderConfigAtom);
@@ -37,103 +45,23 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(
         const providerDef = PROVIDERS[currentProvider];
         const authType = providerDef?.authType || "oauth";
 
-        // Listen for auth events from backend (OAuth flow)
-        useEffect(() => {
-            if (authType !== "oauth") return;
-
-            const unlistenStart = getApi().listen("claude-code-auth-started", () => {
-                console.log("[ConnectionStatus] Auth started");
-                setAuthState({ status: "connecting" });
-            });
-
-            const unlistenSuccess = getApi().listen("claude-code-auth-success", (event: any) => {
-                console.log("[ConnectionStatus] Auth success:", event.payload);
-                const payload = event.payload;
-                setAuthState({ status: "connected" });
-                setUserInfo({
-                    email: payload.email || "user@example.com",
-                    name: payload.name,
-                });
-            });
-
-            const unlistenError = getApi().listen("claude-code-auth-error", (event: any) => {
-                console.error("[ConnectionStatus] Auth error:", event.payload);
-                setAuthState({
-                    status: "error",
-                    error: event.payload?.message || "Authentication failed",
-                });
-            });
-
-            return () => {
-                unlistenStart.then((fn) => fn());
-                unlistenSuccess.then((fn) => fn());
-                unlistenError.then((fn) => fn());
-            };
-        }, [authType, setAuthState, setUserInfo]);
-
-        const handleOAuthConnect = useCallback(async () => {
-            try {
-                console.log("[ConnectionStatus] Opening OAuth auth...");
-                setAuthState({ status: "connecting" });
-                await getApi().openClaudeCodeAuth();
-            } catch (error) {
-                console.error("[ConnectionStatus] Failed to open auth:", error);
-                setAuthState({ status: "error", error: String(error) });
-            }
-        }, [setAuthState]);
-
         const handleDisconnect = useCallback(async () => {
             try {
-                console.log("[ConnectionStatus] Disconnecting...");
                 await getApi().clearProviderAuth(currentProvider);
                 setAuthState({ status: "disconnected" });
                 setUserInfo(null);
             } catch (error) {
-                console.error("[ConnectionStatus] Failed to disconnect:", error);
                 setAuthState({ status: "error", error: `Disconnect failed: ${String(error)}` });
             }
         }, [currentProvider, setAuthState, setUserInfo]);
 
-        const handleRetry = useCallback(async () => {
-            setAuthState({ status: "disconnected" });
-            if (authType === "oauth") {
-                await handleOAuthConnect();
+        const handleRetry = useCallback(() => {
+            if (onRestart) {
+                onRestart();
             }
-        }, [authType, setAuthState, handleOAuthConnect]);
+        }, [onRestart]);
 
-        // Check auth status on mount and periodically
-        useEffect(() => {
-            let checkInterval: NodeJS.Timeout;
-            let isMounted = true;
-
-            const checkAuthStatus = async () => {
-                try {
-                    const status = await getApi().getProviderAuthStatus(currentProvider);
-                    if (!isMounted) return;
-
-                    if (status.status === "authenticated") {
-                        setAuthState({ status: "connected" });
-                    } else {
-                        setAuthState({ status: "disconnected" });
-                        setUserInfo(null);
-                    }
-                } catch (error) {
-                    console.error("[ConnectionStatus] Failed to check auth status:", error);
-                }
-            };
-
-            void checkAuthStatus();
-
-            checkInterval = setInterval(() => {
-                void checkAuthStatus();
-            }, 5 * 60 * 1000);
-
-            return () => {
-                isMounted = false;
-                if (checkInterval) clearInterval(checkInterval);
-            };
-        }, [currentProvider, setAuthState, setUserInfo]);
-
+        // --- Connected ---
         if (authState.status === "connected" && userInfo) {
             return (
                 <div className="agent-connection-status connected">
@@ -151,15 +79,16 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(
             );
         }
 
+        // --- Connecting (auth check in progress or login in progress) ---
         if (authState.status === "connecting") {
             return (
                 <div className="agent-connection-status connecting">
                     <div className="connection-icon">{"\u23F3"}</div>
                     <div className="connection-info">
-                        <div className="connection-label">Connecting...</div>
+                        <div className="connection-label">Authenticating...</div>
                         <div className="connection-hint">
                             {authType === "oauth"
-                                ? "Complete authentication in your browser"
+                                ? "Complete login in your browser"
                                 : "Validating API key..."}
                         </div>
                     </div>
@@ -167,12 +96,13 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(
             );
         }
 
+        // --- Error ---
         if (authState.status === "error") {
             return (
                 <div className="agent-connection-status error">
                     <div className="connection-icon">{"\u26A0\uFE0F"}</div>
                     <div className="connection-info">
-                        <div className="connection-label">Connection Failed</div>
+                        <div className="connection-label">Authentication Failed</div>
                         {authState.error && <div className="connection-error">{authState.error}</div>}
                     </div>
                     <button className="connection-retry-btn" onClick={handleRetry}>
@@ -182,28 +112,26 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(
             );
         }
 
-        // Disconnected state - show provider-appropriate auth UI
+        // --- Disconnected: show provider-appropriate auth UI ---
         if (authType === "api-key") {
             return <ApiKeyInput provider={currentProvider} providerDef={providerDef} onAuth={setAuthState} />;
         }
 
-        // OAuth flow (Claude)
+        // OAuth (Claude) — user must run `claude auth login`
         return (
             <div className="agent-connection-status disconnected">
                 <div className="connection-message">
                     <div className="connection-title">
-                        Connect to {providerDef?.displayName || currentProvider}
+                        {providerDef?.displayName || currentProvider} — Not Authenticated
                     </div>
                     <div className="connection-description">
-                        Authenticate via browser to enable cloud-based conversations.
+                        Click Login to authenticate via your browser.
+                        The CLI will open a login page automatically.
                     </div>
                 </div>
-                <button className="connection-connect-btn" onClick={handleOAuthConnect}>
-                    <i className="fa fa-sign-in" /> Connect
+                <button className="connection-connect-btn" onClick={onStartLogin}>
+                    <i className="fa fa-sign-in" /> Login
                 </button>
-                <div className="connection-fallback">
-                    Or use local mode with <code>{providerDef?.cliCommand || "cli"}</code> CLI (no auth required)
-                </div>
             </div>
         );
     }
@@ -262,9 +190,6 @@ const ApiKeyInput: React.FC<{
                 >
                     {saving ? "Saving..." : "Save"}
                 </button>
-            </div>
-            <div className="connection-fallback">
-                Or use local mode with <code>{providerDef?.cliCommand || "cli"}</code> CLI (no auth required)
             </div>
         </div>
     );

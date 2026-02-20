@@ -44,6 +44,7 @@ interface AgentViewProps {
     onResume?: () => void;
     onKill?: () => void;
     onRestart?: () => void;
+    onStartLogin?: () => void;
 }
 
 /**
@@ -81,6 +82,7 @@ export const AgentViewWrapper: React.FC<ViewComponentProps<AgentViewModel>> = me
             onResume={model.resumeAgent}
             onKill={model.killAgent}
             onRestart={model.restartAgent}
+            onStartLogin={model.startAuthLogin}
         />
     );
 });
@@ -104,6 +106,7 @@ export const AgentViewInner: React.FC<AgentViewProps> = memo(
         onResume,
         onKill,
         onRestart,
+        onStartLogin,
     }) => {
         // Use instance-scoped atoms from props
         const document = useAtomValue(filteredDocumentAtom);
@@ -228,6 +231,8 @@ export const AgentViewInner: React.FC<AgentViewProps> = memo(
                         authAtom={atoms.authAtom}
                         userInfoAtom={atoms.userInfoAtom}
                         providerConfigAtom={atoms.providerConfigAtom}
+                        onRestart={onRestart}
+                        onStartLogin={onStartLogin}
                     />
                 ) : (
                     <AgentFooter agentId={agentId} onSendMessage={onSendMessage} />

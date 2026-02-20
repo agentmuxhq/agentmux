@@ -22,7 +22,7 @@
 - **Name:** AgentMux
 - **GitHub:** https://github.com/a5af/agentmux
 - **Type:** Tauri v2 terminal application
-- **Version:** 0.27.10
+- **Version:** 0.31.0
 - **Build System:** Task (Taskfile.yml)
 
 ## Git & Pull Requests
@@ -56,7 +56,7 @@
 - `task dev` - Development mode
 - `task package` - Production installer
 - `task package:portable` - Portable ZIP
-- `task build:backend` - Go binaries only
+- `task build:backend` - Rust binaries (agentmuxsrv-rs + wsh-rs)
 - `task build:frontend` - Frontend only
 - `task test` - Run tests
 - `task clean` - Clean artifacts
@@ -66,18 +66,18 @@
 ### After Code Changes
 
 - **TypeScript/React** → Auto-reloads in `task dev` ✅
-- **Go backend** → `task build:backend` then restart `task dev`
+- **Rust backend** → `task build:backend` then restart `task dev`
 - **Test package** → `task package` then extract/install artifact
 
 ### Architecture
 
-AgentMux is built on **Tauri v2** (NOT Electron):
+AgentMux is built on **Tauri v2** with a **100% Rust backend**:
 
 - **agentmux.exe** = Tauri app (Rust + single webview)
-- **agentmuxsrv** = Go backend sidecar (auto-spawned, don't run manually)
-- **wsh** = Shell integration binary (must be versioned correctly)
+- **agentmuxsrv-rs** = Rust backend sidecar (auto-spawned, don't run manually)
+- **wsh** = Rust shell integration binary (wsh-rs crate, must be versioned correctly)
 
-**Important:** All Electron code has been removed (Phase 14). Only Tauri is supported.
+**Important:** All Go and Electron code has been removed. Only Rust + Tauri is supported.
 
 ---
 
@@ -104,7 +104,8 @@ This script updates:
 - `src-tauri/Cargo.toml`
 - `src-tauri/Cargo.lock`
 - `src-tauri/tauri.conf.json`
-- `cmd/server/main-server.go` (ExpectedVersion constant)
+- `agentmuxsrv-rs/Cargo.toml`
+- `wsh-rs/Cargo.toml`
 - `VERSION_HISTORY.md`
 
 **Step 2: Verify consistency** (ALWAYS run after bump)
@@ -120,7 +121,7 @@ Expected output:
 ✓ All version checks passed!
 ```
 
-**Step 3: Rebuild binaries** (required for Go binaries)
+**Step 3: Rebuild binaries** (required for Rust binaries)
 ```bash
 task build:backend
 ```
@@ -308,14 +309,17 @@ npm run coverage
 
 ## Build System
 
-### Backend (Go)
+### Backend (Rust)
 
 ```bash
-# Build all binaries (agentmuxsrv, wsh for all platforms)
+# Build all Rust binaries (agentmuxsrv-rs + wsh-rs)
 task build:backend
 
-# Build specific platform
-GOOS=linux GOARCH=amd64 go build -o dist/bin/wsh-0.12.15-linux.x64 ./cmd/wsh
+# Build only the backend server
+task build:backend:rust
+
+# Build only wsh
+task build:wsh
 ```
 
 ### Frontend (TypeScript/React)
@@ -334,7 +338,8 @@ npm run build:prod
 # Create distributable package
 task package
 
-# Output: dist/Wave-win32-x64-0.12.15.zip (or platform-specific)
+# Create portable ZIP (Windows)
+task package:portable
 ```
 
 ---

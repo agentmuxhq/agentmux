@@ -14,11 +14,19 @@ pub(super) async fn handle_service(
     State(state): State<AppState>,
     body: axum::body::Bytes,
 ) -> Json<WebReturnType> {
+    let service_start = std::time::Instant::now();
     let call: WebCallType = match serde_json::from_slice(&body) {
         Ok(c) => c,
         Err(e) => return Json(WebReturnType::error(format!("invalid request body: {e}"))),
     };
     let result = dispatch_service(&state, &call);
+    let elapsed = service_start.elapsed();
+    tracing::info!(
+        "[http-perf] {}.{}: {:.2}ms",
+        call.service,
+        call.method,
+        elapsed.as_secs_f64() * 1000.0,
+    );
     Json(result)
 }
 

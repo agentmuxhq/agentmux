@@ -2,13 +2,23 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.30.8
+## Latest Version: 0.31.0
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.31.0-fork (2026-02-20)
+- **Agent:** AgentA
+- **Changes:**
+  - 100% Rust release: removed all Go source code (cmd/, pkg/, go.mod, go.sum)
+  - wsh rewritten in Rust (wsh-rs crate): 1.1 MB binary vs 11 MB Go (90% size reduction)
+  - Added sysinfo data collection to Rust backend (CPU, memory, network graphs)
+  - Added getmeta, setmeta, waveinfo RPC handlers to Rust backend
+  - Updated build system: all build tasks now use cargo (no Go/CGO dependency)
+  - Binary size: agentmuxsrv-rs 4.4 MB + wsh 1.1 MB = 5.5 MB total (vs ~25 MB Go)
 
 ### v0.30.8-fork (2026-02-20)
 - **Agent:** AgentA

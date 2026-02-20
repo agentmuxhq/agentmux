@@ -711,7 +711,7 @@ pub fn build_default_config() -> FullConfigType {
 
     // Embed widgets.json at compile time (equivalent to Go's //go:embed)
     const WIDGETS_JSON: &str =
-        include_str!("../../../pkg/wconfig/defaultconfig/widgets.json");
+        include_str!("../config/widgets.json");
 
     match serde_json::from_str::<HashMap<String, WidgetConfigType>>(WIDGETS_JSON) {
         Ok(widgets) => {

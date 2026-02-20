@@ -6,7 +6,7 @@ import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { configureMonacoYaml } from "monaco-yaml";
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 
 import { boundNumber } from "@/util/util";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
@@ -41,7 +41,9 @@ window.MonacoEnvironment = {
     },
 };
 
-export async function loadMonaco() {
+let monacoLoadPromise: Promise<void> | null = null;
+
+async function doLoadMonaco() {
     loader.config({ paths: { vs: "monaco" } });
     await loader.init();
 
@@ -82,6 +84,19 @@ export async function loadMonaco() {
     });
 }
 
+// Singleton: only loads Monaco once, returns the same promise on subsequent calls
+export function loadMonaco(): Promise<void> {
+    if (monacoLoadPromise == null) {
+        monacoLoadPromise = doLoadMonaco();
+    }
+    return monacoLoadPromise;
+}
+
+// Returns true if Monaco has already been loaded
+export function isMonacoLoaded(): boolean {
+    return monacoLoadPromise != null;
+}
+
 function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
     const opts: MonacoTypes.editor.IEditorOptions = {
         scrollBeyondLastLine: false,
@@ -115,12 +130,19 @@ interface CodeEditorProps {
 export function CodeEditor({ blockId, text, language, readonly, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
+    const [ready, setReady] = useState(isMonacoLoaded());
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
     const stickyScrollEnabled = useOverrideConfigAtom(blockId, "editor:stickyscrollenabled") ?? false;
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const theme = "wave-theme-dark";
     const editorPath = useRef(crypto.randomUUID()).current;
+
+    useEffect(() => {
+        if (!ready) {
+            loadMonaco().then(() => setReady(true));
+        }
+    }, [ready]);
 
     React.useEffect(() => {
         return () => {
@@ -152,6 +174,14 @@ export function CodeEditor({ blockId, text, language, readonly, onChange, onMoun
         opts.fontSize = fontSize;
         return opts;
     }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, readonly]);
+
+    if (!ready) {
+        return (
+            <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
+                <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Loading editor...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">

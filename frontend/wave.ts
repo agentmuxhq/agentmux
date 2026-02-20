@@ -11,7 +11,6 @@ import { modalsModel } from "@/app/store/modalmodel";
 import { ClientService, WindowService, WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
-import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
     atoms,
@@ -149,35 +148,53 @@ const RPC_TIMEOUT = 5_000; // 5 seconds for individual RPC calls
  * Handles first-window and new-window creation.
  */
 async function initTauriWave(): Promise<void> {
+    const t0 = performance.now();
+    const tlog = (label: string, since: number) => {
+        const ms = (performance.now() - since).toFixed(1);
+        const total = (performance.now() - t0).toFixed(1);
+        console.log(`[startup-perf] ${label}: ${ms}ms (total: ${total}ms)`);
+    };
 
     try {
         // Get client data
+        let t = performance.now();
         const clientData = await withTimeout(ClientService.GetClientData(), RPC_TIMEOUT, "GetClientData");
+        tlog("GetClientData", t);
 
         let windowId = clientData.windowids?.[0];
 
         // If no windows exist, create one
         if (!windowId) {
+            t = performance.now();
             const newWindow = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
+            tlog("CreateWindow (no windows)", t);
             windowId = newWindow.oid;
         }
 
         // Verify window exists
+        t = performance.now();
         let windowData = await withTimeout(WindowService.GetWindow(windowId), RPC_TIMEOUT, "GetWindow");
+        tlog("GetWindow", t);
 
         if (!windowData) {
+            t = performance.now();
             windowData = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
+            tlog("CreateWindow (fallback)", t);
             windowId = windowData.oid;
         }
 
         // Get workspace
+        t = performance.now();
         let workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
+        tlog("GetWorkspace", t);
 
         if (!workspace) {
             // Workspace missing → recreate entire window
+            t = performance.now();
             await withTimeout(WindowService.CloseWindow(windowData.oid), RPC_TIMEOUT, "CloseWindow");
             windowData = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
             workspace = await withTimeout(WorkspaceService.GetWorkspace(windowData.workspaceid), RPC_TIMEOUT, "GetWorkspace");
+            tlog("Recreate window+workspace", t);
         }
 
         // Get active tab ID
@@ -190,6 +207,8 @@ async function initTauriWave(): Promise<void> {
             throw new Error("No tab found in workspace");
         }
 
+        tlog("Phase 1 complete (discovery)", t0);
+
         // Create complete init options with ALL valid IDs
         const initOpts: AgentMuxInitOpts = {
             clientId: clientData.oid,
@@ -200,7 +219,10 @@ async function initTauriWave(): Promise<void> {
         };
 
         // Initialize wave (this will render the UI)
+        t = performance.now();
         await initWaveWrap(initOpts);
+        tlog("initWaveWrap", t);
+        tlog("TOTAL initTauriWave", t0);
 
         // Show the window now that it's fully initialized (Tauri starts hidden)
         try {
@@ -230,23 +252,34 @@ async function initTauriWave(): Promise<void> {
  * this creates a fresh set for the new window.
  */
 async function initTauriNewWindow(): Promise<void> {
+    const t0 = performance.now();
+    const tlog = (label: string, since: number) => {
+        const ms = (performance.now() - since).toFixed(1);
+        const total = (performance.now() - t0).toFixed(1);
+        console.log(`[startup-perf] ${label}: ${ms}ms (total: ${total}ms)`);
+        getApi().sendLog(`[startup-perf] ${label}: ${ms}ms (total: ${total}ms)`);
+    };
+
     try {
         getApi().sendLog("[initTauriNewWindow] Creating new backend objects");
 
         // Get client data (reuse existing client)
+        let t = performance.now();
         const clientData = await withTimeout(ClientService.GetClientData(), RPC_TIMEOUT, "GetClientData");
-        getApi().sendLog(`[initTauriNewWindow] Client ID: ${clientData.oid}`);
+        tlog("GetClientData", t);
 
         // Create NEW window (not reuse)
+        t = performance.now();
         const newWindow = await withTimeout(WindowService.CreateWindow(null, ""), RPC_TIMEOUT, "CreateWindow");
-        getApi().sendLog(`[initTauriNewWindow] Created Window ID: ${newWindow.oid}`);
+        tlog("CreateWindow", t);
 
         // Get the workspace that was auto-created with the window
+        t = performance.now();
         const workspace = await withTimeout(WorkspaceService.GetWorkspace(newWindow.workspaceid), RPC_TIMEOUT, "GetWorkspace");
+        tlog("GetWorkspace", t);
         if (!workspace) {
             throw new Error("Workspace not created with new window");
         }
-        getApi().sendLog(`[initTauriNewWindow] Workspace ID: ${workspace.oid}`);
 
         // Get the active tab ID from the workspace
         const tabId = workspace.activetabid ||
@@ -257,7 +290,8 @@ async function initTauriNewWindow(): Promise<void> {
         if (!tabId) {
             throw new Error("No tab found in new workspace");
         }
-        getApi().sendLog(`[initTauriNewWindow] Tab ID: ${tabId}`);
+
+        tlog("Phase 1 complete (discovery)", t0);
 
         // Create complete init options with NEW IDs
         const initOpts: AgentMuxInitOpts = {
@@ -268,12 +302,11 @@ async function initTauriNewWindow(): Promise<void> {
             primaryTabStartup: false, // Not primary (main window is primary)
         };
 
-        getApi().sendLog("[initTauriNewWindow] Initializing wave with new objects");
-
         // Initialize wave (this will render the UI)
+        t = performance.now();
         await initWaveWrap(initOpts);
-
-        getApi().sendLog("[initTauriNewWindow] ✅ New window initialized successfully");
+        tlog("initWaveWrap", t);
+        tlog("TOTAL initTauriNewWindow", t0);
 
         // Show the window now that it's initialized
         try {
@@ -299,6 +332,8 @@ async function initTauriNewWindow(): Promise<void> {
 }
 
 async function initBare() {
+    const bareStart = performance.now();
+    (window as any).__startupPerfStart = bareStart;
     getApi().sendLog("Init Bare");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
@@ -331,6 +366,9 @@ async function initBare() {
     const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
 
     Promise.race([fontsPromise, timeoutPromise]).then(async () => {
+        const fontsMsg = `[startup-perf] initBare (fonts ready): ${(performance.now() - bareStart).toFixed(1)}ms`;
+        console.log(fontsMsg);
+        try { getApi().sendLog(fontsMsg); } catch {}
         getApi().sendLog("Init Bare Done");
         getApi().setWindowInitStatus("ready");
 
@@ -451,6 +489,13 @@ function loadAllWorkspaceTabs(ws: Workspace) {
 }
 
 async function initWave(initOpts: AgentMuxInitOpts) {
+    const t0 = performance.now();
+    const tlog = (label: string, since: number) => {
+        const ms = (performance.now() - since).toFixed(1);
+        const total = (performance.now() - t0).toFixed(1);
+        console.log(`[startup-perf] initWave ${label}: ${ms}ms (total: ${total}ms)`);
+    };
+
     getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
     console.log(
         "Wave Init",
@@ -463,6 +508,7 @@ async function initWave(initOpts: AgentMuxInitOpts) {
         "platform",
         platform
     );
+    let t = performance.now();
     initGlobal({
         tabId: initOpts.tabId,
         clientId: initOpts.clientId,
@@ -471,16 +517,26 @@ async function initWave(initOpts: AgentMuxInitOpts) {
         primaryTabStartup: initOpts.primaryTabStartup,
     });
     (window as any).globalAtoms = atoms;
+    tlog("initGlobal", t);
 
     // Init WPS event handlers
+    t = performance.now();
     const globalWS = initWshrpc(initOpts.tabId);
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
+    tlog("initWshrpc", t);
+
+    t = performance.now();
     await withTimeout(loadConnStatus(), RPC_TIMEOUT, "loadConnStatus");
+    tlog("loadConnStatus", t);
+
+    t = performance.now();
     initGlobalEventSubs(initOpts);
     subscribeToConnEvents();
+    tlog("initEventSubs", t);
 
     // ensures client/window/workspace are loaded into the cache before rendering
+    t = performance.now();
     const [client, waveWindow, initialTab] = await withTimeout(
         Promise.all([
             WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
@@ -490,6 +546,9 @@ async function initWave(initOpts: AgentMuxInitOpts) {
         RPC_TIMEOUT,
         "loadAndPin client/window/tab"
     );
+    tlog("loadAndPin client/window/tab", t);
+
+    t = performance.now();
     const [ws, layoutState] = await withTimeout(
         Promise.all([
             WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
@@ -498,17 +557,26 @@ async function initWave(initOpts: AgentMuxInitOpts) {
         RPC_TIMEOUT,
         "loadAndPin workspace/layout"
     );
+    tlog("loadAndPin workspace/layout", t);
+
+    t = performance.now();
     loadAllWorkspaceTabs(ws);
     WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
+    tlog("loadAllWorkspaceTabs", t);
 
     document.title = `AgentMux ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
 
+    t = performance.now();
     registerGlobalKeys();
     registerControlShiftStateUpdateHandler();
-    await loadMonaco();
+    tlog("registerKeys", t);
+
+    t = performance.now();
     const fullConfig = await withTimeout(RpcApi.GetFullConfigCommand(TabRpcClient), RPC_TIMEOUT, "GetFullConfig");
-    console.log("fullconfig", fullConfig);
+    tlog("GetFullConfig", t);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
+
+    t = performance.now();
     console.log("Wave First Render");
     let firstRenderResolveFn: () => void = null;
     let firstRenderPromise = new Promise<void>((resolve) => {
@@ -519,7 +587,8 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     const root = createRoot(elem);
     root.render(reactElem);
     await firstRenderPromise;
-    console.log("Wave First Render Done");
+    tlog("React render", t);
+    tlog("TOTAL initWave", t0);
 
     // Hide startup loading message
     const startupLoading = document.getElementById("startup-loading");
@@ -528,4 +597,12 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     }
 
     getApi().setWindowInitStatus("wave-ready");
+
+    // Preload Monaco on idle so first editor open is instant
+    const preload = () => import("@/app/view/codeeditor/codeeditor").then((m) => m.loadMonaco());
+    if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(preload);
+    } else {
+        setTimeout(preload, 200);
+    }
 }

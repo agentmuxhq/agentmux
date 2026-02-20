@@ -17,10 +17,11 @@ use crate::backend::blockcontroller;
 use crate::backend::rpc::engine::WshRpcEngine;
 use crate::backend::rpc_types::{
     CommandBlockInputData, CommandControllerResyncData, CommandEventReadHistoryData,
-    CommandSetMetaData, RpcMessage, COMMAND_CONTROLLER_INPUT, COMMAND_CONTROLLER_RESYNC,
-    COMMAND_EVENT_READ_HISTORY, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB, COMMAND_EVENT_UNSUB_ALL,
-    COMMAND_GET_FULL_CONFIG, COMMAND_GET_WAVE_AI_CHAT, COMMAND_GET_WAVE_AI_RATE_LIMIT,
-    COMMAND_ROUTE_ANNOUNCE, COMMAND_ROUTE_UNANNOUNCE, COMMAND_SET_META,
+    CommandGetMetaData, CommandSetMetaData, RpcMessage, COMMAND_CONTROLLER_INPUT,
+    COMMAND_CONTROLLER_RESYNC, COMMAND_EVENT_READ_HISTORY, COMMAND_EVENT_SUB, COMMAND_EVENT_UNSUB,
+    COMMAND_EVENT_UNSUB_ALL, COMMAND_GET_FULL_CONFIG, COMMAND_GET_META, COMMAND_GET_WAVE_AI_CHAT,
+    COMMAND_GET_WAVE_AI_RATE_LIMIT, COMMAND_ROUTE_ANNOUNCE, COMMAND_ROUTE_UNANNOUNCE,
+    COMMAND_SET_META, COMMAND_WAVE_INFO,
 };
 use crate::backend::waveobj::{Block, TermSize};
 use super::service::update_object_meta;
@@ -51,15 +52,18 @@ pub(super) async fn handle_ws(
 }
 
 async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
+    let ws_start = std::time::Instant::now();
     let conn_id = uuid::Uuid::new_v4().to_string();
     let tab_id = String::new();
 
     let mut event_rx = state.event_bus.register_ws(&conn_id, &tab_id);
+    tracing::info!("[ws-perf] register_ws: {:.2}ms", ws_start.elapsed().as_secs_f64() * 1000.0);
 
     // Send initial "config" wave event via the RPC eventrecv path so the frontend
     // populates fullConfigAtom (and shows the widget bar).
     // Frontend only processes events via: {"eventtype":"rpc","data":{"command":"eventrecv","data":{"event":"config","data":{...}}}}
     {
+        let t = std::time::Instant::now();
         let config = state.config_watcher.get_full_config();
         if let Ok(config_val) = serde_json::to_value(config.as_ref()) {
             let config_event = json!({
@@ -76,13 +80,17 @@ async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
                 let _ = socket.send(Message::Text(msg.into())).await;
             }
         }
+        tracing::info!("[ws-perf] send_initial_config: {:.2}ms", t.elapsed().as_secs_f64() * 1000.0);
     }
 
     // Create RPC engine for this connection
+    let t = std::time::Instant::now();
     let (engine, mut rpc_output_rx) = WshRpcEngine::new();
 
     // Register handlers
     register_handlers(&engine, state.clone());
+    tracing::info!("[ws-perf] create_engine+register_handlers: {:.2}ms", t.elapsed().as_secs_f64() * 1000.0);
+    tracing::info!("[ws-perf] TOTAL ws_setup: {:.2}ms", ws_start.elapsed().as_secs_f64() * 1000.0);
 
     // Periodic ping interval (10 seconds)
     let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(10));
@@ -340,6 +348,44 @@ fn register_handlers(engine: &Arc<WshRpcEngine>, state: AppState) {
                     data: None,
                 });
                 Ok(None)
+            })
+        }),
+    );
+
+    // getmeta → return metadata for a wave object
+    let wstore_gm = state.wstore.clone();
+    engine.register_handler(
+        COMMAND_GET_META,
+        Box::new(move |data, _ctx| {
+            let wstore = wstore_gm.clone();
+            Box::pin(async move {
+                let cmd: CommandGetMetaData =
+                    serde_json::from_value(data).map_err(|e| format!("getmeta: {e}"))?;
+                let obj: Option<serde_json::Value> = wstore
+                    .get_raw(&cmd.oref.otype, &cmd.oref.oid)
+                    .map_err(|e| format!("getmeta: {e}"))?;
+                match obj {
+                    Some(val) => {
+                        // Return the "meta" field if present, otherwise the full object
+                        let meta = val.get("meta").cloned().unwrap_or(val);
+                        Ok(Some(meta))
+                    }
+                    None => Err(format!("getmeta: object {} not found", cmd.oref)),
+                }
+            })
+        }),
+    );
+
+    // waveinfo → return version and build info
+    let version_info = state.version.clone();
+    engine.register_handler(
+        COMMAND_WAVE_INFO,
+        Box::new(move |_data, _ctx| {
+            let version = version_info.clone();
+            Box::pin(async move {
+                Ok(Some(serde_json::json!({
+                    "version": version,
+                })))
             })
         }),
     );

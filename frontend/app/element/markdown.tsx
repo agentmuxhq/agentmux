@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
 import {
     MarkdownContentBlockType,
@@ -122,10 +123,21 @@ const Mermaid = ({ chart }: { chart: string }) => {
     return <div className="mermaid" ref={ref} />;
 };
 
+const MermaidErrorFallback = ({ error, chart }: { error?: Error; chart: string }) => (
+    <div className="mermaid error">
+        <div style={{ color: "var(--error-color, #f44)", marginBottom: 8 }}>Failed to render diagram</div>
+        <pre style={{ whiteSpace: "pre-wrap", opacity: 0.7, fontSize: "0.85em" }}>{chart}</pre>
+    </div>
+);
+
 const Code = ({ className = "", children }: { className?: string; children: React.ReactNode }) => {
     if (/\blanguage-mermaid\b/.test(className)) {
         const text = Array.isArray(children) ? children.join("") : String(children ?? "");
-        return <Mermaid chart={text} />;
+        return (
+            <ErrorBoundary fallback={<MermaidErrorFallback chart={text} />}>
+                <Mermaid chart={text} />
+            </ErrorBoundary>
+        );
     }
     return <code className={className}>{children}</code>;
 };
@@ -381,7 +393,11 @@ const Markdown = ({
         };
 
         const chartText = getTextContent(props.children);
-        return <Mermaid chart={chartText} />;
+        return (
+            <ErrorBoundary fallback={<MermaidErrorFallback chart={chartText} />}>
+                <Mermaid chart={chartText} />
+            </ErrorBoundary>
+        );
     };
 
     const toc = useMemo(() => {

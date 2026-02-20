@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import { IconButton } from "@/app/element/iconbutton";
 import { cn, useAtomValueSafe } from "@/util/util";
 import type { Atom } from "jotai";
@@ -301,27 +302,35 @@ export const WaveStreamdown = ({
         [onClickExecute, codeBlockMaxWidthAtom]
     );
 
+    const streamdownFallback = (
+        <pre className="error-boundary" style={{ whiteSpace: "pre-wrap", padding: 8 }}>
+            Failed to render content
+        </pre>
+    );
+
     return (
-        <Streamdown
-            parseIncompleteMarkdown={parseIncompleteMarkdown}
-            className={cn(
-                "wave-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0 space-y-2",
-                className
-            )}
-            shikiTheme={[ShikiTheme, ShikiTheme]}
-            controls={{
-                code: false,
-                table: false,
-                mermaid: true,
-            }}
-            mermaidConfig={{
-                theme: "dark",
-                darkMode: true,
-            }}
-            defaultOrigin="http://localhost"
-            components={components}
-        >
-            {text}
-        </Streamdown>
+        <ErrorBoundary fallback={streamdownFallback}>
+            <Streamdown
+                parseIncompleteMarkdown={parseIncompleteMarkdown}
+                className={cn(
+                    "wave-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0 space-y-2",
+                    className
+                )}
+                shikiTheme={[ShikiTheme, ShikiTheme]}
+                controls={{
+                    code: false,
+                    table: false,
+                    mermaid: true,
+                }}
+                mermaidConfig={{
+                    theme: "dark",
+                    darkMode: true,
+                }}
+                defaultOrigin="http://localhost"
+                components={components}
+            >
+                {text}
+            </Streamdown>
+        </ErrorBoundary>
     );
 };

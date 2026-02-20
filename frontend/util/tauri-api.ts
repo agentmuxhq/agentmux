@@ -321,6 +321,7 @@ export function buildTauriApi(): AppApi {
 
         // --- Claude Code Auth ---
         openClaudeCodeAuth: async () => {
+            console.trace("[LEGACY] openClaudeCodeAuth called — who called this?");
             await invoke("open_claude_code_auth");
         },
         getClaudeCodeAuth: async () => {

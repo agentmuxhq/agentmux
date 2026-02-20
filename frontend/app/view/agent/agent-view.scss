@@ -32,17 +32,28 @@
         align-items: center;
         justify-content: center;
         height: 100%;
-        color: var(--secondary-text-color);
-        opacity: 0.5;
-
-        .agent-empty-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-        }
+        gap: 16px;
 
         .agent-empty-text {
+            color: var(--secondary-text-color);
+            font-size: 14px;
             text-align: center;
-            line-height: 1.8;
+        }
+    }
+
+    .agent-connect-btn {
+        padding: 8px 24px;
+        border: 1px solid var(--accent-color);
+        background: transparent;
+        color: var(--accent-color);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background 0.15s, color 0.15s;
+
+        &:hover {
+            background: var(--accent-color);
+            color: var(--main-bg-color);
         }
     }
 

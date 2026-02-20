@@ -2,13 +2,22 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.30.6
+## Latest Version: 0.30.8
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.30.8-fork (2026-02-20)
+- **Agent:** AgentA
+- **Changes:**
+  - Tree shake: delete 8 dead Rust modules (wcloud, shellutil, webhookdelivery, suggestion, telemetry, faviconcache, blocklogger, authkey)
+  - Suppress 911 compiler warnings with #![allow(dead_code)] on Go-port modules
+  - Remove all Electron references from frontend (rename ElectronApi → AppApi, ElectronContextMenuItem → NativeContextMenuItem, etc.)
+  - Archive old docs/specs, reorganize debug scripts
+  - Net removal of 3,449 lines of dead code
 
 ### v0.30.6-fork (2026-02-19)
 - **Agent:** AgentA

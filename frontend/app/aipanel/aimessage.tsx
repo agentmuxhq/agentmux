@@ -1,9 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveStreamdown } from "@/app/element/streamdown";
 import { cn } from "@/util/util";
-import { memo, useEffect, useRef } from "react";
+import React, { memo, Suspense, useEffect, useRef } from "react";
+
+const WaveStreamdown = React.lazy(() => import("@/app/element/streamdown"));
 import { getFileIcon } from "./ai-utils";
 import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
@@ -113,12 +114,14 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
             return <div className="whitespace-pre-wrap break-words">{content}</div>;
         } else {
             return (
-                <WaveStreamdown
-                    text={content}
-                    parseIncompleteMarkdown={isStreaming}
-                    className="text-gray-100"
-                    codeBlockMaxWidthAtom={model.codeBlockMaxWidth}
-                />
+                <Suspense fallback={<div className="text-gray-100 whitespace-pre-wrap">{content}</div>}>
+                    <WaveStreamdown
+                        text={content}
+                        parseIncompleteMarkdown={isStreaming}
+                        className="text-gray-100"
+                        codeBlockMaxWidthAtom={model.codeBlockMaxWidth}
+                    />
+                </Suspense>
             );
         }
     }

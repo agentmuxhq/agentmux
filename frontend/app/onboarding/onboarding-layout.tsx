@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MagnifyIcon } from "@/app/element/magnify";
-import { WaveStreamdown } from "@/app/element/streamdown";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { cn, makeIconClass } from "@/util/util";
-import { useLayoutEffect, useRef, useState } from "react";
+import React, { Suspense, useLayoutEffect, useRef, useState } from "react";
+
+const WaveStreamdown = React.lazy(() => import("@/app/element/streamdown"));
 
 export type FakeBlockProps = {
     icon: string;
@@ -43,7 +44,7 @@ export const FakeBlock = ({ icon, name, highlighted, className, markdown, imgsrc
                     <img src={imgsrc} alt={name} className="max-w-full max-h-full object-contain" />
                 ) : markdown ? (
                     <div className="w-full">
-                        <WaveStreamdown text={markdown} />
+                        <Suspense><WaveStreamdown text={markdown} /></Suspense>
                     </div>
                 ) : (
                     <i className={makeIconClass(icon, false) + " text-4xl text-foreground/50"} />

@@ -7,11 +7,20 @@ import { IconButton } from "@/app/element/iconbutton";
 import { cn, useAtomValueSafe } from "@/util/util";
 import type { Atom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { bundledLanguages, codeToHtml } from "shiki/bundle/web";
 import { Streamdown } from "streamdown";
 import { throttle } from "throttle-debounce";
 
 const ShikiTheme = "github-dark-high-contrast";
+
+// Lazy-load shiki to avoid 9 MB in the initial bundle.
+// The module is cached after the first import.
+let shikiModule: typeof import("shiki/bundle/web") | null = null;
+const getShiki = async () => {
+    if (!shikiModule) {
+        shikiModule = await import("shiki/bundle/web");
+    }
+    return shikiModule;
+};
 
 function extractText(node: React.ReactNode): string {
     if (node == null || typeof node === "boolean") return "";
@@ -43,6 +52,7 @@ function CodeHighlight({ className = "", lang, text }: { className?: string; lan
     const highlightCode = useCallback(
         async (textToHighlight: string, language: string, disposedRef: { current: boolean }, seq: number) => {
             try {
+                const { codeToHtml } = await getShiki();
                 const full = await codeToHtml(textToHighlight, { lang: language, theme: ShikiTheme });
                 const start = full.indexOf("<code");
                 const open = full.indexOf(">", start);
@@ -111,8 +121,17 @@ export function Code({ className = "", children }: { className?: string; childre
     const isCodeBlock = !!m;
     const lang = m?.[1] || "text";
     const text = extractText(children);
+    const [hasShikiLang, setHasShikiLang] = useState(false);
 
-    if (isCodeBlock && lang in bundledLanguages) {
+    useEffect(() => {
+        if (isCodeBlock) {
+            getShiki().then(({ bundledLanguages }) => {
+                setHasShikiLang(lang in bundledLanguages);
+            });
+        }
+    }, [isCodeBlock, lang]);
+
+    if (isCodeBlock && hasShikiLang) {
         return <CodeHighlight className={className} lang={lang} text={text} />;
     }
 
@@ -334,3 +353,6 @@ export const WaveStreamdown = ({
         </ErrorBoundary>
     );
 };
+
+// Default export for React.lazy() consumers
+export default WaveStreamdown;

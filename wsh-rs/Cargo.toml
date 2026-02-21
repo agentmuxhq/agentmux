@@ -1,6 +1,6 @@
 [package]
 name = "wsh-rs"
-version = "0.31.9"
+version = "0.31.10"
 edition = "2021"
 description = "Wave Shell Helper - CLI tool to control AgentMux"
 

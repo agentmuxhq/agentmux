@@ -2,13 +2,38 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.31.0
+## Latest Version: 0.31.4
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.31.4-fork (2026-02-21)
+- **Agent:** AgentA
+- **Changes:**
+  - Simplified agent view to single Connect button flow
+  - Removed debug logs and unused barrel exports from agent widget
+  - Fixed #351: add copy:schema task to Taskfile.yml (dist/schema/ missing after clean)
+  - Added screenshot patterns to .gitignore
+  - Added debugging quick reference to CLAUDE.md
+
+### v0.31.3-fork (2026-02-21)
+- **Agent:** AgentA
+- **Changes:**
+  - Fix CLI auth flow: correct state machine, proper --verbose flag for stream-json
+  - Remove hardcoded OAuth URL (was wrong endpoint)
+  - Auth status check before session start
+
+### v0.31.2-fork (2026-02-20)
+- **Agent:** AgentA
+- **Changes:**
+  - Multi-provider CLI onboarding, auth management, and session abstraction
+  - New providers/ directory with Claude, Codex, Gemini translator stubs
+  - SetupWizard component for first-run onboarding
+  - Rust backend providers.rs for multi-provider CLI auth checks
+  - SPEC_CLAUDE_CLI_INTEGRATION.md design doc
 
 ### v0.31.0-fork (2026-02-20)
 - **Agent:** AgentA
@@ -399,7 +424,7 @@ Agents work on feature branches from `main`:
 - **Upstream repository:** https://github.com/wavetermdev/waveterm
 - **Base Upstream Version:** v0.12.0
 - **Fork repository:** https://github.com/a5af/agentmux
-- **Latest Fork:** v0.15.15
+- **Latest Fork:** v0.31.4
 - **Commits Ahead of Upstream:** 100+ commits with custom features
 
 ---

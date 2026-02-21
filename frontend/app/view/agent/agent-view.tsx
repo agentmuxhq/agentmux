@@ -3,15 +3,13 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { Atom } from "jotai";
-import clsx from "clsx";
-import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef } from "react";
 import type { DocumentNode } from "./types";
 import type { AgentViewModel } from "./agent-model";
 import type { AgentAtoms } from "./state";
 import { MarkdownBlock } from "./components/MarkdownBlock";
 import { ToolBlock } from "./components/ToolBlock";
 import { AgentMessageBlock } from "./components/AgentMessageBlock";
-import { AgentHeader } from "./components/AgentHeader";
 import { AgentFooter } from "./components/AgentFooter";
 import "./agent-view.scss";
 

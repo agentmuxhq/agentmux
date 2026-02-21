@@ -2,200 +2,197 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * ConnectionStatus - Shows Claude Code connection state
+ * ConnectionStatus - Provider-aware connection state
  *
- * Displays either:
- * 1. "Connect" button when disconnected
- * 2. User info when connected
+ * Auth flow (Claude/OAuth providers):
+ *   1. Agent model runs `claude auth status --json` → checks loggedIn
+ *   2. If not logged in → shows "Not Authenticated" + Login button
+ *   3. Login button → agent model spawns `claude auth login` in PTY
+ *   4. User completes browser auth → process exits → model re-checks
+ *   5. If logged in → model spawns session CLI
+ *
+ * Auth flow (Gemini/Codex/API-key providers):
+ *   User enters API key → saved to provider store → passed as env var
  */
 
-import { useAtomValue, useSetAtom } from "jotai";
-import React, { memo, useCallback, useEffect } from "react";
+import { useAtomValue, useSetAtom, atom as jotaiAtom } from "jotai";
+import React, { memo, useCallback, useState } from "react";
 import { getApi } from "@/app/store/global";
 import type { PrimitiveAtom } from "jotai";
 import type { AuthState, UserInfo } from "../types";
+import { PROVIDERS } from "../providers";
+
+// Fallback atom for when providerConfigAtom is not provided
+const fallbackProviderConfigAtom: PrimitiveAtom<ProviderConfig | null> = jotaiAtom<ProviderConfig | null>(null);
 
 interface ConnectionStatusProps {
     authAtom: PrimitiveAtom<AuthState>;
     userInfoAtom: PrimitiveAtom<UserInfo | null>;
+    providerConfigAtom?: PrimitiveAtom<ProviderConfig | null>;
+    onRestart?: () => void;
+    onStartLogin?: () => void;
 }
 
-export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(({ authAtom, userInfoAtom }) => {
-    const authState = useAtomValue(authAtom);
-    const userInfo = useAtomValue(userInfoAtom);
-    const setAuthState = useSetAtom(authAtom);
-    const setUserInfo = useSetAtom(userInfoAtom);
+export const ConnectionStatus: React.FC<ConnectionStatusProps> = memo(
+    ({ authAtom, userInfoAtom, providerConfigAtom, onRestart, onStartLogin }) => {
+        const authState = useAtomValue(authAtom);
+        const userInfo = useAtomValue(userInfoAtom);
+        const providerConfig = useAtomValue(providerConfigAtom ?? fallbackProviderConfigAtom);
+        const setAuthState = useSetAtom(authAtom);
+        const setUserInfo = useSetAtom(userInfoAtom);
 
-    // Listen for auth events from backend
-    useEffect(() => {
-        const unlistenStart = getApi().listen("claude-code-auth-started", () => {
-            console.log("[ConnectionStatus] Auth started");
-            setAuthState({ status: "connecting" });
-        });
+        const currentProvider = providerConfig?.default_provider || "claude";
+        const providerDef = PROVIDERS[currentProvider];
+        const authType = providerDef?.authType || "oauth";
 
-        const unlistenSuccess = getApi().listen("claude-code-auth-success", (event: any) => {
-            console.log("[ConnectionStatus] Auth success:", event.payload);
-            const payload = event.payload;
-            setAuthState({ status: "connected" });
-            setUserInfo({
-                email: payload.email || "user@example.com",
-                name: payload.name,
-            });
-        });
-
-        const unlistenError = getApi().listen("claude-code-auth-error", (event: any) => {
-            console.error("[ConnectionStatus] Auth error:", event.payload);
-            setAuthState({
-                status: "error",
-                error: event.payload?.message || "Authentication failed",
-            });
-        });
-
-        return () => {
-            unlistenStart.then((fn) => fn());
-            unlistenSuccess.then((fn) => fn());
-            unlistenError.then((fn) => fn());
-        };
-    }, [setAuthState, setUserInfo]);
-
-    const handleConnect = useCallback(async () => {
-        try {
-            console.log("[ConnectionStatus] Opening Claude Code auth...");
-            setAuthState({ status: "connecting" });
-            await getApi().openClaudeCodeAuth();
-        } catch (error) {
-            console.error("[ConnectionStatus] Failed to open auth:", error);
-            setAuthState({
-                status: "error",
-                error: String(error),
-            });
-        }
-    }, [setAuthState]);
-
-    const handleDisconnect = useCallback(async () => {
-        try {
-            console.log("[ConnectionStatus] Disconnecting from Claude Code...");
-            await getApi().disconnectClaudeCode();
-            setAuthState({ status: "disconnected" });
-            setUserInfo(null);
-        } catch (error) {
-            console.error("[ConnectionStatus] Failed to disconnect:", error);
-            setAuthState({
-                status: "error",
-                error: `Disconnect failed: ${String(error)}`,
-            });
-        }
-    }, [setAuthState, setUserInfo]);
-
-    const handleRetry = useCallback(async () => {
-        setAuthState({ status: "disconnected" });
-        await handleConnect();
-    }, [setAuthState, handleConnect]);
-
-    // Check auth status on mount and periodically
-    useEffect(() => {
-        let checkInterval: NodeJS.Timeout;
-        let isMounted = true;
-
-        const checkAuthStatus = async () => {
+        const handleDisconnect = useCallback(async () => {
             try {
-                const status = await getApi().getClaudeCodeAuth();
-
-                // Only update state if component is still mounted
-                if (!isMounted) return;
-
-                if (status.connected) {
-                    setAuthState({ status: "connected" });
-                    setUserInfo({
-                        email: status.email || "user@example.com",
-                        name: undefined,
-                    });
-                } else {
-                    // Token expired or disconnected - clear auth state
-                    console.log("[ConnectionStatus] Token expired or disconnected");
-                    setAuthState({ status: "disconnected" });
-                    setUserInfo(null);
-                }
+                await getApi().clearProviderAuth(currentProvider);
+                setAuthState({ status: "disconnected" });
+                setUserInfo(null);
             } catch (error) {
-                console.error("[ConnectionStatus] Failed to check auth status:", error);
+                setAuthState({ status: "error", error: `Disconnect failed: ${String(error)}` });
             }
-        };
+        }, [currentProvider, setAuthState, setUserInfo]);
 
-        // Initial check
-        void checkAuthStatus();
-
-        // Periodic check every 5 minutes to detect token expiration
-        checkInterval = setInterval(() => {
-            void checkAuthStatus();
-        }, 5 * 60 * 1000);
-
-        return () => {
-            isMounted = false;
-            if (checkInterval) {
-                clearInterval(checkInterval);
+        const handleRetry = useCallback(() => {
+            if (onRestart) {
+                onRestart();
             }
-        };
-    }, [setAuthState, setUserInfo]);
+        }, [onRestart]);
 
-    if (authState.status === "connected" && userInfo) {
-        return (
-            <div className="agent-connection-status connected">
-                <div className="connection-icon">✓</div>
-                <div className="connection-info">
-                    <div className="connection-label">Connected to Claude Code</div>
-                    <div className="connection-email">{userInfo.email}</div>
+        // --- Connected ---
+        if (authState.status === "connected" && userInfo) {
+            return (
+                <div className="agent-connection-status connected">
+                    <div className="connection-icon">{"\u2713"}</div>
+                    <div className="connection-info">
+                        <div className="connection-label">
+                            Connected to {providerDef?.displayName || currentProvider}
+                        </div>
+                        <div className="connection-email">{userInfo.email}</div>
+                    </div>
+                    <button className="connection-disconnect-btn" onClick={handleDisconnect} title="Disconnect">
+                        <i className="fa fa-sign-out" />
+                    </button>
                 </div>
-                <button className="connection-disconnect-btn" onClick={handleDisconnect} title="Disconnect">
-                    <i className="fa fa-sign-out" />
+            );
+        }
+
+        // --- Connecting (auth check in progress or login in progress) ---
+        if (authState.status === "connecting") {
+            return (
+                <div className="agent-connection-status connecting">
+                    <div className="connection-icon">{"\u23F3"}</div>
+                    <div className="connection-info">
+                        <div className="connection-label">Authenticating...</div>
+                        <div className="connection-hint">
+                            {authType === "oauth"
+                                ? "Complete login in your browser"
+                                : "Validating API key..."}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- Error ---
+        if (authState.status === "error") {
+            return (
+                <div className="agent-connection-status error">
+                    <div className="connection-icon">{"\u26A0\uFE0F"}</div>
+                    <div className="connection-info">
+                        <div className="connection-label">Authentication Failed</div>
+                        {authState.error && <div className="connection-error">{authState.error}</div>}
+                    </div>
+                    <button className="connection-retry-btn" onClick={handleRetry}>
+                        <i className="fa fa-refresh" /> Retry
+                    </button>
+                </div>
+            );
+        }
+
+        // --- Disconnected: show provider-appropriate auth UI ---
+        if (authType === "api-key") {
+            return <ApiKeyInput provider={currentProvider} providerDef={providerDef} onAuth={setAuthState} />;
+        }
+
+        // OAuth (Claude) — user must run `claude auth login`
+        return (
+            <div className="agent-connection-status disconnected">
+                <div className="connection-message">
+                    <div className="connection-title">
+                        {providerDef?.displayName || currentProvider} — Not Authenticated
+                    </div>
+                    <div className="connection-description">
+                        Click Login to authenticate via your browser.
+                        The CLI will open a login page automatically.
+                    </div>
+                </div>
+                <button className="connection-connect-btn" onClick={onStartLogin}>
+                    <i className="fa fa-sign-in" /> Login
                 </button>
             </div>
         );
     }
+);
 
-    if (authState.status === "connecting") {
-        return (
-            <div className="agent-connection-status connecting">
-                <div className="connection-icon">⏳</div>
-                <div className="connection-info">
-                    <div className="connection-label">Connecting...</div>
-                    <div className="connection-hint">Complete authentication in your browser</div>
-                </div>
-            </div>
-        );
-    }
+ConnectionStatus.displayName = "ConnectionStatus";
 
-    if (authState.status === "error") {
-        return (
-            <div className="agent-connection-status error">
-                <div className="connection-icon">⚠️</div>
-                <div className="connection-info">
-                    <div className="connection-label">Connection Failed</div>
-                    {authState.error && <div className="connection-error">{authState.error}</div>}
-                </div>
-                <button className="connection-retry-btn" onClick={handleRetry}>
-                    <i className="fa fa-refresh" /> Retry
-                </button>
-            </div>
-        );
-    }
+// --- API Key Input component for Gemini/Codex ---
 
-    // Disconnected state (default)
+const ApiKeyInput: React.FC<{
+    provider: string;
+    providerDef: any;
+    onAuth: (state: AuthState) => void;
+}> = memo(({ provider, providerDef, onAuth }) => {
+    const [apiKey, setApiKey] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = useCallback(async () => {
+        if (!apiKey.trim()) return;
+        setSaving(true);
+        try {
+            await getApi().setProviderAuth(provider, apiKey.trim());
+            onAuth({ status: "connected" });
+        } catch (error) {
+            onAuth({ status: "error", error: `Failed to save API key: ${String(error)}` });
+        } finally {
+            setSaving(false);
+        }
+    }, [provider, apiKey, onAuth]);
+
     return (
         <div className="agent-connection-status disconnected">
             <div className="connection-message">
-                <div className="connection-title">Connect to Claude Code</div>
+                <div className="connection-title">
+                    {providerDef?.displayName || provider} API Key
+                </div>
                 <div className="connection-description">
-                    Use the Claude Code API for cloud-based conversations. Requires authentication.
+                    Enter your API key to authenticate.
                 </div>
             </div>
-            <button className="connection-connect-btn" onClick={handleConnect}>
-                <i className="fa fa-sign-in" /> Connect
-            </button>
-            <div className="connection-fallback">
-                Or use local mode with <code>claude</code> CLI (no auth required)
+            <div className="connection-apikey-form">
+                <input
+                    type="password"
+                    className="connection-apikey-input"
+                    placeholder="Enter API key..."
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleSave();
+                    }}
+                />
+                <button
+                    className="connection-connect-btn"
+                    onClick={handleSave}
+                    disabled={!apiKey.trim() || saving}
+                >
+                    {saving ? "Saving..." : "Save"}
+                </button>
             </div>
         </div>
     );
 });
 
-ConnectionStatus.displayName = "ConnectionStatus";
+ApiKeyInput.displayName = "ApiKeyInput";

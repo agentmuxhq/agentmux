@@ -13,20 +13,22 @@ import React from "react";
 import { Subscription } from "rxjs";
 import { AgentViewWrapper } from "./agent-view";
 import { ClaudeCodeStreamParser } from "./stream-parser";
-import { ClaudeCodeApiClient } from "./api-client";
 import {
     AgentAtoms,
     createAgentAtoms,
     createFilteredDocumentAtom,
     createDocumentStatsAtom,
     createToggleNodeCollapsed,
-    createExpandAllNodes,
-    createCollapseAllNodes,
-    createClearDocument,
-    createUpdateFilter,
 } from "./state";
+import { PROVIDERS } from "./providers";
+import { createTranslator } from "./providers/translator-factory";
+import type { OutputTranslator } from "./providers/translator";
+import type { DocumentNode } from "./types";
 
 const TermFileName = "claude-code.jsonl";
+
+// Hardcoded to Claude for now. Expand later.
+const PROVIDER = PROVIDERS.claude;
 
 export class AgentViewModel implements ViewModel {
     viewType = "agent";
@@ -40,16 +42,11 @@ export class AgentViewModel implements ViewModel {
     viewComponent: ViewComponent;
     noPadding = atom(true);
 
-    // Instance-scoped state atoms (NOT global!)
     agentIdValue: string;
     atoms: AgentAtoms;
     filteredDocumentAtom: Atom<DocumentNode[]>;
     documentStatsAtom: Atom<any>;
     toggleNodeCollapsed: any;
-    expandAllNodes: any;
-    collapseAllNodes: any;
-    clearDocument: any;
-    updateFilter: any;
 
     inputRef: React.RefObject<HTMLTextAreaElement>;
     shellProcStatusAtom: Atom<string>;
@@ -57,13 +54,12 @@ export class AgentViewModel implements ViewModel {
 
     // Internal
     private parser: ClaudeCodeStreamParser;
+    private translator: OutputTranslator;
     private fileSubjectSub: Subscription | null = null;
     private fileSubjectRef: any = null;
     private procStatusUnsub: (() => void) | null = null;
     private shellProcFullStatusAtom: PrimitiveAtom<BlockControllerRuntimeStatus>;
-    private apiClient: ClaudeCodeApiClient | null = null;
-    private useApiMode: boolean = false;
-    private conversationId: string;
+    private loginMode: boolean = false;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
@@ -71,32 +67,26 @@ export class AgentViewModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewComponent = AgentViewWrapper as any;
 
-        // Create instance-scoped atoms for THIS widget
         this.agentIdValue = blockId;
         this.atoms = createAgentAtoms(blockId);
 
-        // Create derived atoms
         this.filteredDocumentAtom = createFilteredDocumentAtom(
             this.atoms.documentAtom,
             this.atoms.documentStateAtom
         );
         this.documentStatsAtom = createDocumentStatsAtom(this.atoms.documentAtom);
-
-        // Create action atoms
         this.toggleNodeCollapsed = createToggleNodeCollapsed(this.atoms.documentStateAtom);
-        this.expandAllNodes = createExpandAllNodes(this.atoms.documentStateAtom);
-        this.collapseAllNodes = createCollapseAllNodes(
-            this.atoms.documentAtom,
-            this.atoms.documentStateAtom
-        );
-        this.clearDocument = createClearDocument(
-            this.atoms.documentAtom,
-            this.atoms.documentStateAtom
-        );
-        this.updateFilter = createUpdateFilter(this.atoms.documentStateAtom);
 
         this.viewIcon = atom("sparkles");
-        this.viewName = atom("Agent");
+        this.viewName = atom("Claude Code");
+        this.viewText = atom((get) => {
+            const stats = get(this.documentStatsAtom);
+            const parts: HeaderElem[] = [];
+            if (stats.totalNodes > 0) {
+                parts.push({ elemtype: "text", text: `${stats.totalNodes} events` });
+            }
+            return parts;
+        });
 
         this.inputRef = React.createRef<HTMLTextAreaElement>();
         this.shellProcFullStatusAtom = atom(null) as unknown as PrimitiveAtom<BlockControllerRuntimeStatus>;
@@ -109,25 +99,7 @@ export class AgentViewModel implements ViewModel {
             return fullStatus?.shellprocexitcode ?? 0;
         });
 
-        // Header text: show document stats
-        this.viewText = atom((get) => {
-            const stats = get(this.documentStatsAtom);
-            const parts: HeaderElem[] = [];
-            if (stats.totalNodes > 0) {
-                parts.push({
-                    elemtype: "text",
-                    text: `${stats.totalNodes} events`,
-                });
-            }
-            return parts;
-        });
-
-        // Fetch initial controller status
-        services.BlockService.GetControllerStatus(blockId).then((rts) => {
-            this.updateShellProcStatus(rts);
-        });
-
-        // Subscribe to controller status events (process lifecycle)
+        // Subscribe to controller status events
         this.procStatusUnsub = waveEventSubscribe({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
@@ -138,93 +110,191 @@ export class AgentViewModel implements ViewModel {
         });
 
         this.parser = new ClaudeCodeStreamParser();
-        this.conversationId = `conv-${blockId}`;
+        this.translator = createTranslator(PROVIDER.outputFormat);
+    }
 
-        // Initialize connection mode (API or local terminal)
-        this.initializeConnectionMode();
+    // =============================================
+    // Connect: single entry point for the UI
+    // =============================================
+
+    /**
+     * Called when user clicks "Connect".
+     * Checks auth → starts session or opens login.
+     */
+    connect = async (): Promise<void> => {
+        globalStore.set(this.atoms.authAtom, { status: "connecting" });
+        console.log("[agent] Checking Claude auth status...");
+
+        try {
+            const authStatus = await getApi().checkCliAuthStatus("claude");
+            console.log("[agent] Auth result:", authStatus);
+
+            if (authStatus.logged_in) {
+                globalStore.set(this.atoms.authAtom, { status: "connected" });
+                globalStore.set(this.atoms.userInfoAtom, {
+                    email: authStatus.email || "",
+                    name: authStatus.subscription_type || "",
+                });
+                this.startSession();
+            } else {
+                // Not logged in — spawn `claude auth login` in PTY
+                this.startAuthLogin();
+            }
+        } catch (error) {
+            console.error("[agent] Auth check failed:", error);
+            globalStore.set(this.atoms.authAtom, {
+                status: "error",
+                error: `Auth check failed: ${String(error)}`,
+            });
+        }
+    };
+
+    /**
+     * Spawn `claude auth login` in the PTY so user can authenticate via browser.
+     * When the process exits, we re-check auth.
+     */
+    private startAuthLogin(): void {
+        console.log("[agent] Starting claude auth login...");
+        this.loginMode = true;
+        globalStore.set(this.atoms.authAtom, { status: "connecting" });
+
+        const oref = WOS.makeORef("block", this.blockId);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref,
+            meta: {
+                "cmd": PROVIDER.cliCommand,
+                "cmd:args": PROVIDER.authLoginCommand,
+            },
+        }).then(() => {
+            this.connectToTerminal();
+            return RpcApi.ControllerResyncCommand(TabRpcClient, {
+                tabid: globalStore.get(atoms.staticTabId),
+                blockid: this.blockId,
+                forcerestart: true,
+            });
+        }).catch((e: any) => {
+            console.error("[agent] Failed to start auth login:", e);
+            globalStore.set(this.atoms.authAtom, {
+                status: "error",
+                error: `Login failed: ${String(e)}`,
+            });
+        });
     }
 
     /**
-     * Initialize connection mode based on auth status
-     * Uses API mode if authenticated, falls back to local terminal mode otherwise
+     * Start the Claude CLI session with stream-json output.
      */
-    private async initializeConnectionMode(): Promise<void> {
-        try {
-            // Check if user is authenticated with Claude Code
-            const authStatus = await getApi().getClaudeCodeAuth();
+    private startSession(): void {
+        this.loginMode = false;
+        console.log("[agent] Starting Claude session...");
 
-            if (authStatus.connected) {
-                // TODO: Get actual API key from backend
-                // For now, use a placeholder that will fail gracefully
-                console.log("[agent] Using API mode (connected to Claude Code)");
-                this.useApiMode = true;
-                // this.apiClient = new ClaudeCodeApiClient({
-                //     apiKey: "API_KEY_FROM_BACKEND",
-                // });
-
-                // API mode will be used when sending messages
-                globalStore.set(this.atoms.messageRouterAtom, {
-                    backend: "cloud",
-                    connected: true,
-                    endpoint: "api.anthropic.com",
-                });
-            } else {
-                // Fall back to local terminal mode
-                console.log("[agent] Using local terminal mode (not connected)");
-                this.useApiMode = false;
-                this.connectToTerminal();
-            }
-        } catch (error) {
-            console.error("[agent] Failed to check auth status, falling back to local mode:", error);
-            this.useApiMode = false;
+        const oref = WOS.makeORef("block", this.blockId);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref,
+            meta: {
+                "cmd": PROVIDER.cliCommand,
+                "cmd:args": PROVIDER.defaultArgs,
+            },
+        }).then(() => {
             this.connectToTerminal();
-        }
+            return RpcApi.ControllerResyncCommand(TabRpcClient, {
+                tabid: globalStore.get(atoms.staticTabId),
+                blockid: this.blockId,
+                forcerestart: true,
+            });
+        }).catch((e: any) => {
+            console.error("[agent] Failed to start session:", e);
+        });
     }
 
     // --- Terminal connection ---
 
     private connectToTerminal(): void {
+        if (this.fileSubjectSub) return;
+
         try {
             this.fileSubjectRef = getFileSubject(this.blockId, TermFileName);
             this.fileSubjectSub = this.fileSubjectRef.subscribe((msg: any) => {
                 this.handleTerminalData(msg);
             });
-            globalStore.set(this.atoms.processAtom, {
-                ...globalStore.get(this.atoms.processAtom),
-                status: "running",
-            });
         } catch (e) {
-            console.error("[agent] Failed to connect to terminal file subject:", e);
-            globalStore.set(this.atoms.processAtom, {
-                ...globalStore.get(this.atoms.processAtom),
-                status: "failed",
-            });
+            console.error("[agent] Failed to connect to terminal:", e);
+        }
+    }
+
+    private disconnectTerminal(): void {
+        if (this.fileSubjectSub) {
+            this.fileSubjectSub.unsubscribe();
+            this.fileSubjectSub = null;
+        }
+        if (this.fileSubjectRef) {
+            this.fileSubjectRef.release();
+            this.fileSubjectRef = null;
         }
     }
 
     private async handleTerminalData(msg: any): Promise<void> {
         if (msg.fileop === "truncate") {
             this.parser.reset();
+            this.translator.reset();
             return;
         }
         if (msg.fileop === "append" && msg.data64) {
             const bytes = base64ToArray(msg.data64);
             const text = new TextDecoder().decode(bytes);
 
-            // Parse NDJSON stream and append to THIS instance's document
+            // In login mode, just ignore the output (it's interactive TTY stuff)
+            if (this.loginMode) return;
+
+            // Parse NDJSON stream
             const lines = text.split('\n').filter(line => line.trim());
             for (const line of lines) {
                 try {
-                    const event = JSON.parse(line);
-                    const nodes = await this.parser.parseEvent(event);
+                    const rawEvent = JSON.parse(line);
+                    this.handleCliEvent(rawEvent);
+                } catch {
+                    // Non-JSON line, ignore
+                }
+            }
+        }
+    }
+
+    /**
+     * Route parsed CLI events by type.
+     */
+    private async handleCliEvent(event: any): Promise<void> {
+        switch (event.type) {
+            case "system":
+                if (event.subtype === "init") {
+                    console.log("[agent] Session init:", {
+                        session_id: event.session_id,
+                        model: event.model,
+                    });
+                    globalStore.set(this.atoms.sessionIdAtom, event.session_id || "");
+                    globalStore.set(this.atoms.authAtom, { status: "connected" });
+                }
+                break;
+
+            case "stream_event":
+            case "assistant":
+            case "user": {
+                const streamEvents = this.translator.translate(event);
+                for (const se of streamEvents) {
+                    const nodes = await this.parser.parseEvent(se);
                     if (nodes.length > 0) {
                         const currentDoc = globalStore.get(this.atoms.documentAtom);
                         globalStore.set(this.atoms.documentAtom, [...currentDoc, ...nodes]);
                     }
-                } catch (err) {
-                    console.warn("[agent] Failed to parse NDJSON line:", line, err);
                 }
+                break;
             }
+
+            case "result":
+                console.log("[agent] Session result:", {
+                    is_error: event.is_error,
+                    cost: event.total_cost_usd,
+                });
+                break;
         }
     }
 
@@ -232,64 +302,12 @@ export class AgentViewModel implements ViewModel {
 
     sendMessage = async (text: string): Promise<void> => {
         if (!text.trim()) return;
-
-        if (this.useApiMode && this.apiClient) {
-            // Use API mode
-            await this.sendMessageViaAPI(text);
-        } else {
-            // Use local terminal mode
-            const b64data = stringToBase64(text + "\n");
-            RpcApi.ControllerInputCommand(TabRpcClient, {
-                blockid: this.blockId,
-                inputdata64: b64data,
-            }).catch((e: any) => {
-                console.error("[agent] Failed to send input:", e);
-            });
-        }
-    };
-
-    /**
-     * Send message via Claude Code API
-     * Streams response and appends nodes to document
-     */
-    private async sendMessageViaAPI(text: string): Promise<void> {
-        if (!this.apiClient) {
-            console.error("[agent] API client not initialized");
-            return;
-        }
-
-        try {
-            // Stream response from API
-            for await (const event of this.apiClient.sendMessage(text, this.conversationId)) {
-                // Parse event and append to document
-                const nodes = await this.parser.parseEvent(event);
-                if (nodes.length > 0) {
-                    const currentDoc = globalStore.get(this.atoms.documentAtom);
-                    globalStore.set(this.atoms.documentAtom, [...currentDoc, ...nodes]);
-                }
-            }
-        } catch (error) {
-            console.error("[agent] Failed to send message via API:", error);
-        }
-    }
-
-    exportDocument = (format: "markdown" | "html"): void => {
-        const doc = globalStore.get(this.atoms.documentAtom);
-        console.log("[agent] Export as", format, "- document has", doc.length, "nodes");
-        // TODO: Implement export logic
-    };
-
-    pauseAgent = (): void => {
-        globalStore.set(this.atoms.processAtom, {
-            ...globalStore.get(this.atoms.processAtom),
-            status: "paused",
-        });
-    };
-
-    resumeAgent = (): void => {
-        globalStore.set(this.atoms.processAtom, {
-            ...globalStore.get(this.atoms.processAtom),
-            status: "running",
+        const b64data = stringToBase64(text + "\n");
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            inputdata64: b64data,
+        }).catch((e: any) => {
+            console.error("[agent] Failed to send input:", e);
         });
     };
 
@@ -300,22 +318,13 @@ export class AgentViewModel implements ViewModel {
         }).catch((e: any) => {
             console.error("[agent] Failed to send SIGINT:", e);
         });
-        globalStore.set(this.atoms.processAtom, {
-            ...globalStore.get(this.atoms.processAtom),
-            status: "idle",
-        });
     };
 
     restartAgent = (): void => {
-        globalStore.set(this.shellProcFullStatusAtom, null as any);
-        globalStore.set(this.atoms.documentAtom, []); // Clear this instance's document
-        RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
-            blockid: this.blockId,
-            forcerestart: true,
-        }).catch((e: any) => {
-            console.error("[agent] Failed to restart process:", e);
-        });
+        this.loginMode = false;
+        globalStore.set(this.atoms.documentAtom, []);
+        globalStore.set(this.atoms.authAtom, { status: "disconnected" });
+        this.disconnectTerminal();
     };
 
     private updateShellProcStatus(rts: BlockControllerRuntimeStatus): void {
@@ -323,16 +332,18 @@ export class AgentViewModel implements ViewModel {
         const cur = globalStore.get(this.shellProcFullStatusAtom);
         if (cur == null || cur.version < rts.version) {
             globalStore.set(this.shellProcFullStatusAtom, rts);
-            if (rts.shellprocstatus === "running") {
-                globalStore.set(this.atoms.processAtom, {
-                    ...globalStore.get(this.atoms.processAtom),
-                    status: "running",
-                });
+
+            // When login process finishes, re-check auth
+            if (this.loginMode && rts.shellprocstatus === "done") {
+                console.log("[agent] Login process exited, code:", rts.shellprocexitcode);
+                this.loginMode = false;
+                this.disconnectTerminal();
+                // Re-check auth after login
+                this.connect();
             }
         }
     }
 
-    // Defer focus to avoid infinite render loop in BlockFull's layout effect chain.
     giveFocus(): boolean {
         if (this.inputRef.current) {
             requestAnimationFrame(() => this.inputRef.current?.focus());
@@ -342,18 +353,12 @@ export class AgentViewModel implements ViewModel {
     }
 
     dispose(): void {
-        if (this.fileSubjectSub) {
-            this.fileSubjectSub.unsubscribe();
-            this.fileSubjectSub = null;
-        }
-        if (this.fileSubjectRef) {
-            this.fileSubjectRef.release();
-            this.fileSubjectRef = null;
-        }
+        this.disconnectTerminal();
         if (this.procStatusUnsub) {
             this.procStatusUnsub();
             this.procStatusUnsub = null;
         }
         this.parser.reset();
+        this.translator.reset();
     }
 }

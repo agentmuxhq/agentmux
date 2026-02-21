@@ -9,10 +9,10 @@
             "meta": {
                 "view": "agent",
                 "controller": "cmd",
-                "cmd": "claude",
-                "cmd:args": ["--output-format", "stream-json"],
+                "cmd": "",
+                "cmd:args": [],
                 "cmd:interactive": true,
-                "cmd:runonstart": true
+                "cmd:runonstart": false
             }
         }
     },

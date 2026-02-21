@@ -26,7 +26,7 @@ use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use tokio::sync::mpsc;
 
 use super::{
-    BlockControllerRuntimeStatus, BlockInputUnion, Controller, META_KEY_CMD,
+    BlockControllerRuntimeStatus, BlockInputUnion, Controller, META_KEY_CMD, META_KEY_CMD_ARGS,
     META_KEY_CMD_CLEAR_ON_START, META_KEY_CMD_CLOSE_ON_EXIT, META_KEY_CMD_CLOSE_ON_EXIT_DELAY,
     META_KEY_CMD_CLOSE_ON_EXIT_FORCE, META_KEY_CMD_RUN_ONCE, META_KEY_CMD_RUN_ON_START,
     META_KEY_CONNECTION, STATUS_DONE, STATUS_INIT, STATUS_RUNNING,
@@ -195,6 +195,22 @@ impl ShellController {
         waveobj::meta_get_string(meta, META_KEY_CMD, "")
     }
 
+    /// Get cmd:args array from block meta.
+    fn get_cmd_args(meta: &MetaMapType) -> Vec<String> {
+        match meta.get(META_KEY_CMD_ARGS) {
+            Some(serde_json::Value::Array(arr)) => arr
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect(),
+            _ => vec![],
+        }
+    }
+
+    /// Check if cmd:interactive is set in block meta.
+    fn is_interactive(meta: &MetaMapType) -> bool {
+        waveobj::meta_get_bool(meta, "cmd:interactive", false)
+    }
+
     /// Publish current controller status via the WPS broker.
     fn publish_status(&self) {
         if let Some(ref broker) = self.broker {
@@ -305,8 +321,20 @@ impl Controller for ShellController {
 
         // Determine shell command
         let cmd_str = Self::get_cmd_str(&block_meta);
-        let mut cmd = if !cmd_str.is_empty() {
-            // "cmd" controller: run a specific command
+        let cmd_args = Self::get_cmd_args(&block_meta);
+        let interactive = Self::is_interactive(&block_meta);
+
+        let mut cmd = if !cmd_str.is_empty() && (!cmd_args.is_empty() || interactive) {
+            // Direct spawn: cmd:args provided or cmd:interactive set.
+            // Spawn the CLI directly (no sh -c wrapper) so args are passed correctly.
+            let mut c = CommandBuilder::new(&cmd_str);
+            if !cmd_args.is_empty() {
+                let arg_refs: Vec<&str> = cmd_args.iter().map(|s| s.as_str()).collect();
+                c.args(arg_refs);
+            }
+            c
+        } else if !cmd_str.is_empty() {
+            // "cmd" controller: run a specific command string via shell wrapper
             if cfg!(windows) {
                 let mut c = CommandBuilder::new("cmd.exe");
                 c.args(["/C", &cmd_str]);

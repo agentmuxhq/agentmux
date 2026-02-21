@@ -85,6 +85,15 @@ pub fn run() {
             commands::stubs::set_window_init_status,
             commands::stubs::set_waveai_open,
             commands::stubs::install_update,
+            // Provider commands
+            commands::providers::detect_installed_clis,
+            commands::providers::get_provider_config,
+            commands::providers::save_provider_config,
+            commands::providers::get_provider_install_info,
+            commands::providers::set_provider_auth,
+            commands::providers::clear_provider_auth,
+            commands::providers::get_provider_auth_status,
+            commands::providers::check_cli_auth_status,
         ])
         // Application setup
         .setup(|app| {
@@ -251,66 +260,8 @@ pub fn run() {
         .expect("error while running AgentMux");
 }
 
-/// Handle deep link URLs (e.g., agentmux://auth?code=ABC123)
-#[allow(dead_code)]
-fn handle_deep_link(app: tauri::AppHandle, url: &str) {
-    // Redact sensitive params from logs
-    let safe_url = if url.contains("code=") {
-        url.split("code=").next().unwrap_or(url).to_string() + "code=[redacted]"
-    } else {
-        url.to_string()
-    };
-    tracing::info!("Processing deep link: {}", safe_url);
-
-    // Parse the URL to extract the protocol and path
-    if let Some(path_with_query) = url.strip_prefix("agentmux://") {
-        let parts: Vec<&str> = path_with_query.split('?').collect();
-        let path = parts[0];
-
-        match path {
-            "auth" => {
-                // OAuth callback: agentmux://auth?code=ABC123
-                if parts.len() > 1 {
-                    let query = parts[1];
-                    let params: std::collections::HashMap<_, _> = query
-                        .split('&')
-                        .filter_map(|pair| {
-                            let mut split = pair.split('=');
-                            Some((split.next()?, split.next()?))
-                        })
-                        .collect();
-
-                    if let Some(code) = params.get("code") {
-                        tracing::info!("Received OAuth code from deep link");
-
-                        // Call the auth callback handler
-                        let app_clone = app.clone();
-                        let code_owned = code.to_string();
-                        tauri::async_runtime::spawn(async move {
-                            match commands::claudecode::handle_auth_callback(app_clone, code_owned).await {
-                                Ok(()) => {
-                                    tracing::info!("OAuth callback handled successfully");
-                                }
-                                Err(e) => {
-                                    tracing::error!("Failed to handle OAuth callback: {}", e);
-                                }
-                            }
-                        });
-                    } else {
-                        tracing::warn!("Deep link missing 'code' parameter");
-                    }
-                } else {
-                    tracing::warn!("Deep link missing query parameters");
-                }
-            }
-            _ => {
-                tracing::warn!("Unknown deep link path: {}", path);
-            }
-        }
-    } else {
-        tracing::warn!("Deep link doesn't match expected protocol: {}", url);
-    }
-}
+// Deep link handler removed — auth is now handled by `claude auth login` via shell controller.
+// See docs/SPEC_CLAUDE_CLI_INTEGRATION.md for the auth flow.
 
 fn init_logging(handle: &tauri::AppHandle) -> std::path::PathBuf {
     use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};

@@ -160,11 +160,20 @@ tasks:
         deps:
             - docs:npm:install
 
+    copy:schema:
+        desc: Copy schema directory to dist for Tauri bundling
+        cmds:
+            - cmd: powershell -Command "New-Item -ItemType Directory -Force -Path dist/schema | Out-Null; Copy-Item schema/* dist/schema/ -Recurse -Force"
+              platforms: [windows]
+            - cmd: mkdir -p dist/schema && cp -r schema/* dist/schema/
+              platforms: [linux, darwin]
+
     package:
         desc: Package the application for the current platform (Tauri).
         cmds:
             - task: build:backend
             - task: tauri:copy-sidecars
+            - task: copy:schema
             - npx tauri build {{.CLI_ARGS}}
         deps:
             - clean

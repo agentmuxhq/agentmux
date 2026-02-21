@@ -321,6 +321,7 @@ export function buildTauriApi(): AppApi {
 
         // --- Claude Code Auth ---
         openClaudeCodeAuth: async () => {
+            console.trace("[LEGACY] openClaudeCodeAuth called — who called this?");
             await invoke("open_claude_code_auth");
         },
         getClaudeCodeAuth: async () => {
@@ -331,6 +332,33 @@ export function buildTauriApi(): AppApi {
         disconnectClaudeCode: async () => {
             await invoke("disconnect_claude_code");
         },
+
+        // --- Provider Commands ---
+        detectInstalledClis: async () => {
+            return await invoke<CliDetectionResult[]>("detect_installed_clis");
+        },
+        getProviderConfig: async () => {
+            return await invoke<ProviderConfig>("get_provider_config");
+        },
+        saveProviderConfig: async (config: ProviderConfig) => {
+            await invoke("save_provider_config", { config });
+        },
+        getProviderInstallInfo: async (provider: string) => {
+            return await invoke<ProviderInstallInfo>("get_provider_install_info", { provider });
+        },
+        setProviderAuth: async (provider: string, token: string) => {
+            await invoke("set_provider_auth", { provider, token });
+        },
+        clearProviderAuth: async (provider: string) => {
+            await invoke("clear_provider_auth", { provider });
+        },
+        getProviderAuthStatus: async (provider: string) => {
+            return await invoke<ProviderAuthStatus>("get_provider_auth_status", { provider });
+        },
+        checkCliAuthStatus: async (provider: string) => {
+            return await invoke<CliAuthStatus>("check_cli_auth_status", { provider });
+        },
+
         listen: async (event: string, callback: (event: any) => void) => {
             const unlisten = await listen(event, callback);
             return unlisten;

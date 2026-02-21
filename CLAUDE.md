@@ -389,3 +389,25 @@ task build:backend
 - **Project Docs:** `./README.md`, `./VERSION_HISTORY.md`
 - **Build Guide:** `./BUILD.md`
 - **Test Results:** `./test-results.xml`
+
+---
+
+## Debugging Quick Reference
+
+### UI Not Rendering / Old UI Persists
+1. Is `task dev` actually running? Check terminal output.
+2. Is Vite serving? `curl http://localhost:1420`
+3. Hard-refresh: Ctrl+Shift+R in the webview
+4. Check that `block.tsx` registers the correct ViewModel: `BlockRegistry.set("agent", AgentViewModel)`
+5. Check that the component is exported from `index.ts`
+6. If all 5 checks pass — it's a Tauri webview cache issue, run `task clean && task dev`
+
+### Build Fails After Clean
+- Issue #351: `dist/schema/` is wiped by `task clean` but not recreated
+- Workaround: `cp -r schema dist/schema` before `npx tauri build`
+- Permanent fix: `copy:schema` task in Taskfile.yml
+
+### Port Conflicts
+- Dev server port: 1420 (Vite) + backend port (varies)
+- Check: `netstat -ano | grep :1420`
+- Kill: `taskkill /PID <pid> /F` (Windows)

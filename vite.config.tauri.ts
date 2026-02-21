@@ -66,7 +66,31 @@ export default defineConfig({
         react({}),
         tailwindcss(),
         viteStaticCopy({
-            targets: [{ src: "node_modules/monaco-editor/min/vs/*", dest: "monaco" }],
+            targets: [
+                {
+                    // Copy Monaco editor runtime (languages, themes, core).
+                    // Exclude assets/ (duplicate workers already bundled by Vite ?worker imports)
+                    // and NLS locale packs (app is English-only).
+                    src: [
+                        "node_modules/monaco-editor/min/vs/*",
+                        "!node_modules/monaco-editor/min/vs/assets",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.cs.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.de.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.es.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.fr.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.it.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.ja.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.ko.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.pl.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.pt-br.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.ru.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.tr.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.zh-cn.js.js",
+                        "!node_modules/monaco-editor/min/vs/nls.messages.zh-tw.js.js",
+                    ],
+                    dest: "monaco",
+                },
+            ],
         }),
     ],
 

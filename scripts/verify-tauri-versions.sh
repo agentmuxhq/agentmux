@@ -4,13 +4,22 @@ set -e
 # Change to project root
 cd "$(dirname "$0")/.." || exit 1
 
-echo "🔍 Checking Tauri version alignment..."
+echo "Checking Tauri version alignment..."
 echo
 
-# Extract versions
-NPM_CLI=$(npm list @tauri-apps/cli --depth=0 --json 2>/dev/null | jq -r '.dependencies["@tauri-apps/cli"].version' || echo "not installed")
-NPM_API=$(npm list @tauri-apps/api --depth=0 --json 2>/dev/null | jq -r '.dependencies["@tauri-apps/api"].version' || echo "not installed")
-CARGO_TAURI=$(awk '/^\[\[package\]\]/{p=0} /^name = "tauri"$/{p=1} p && /^version =/{print $3; exit}' src-tauri/Cargo.lock | tr -d '"' || echo "not found")
+# Extract versions using node (jq may not be available)
+NPM_CLI=$(node -e "try{const p=require('./node_modules/@tauri-apps/cli/package.json');console.log(p.version)}catch{console.log('not installed')}" 2>/dev/null || echo "not installed")
+NPM_API=$(node -e "try{const p=require('./node_modules/@tauri-apps/api/package.json');console.log(p.version)}catch{console.log('not installed')}" 2>/dev/null || echo "not installed")
+
+# Cargo.lock is at workspace root, not src-tauri/
+CARGO_LOCK="Cargo.lock"
+if [ ! -f "$CARGO_LOCK" ]; then
+    CARGO_LOCK="src-tauri/Cargo.lock"
+fi
+CARGO_TAURI=$(awk '/^\[\[package\]\]/{p=0} /^name = "tauri"$/{p=1} p && /^version =/{print $3; exit}' "$CARGO_LOCK" 2>/dev/null | tr -d '"' || echo "not found")
+if [ -z "$CARGO_TAURI" ]; then
+    CARGO_TAURI="not found"
+fi
 
 # Extract major.minor
 if [ "$NPM_CLI" != "not installed" ]; then
@@ -31,7 +40,7 @@ else
     CARGO_MM="N/A"
 fi
 
-echo "📦 Installed Versions:"
+echo "Installed Versions:"
 echo "  @tauri-apps/cli: $NPM_CLI (major.minor: $NPM_CLI_MM)"
 echo "  @tauri-apps/api: $NPM_API (major.minor: $NPM_API_MM)"
 echo "  tauri crate:     $CARGO_TAURI (major.minor: $CARGO_MM)"
@@ -39,13 +48,13 @@ echo
 
 # Verify all match
 if [ "$NPM_CLI_MM" = "N/A" ] || [ "$NPM_API_MM" = "N/A" ] || [ "$CARGO_MM" = "N/A" ]; then
-    echo "❌ ERROR: Some Tauri packages are not installed!"
+    echo "ERROR: Some Tauri packages are not installed!"
     echo "   Run 'npm install' and 'cargo build' first."
     exit 1
 fi
 
 if [ "$NPM_CLI_MM" != "$NPM_API_MM" ] || [ "$NPM_CLI_MM" != "$CARGO_MM" ]; then
-    echo "❌ ERROR: Tauri version mismatch!"
+    echo "ERROR: Tauri version mismatch!"
     echo
     echo "   All Tauri packages must be on the same major.minor version."
     echo "   Expected: All on $NPM_CLI_MM.x"
@@ -59,16 +68,15 @@ if [ "$NPM_CLI_MM" != "$NPM_API_MM" ] || [ "$NPM_CLI_MM" != "$CARGO_MM" ]; then
     exit 1
 fi
 
-echo "✅ All Tauri core packages aligned on $NPM_CLI_MM.x"
+echo "All Tauri core packages aligned on $NPM_CLI_MM.x"
 echo
 
 # Check plugin versions
-echo "🔌 Checking Tauri plugin alignment..."
+echo "Checking Tauri plugin alignment..."
 echo
 
 PLUGIN_ERRORS=0
 
-# List of plugins that have both npm and Rust versions
 PLUGINS_WITH_NPM=(
     "shell"
     "opener"
@@ -77,16 +85,20 @@ PLUGINS_WITH_NPM=(
 )
 
 for plugin in "${PLUGINS_WITH_NPM[@]}"; do
-    npm_ver=$(npm list @tauri-apps/plugin-$plugin --depth=0 --json 2>/dev/null | jq -r ".dependencies[\"@tauri-apps/plugin-$plugin\"].version" 2>/dev/null || echo "not installed")
-    cargo_ver=$(awk "/^\[\[package\]\]/{p=0} /^name = \"tauri-plugin-$plugin\"$/{p=1} p && /^version =/{print \$3; exit}" src-tauri/Cargo.lock | tr -d '"' 2>/dev/null || echo "not found")
+    npm_ver=$(node -e "try{const p=require('./node_modules/@tauri-apps/plugin-$plugin/package.json');console.log(p.version)}catch{console.log('not installed')}" 2>/dev/null || echo "not installed")
+    cargo_ver=$(awk "/^\[\[package\]\]/{p=0} /^name = \"tauri-plugin-$plugin\"$/{p=1} p && /^version =/{print \$3; exit}" "$CARGO_LOCK" 2>/dev/null | tr -d '"' || echo "not found")
+
+    if [ -z "$cargo_ver" ]; then
+        cargo_ver="not found"
+    fi
 
     if [ "$npm_ver" = "not installed" ]; then
-        echo "  ⚠️  @tauri-apps/plugin-$plugin: not installed in npm"
+        echo "  WARN: @tauri-apps/plugin-$plugin: not installed in npm"
         continue
     fi
 
     if [ "$cargo_ver" = "not found" ]; then
-        echo "  ⚠️  tauri-plugin-$plugin: not found in Cargo.lock"
+        echo "  WARN: tauri-plugin-$plugin: not found in Cargo.lock"
         continue
     fi
 
@@ -94,17 +106,17 @@ for plugin in "${PLUGINS_WITH_NPM[@]}"; do
     cargo_mm=$(echo $cargo_ver | cut -d. -f1,2)
 
     if [ "$npm_mm" != "$cargo_mm" ]; then
-        echo "  ❌ plugin-$plugin: npm $npm_ver (${npm_mm}.x) != cargo $cargo_ver (${cargo_mm}.x)"
+        echo "  FAIL: plugin-$plugin: npm $npm_ver (${npm_mm}.x) != cargo $cargo_ver (${cargo_mm}.x)"
         PLUGIN_ERRORS=$((PLUGIN_ERRORS + 1))
     else
-        echo "  ✅ plugin-$plugin: npm $npm_ver, cargo $cargo_ver (${npm_mm}.x)"
+        echo "  OK: plugin-$plugin: npm $npm_ver, cargo $cargo_ver (${npm_mm}.x)"
     fi
 done
 
 echo
 
 if [ $PLUGIN_ERRORS -gt 0 ]; then
-    echo "❌ ERROR: $PLUGIN_ERRORS plugin version mismatch(es) found!"
+    echo "ERROR: $PLUGIN_ERRORS plugin version mismatch(es) found!"
     echo
     echo "   To fix:"
     echo "   1. Update package.json plugin versions to match Cargo.lock"
@@ -115,5 +127,5 @@ if [ $PLUGIN_ERRORS -gt 0 ]; then
     exit 1
 fi
 
-echo "✅ All Tauri packages and plugins aligned!"
+echo "All Tauri packages and plugins aligned!"
 echo "   Build should succeed!"

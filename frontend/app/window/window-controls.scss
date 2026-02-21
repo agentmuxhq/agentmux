@@ -9,6 +9,14 @@
     -webkit-app-region: no-drag;
     user-select: none;
 
+    .version-label {
+        font-size: 10px;
+        color: var(--secondary-text-color);
+        opacity: 0.7;
+        padding: 2px 4px;
+        white-space: nowrap;
+    }
+
     .window-control-btn {
         display: flex;
         align-items: center;

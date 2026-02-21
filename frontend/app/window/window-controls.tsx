@@ -34,7 +34,7 @@ const WindowControls = memo(({ platform, showNativeControls }: WindowControlsPro
                 data-testid="new-window-btn"
             >
                 <i className="fa fa-window-restore" />
-                <span>agentmux</span>
+                <span>agentmux v{getApi().getAboutModalDetails()?.version ?? "?"}</span>
             </button>
         </div>
     );

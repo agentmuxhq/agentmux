@@ -44,3 +44,9 @@ src-tauri/binaries/
 backend-test/
 src-tauri/gen/schemas/
 test/screenshots/
+
+# Screenshots (development artifacts)
+ss-*.png
+ss2.png
+screenshot*.png
+nul

@@ -8,11 +8,40 @@
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
-import { defineConfig } from "vite";
+import * as fs from "fs";
+import * as path from "path";
+import { defineConfig, type Plugin } from "vite";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
+
+/**
+ * Strips redundant KaTeX font formats (TTF, WOFF) from the build output.
+ * KaTeX CSS lists woff2/woff/ttf as @font-face fallbacks; Tauri's Chromium
+ * webview only needs woff2, so the others are dead weight (~876 KB).
+ */
+function stripKatexLegacyFonts(): Plugin {
+    return {
+        name: "strip-katex-legacy-fonts",
+        apply: "build",
+        closeBundle() {
+            const assetsDir = path.resolve(__dirname, "dist/frontend/assets");
+            if (!fs.existsSync(assetsDir)) return;
+            const files = fs.readdirSync(assetsDir);
+            let removed = 0;
+            for (const file of files) {
+                if (/^KaTeX_.*\.(ttf|woff)$/i.test(file) && !file.endsWith(".woff2")) {
+                    fs.unlinkSync(path.join(assetsDir, file));
+                    removed++;
+                }
+            }
+            if (removed > 0) {
+                console.log(`[strip-katex-legacy-fonts] Removed ${removed} redundant KaTeX font files (TTF/WOFF)`);
+            }
+        },
+    };
+}
 
 export default defineConfig({
     root: ".",
@@ -92,6 +121,7 @@ export default defineConfig({
                 },
             ],
         }),
+        stripKatexLegacyFonts(),
     ],
 
     // Environment variable prefix for Tauri

@@ -1,83 +1,126 @@
-# Contributing to Wave Terminal
+# Contributing to AgentMux
 
-We welcome and value contributions to Wave Terminal! Wave is an open source project, always open for contributors. There are several ways you can contribute:
+We welcome contributions to AgentMux! There are several ways to get involved:
 
-- Submit issues related to bugs or new feature requests
-- Fix outstanding [issues](https://github.com/wavetermdev/waveterm/issues) with the existing code
-- Contribute to [documentation](./docs)
-- Spread the word on social media (tag us on [LinkedIn](https://www.linkedin.com/company/wavetermdev), [Twitter/X](https://x.com/wavetermdev))
-- Or simply ⭐️ the repository to show your appreciation
+- Report bugs or request features via [GitHub Issues](https://github.com/a5af/agentmux/issues)
+- Fix outstanding [issues](https://github.com/a5af/agentmux/issues) in the existing code
+- Improve [documentation](./docs)
+- Star the repository to show your appreciation
 
-However you choose to contribute, please be mindful and respect our [code of conduct](./CODE_OF_CONDUCT.md).
-
-> All contributions are highly appreciated! 🥰
+Please be mindful and respect our [code of conduct](./CODE_OF_CONDUCT.md).
 
 ## Before You Start
 
-We accept patches in the form of github pull requests. If you are new to github, please review this [github pull request guide](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests).
+We accept patches as GitHub pull requests. If you're new to GitHub PRs, see the [GitHub pull request guide](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests).
 
 ### Contributor License Agreement
 
-Contributions to this project must be accompanied by a Contributor License Agreement (CLA). You (or your employer) retain the copyright to your contribution, this simply gives us permission to use and redistribute your contributions as part of the project.
+Contributions must be accompanied by a Contributor License Agreement (CLA). You (or your employer) retain the copyright to your contribution — this simply gives us permission to use and redistribute it as part of the project.
 
-> On submission of your first pull request you will be prompted to sign the CLA confirming your original code contribution and that you own the intellectual property.
+> On submission of your first pull request you will be prompted to sign the CLA.
 
-### Style guide
+### Style Guide
 
-The project uses American English.
+- The project uses American English.
+- We use [Prettier](https://prettier.io) and [EditorConfig](https://editorconfig.org) for formatting — please use the recommended VS Code extensions.
 
-We have a set of recommended Visual Studio Code extensions to enforce our style and quality standards. Please ensure you use these, especially [Prettier](https://prettier.io) and [EditorConfig](https://editorconfig.org), when contributing to our code.
+## How to Contribute
 
-## How to contribute
-
-- For minor changes, you are welcome to [open a pull request](https://github.com/wavetermdev/waveterm/pulls).
-- For major changes, please [create an issue](https://github.com/wavetermdev/waveterm/issues/new) first.
-- If you are looking for a place to start take a look at [Good First Issues](https://github.com/wavetermdev/waveterm/issues?q=is:issue%20state:open%20label:%22good%20first%20issue%22).
-- Join the [Discord channel](https://discord.gg/XfvZ334gwU) to collaborate with the community on your contribution.
+- For minor changes, open a pull request directly.
+- For major changes, [create an issue](https://github.com/a5af/agentmux/issues/new) first to discuss the approach.
+- Branch naming: `agenta/feature-name` (e.g., `agenta/fix-terminal-scroll`)
 
 ### Development Environment
 
-To build and run Wave locally, see instructions at [Building Wave Terminal](./BUILD.md).
+To build and run AgentMux locally, see [BUILD.md](./BUILD.md).
 
 ### UI Component Library
 
-We are working to document all our UI components in [Storybook](https://storybook.js.org/docs) for easy reference and testing. If you would like to help us with this, we would be very grateful!
+We use [Storybook](https://storybook.js.org/docs) to document and test UI components in isolation. Run it with:
 
-Our Storybook site is hosted [docs.waveterm.dev/storybook](https://docs.waveterm.dev/storybook).
+```bash
+task storybook
+```
 
 ### Create a Pull Request
 
 Guidelines:
 
-- Before writing any code, please look through existing PRs or issues to make sure nobody is already working on the same thing.
-- Develop features on a branch - do not work on the main branch
-- For anything but minor fixes, please submit tests and documentation
-- Please reference the issue in the pull request
+- Check existing PRs and issues before starting — avoid duplicating work.
+- Develop features on a branch — do not work directly on `main`.
+- For anything but minor fixes, include tests and documentation updates.
+- Reference the relevant issue in the PR body.
 
 ## Project Structure
 
-The project is broken into four main components: frontend, emain, agentmuxsrv, and wsh. This section is a work-in-progress as our codebase is constantly changing.
+AgentMux is a **Tauri v2** desktop application with a **100% Rust backend**.
 
-### Frontend
+```
+agentmux/
+├── src-tauri/          # Tauri v2 shell (Rust + WebView2)
+├── agentmuxsrv-rs/     # Rust async backend server (Tokio + Axum)
+├── wsh-rs/             # Rust shell integration binary
+├── frontend/           # React 19 + TypeScript UI (Vite)
+├── docs/               # Architecture docs, specs, guides
+├── schema/             # JSON schema definitions
+├── scripts/            # Build and version management scripts
+└── Taskfile.yml        # Build task definitions
+```
 
-Our frontend can be found in the [`/frontend`](./frontend/) directory. It is written in React Typescript. The main entrypoint is [`wave.ts`](./frontend/wave.ts) and the root for the React VDOM is [`app.tsx`](./frontend/app/app.tsx). If you are using `task dev` to run your dev instance of the app, the frontend will be loaded using Vite, which allows for Hot Module Reloading. This should work for most styling and simple component changes, but anything that affects the state of the app (the Jotai or layout code, for instance) may put the frontend into a bad state. If this happens, you can force reload the frontend using `Cmd:Shift:R` or `Ctrl:Shift:R`.
+### Frontend (`frontend/`)
 
-We also have a Storybook project configured for testing our component library. We're still working to fill out the test cases for this, but it is useful for testing components in isolation. You can run this using `task storybook`.
+Written in React 19 + TypeScript, bundled by Vite. Entry point is [`frontend/wave.ts`](./frontend/wave.ts), React root is [`frontend/app/app.tsx`](./frontend/app/app.tsx).
 
-### emain
+When running `task dev`, the frontend loads via Vite with Hot Module Reloading — most styling and component changes reload automatically. For state-level changes (Jotai atoms, layout), force-reload with `Ctrl+Shift+R`.
 
-emain can be found at [`/emain`](./emain/). It is the main NodeJS process and is first thing that is run when you start up the app and it forks off the process for the agentmuxsrv backend and manages all the Electron interfaces, such as window and view management, context menus, and native UI calls. Its main entrypoint is [`emain.ts`](./emain/emain.ts). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
+Key subdirectories:
+- `frontend/app/view/` — 10 pane view types (agent, term, codeeditor, sysinfo, webview, etc.)
+- `frontend/app/block/` — Block/pane rendering and registry
+- `frontend/app/store/` — Jotai atom state management
+- `frontend/app/element/` — 40+ reusable UI components
+- `frontend/app/aipanel/` — AI panel chat interface
 
-The frontend and emain communicate using the [Electron IPC mechanism](https://www.electronjs.org/docs/latest/tutorial/ipc). All exposed functions between the two are defined twice, once in [`preload.ts`](./emain/preload.ts) and once in [`custom.d.ts`](./frontend/types/custom.d.ts). On the frontend, you call the exposed function by calling `getApi().<function>()`.
+Each view type implements the `ViewModel` interface and is registered in the block registry:
 
-### agentmuxsrv
+```typescript
+// frontend/app/block/block.tsx
+BlockRegistry.set("myview", MyViewModel);
+```
 
-agentmuxsrv can be found at [`/cmd/server`](./cmd/server), with most business logic located in [`/pkg`](./pkg/). It is the primary Go backend for our app and manages the database and all communications with remote hosts. Its main entrypoint is [`main-server.go`](./cmd/server/main-server.go). This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
+### Tauri Shell (`src-tauri/`)
 
-Communication between the agentmuxsrv and the frontend and emain is handled by both HTTP services (found at [`/pkg/service`](./pkg/service/)) and wshrpc via WebSocket (found at [`/pkg/wshrpc`](./pkg/wshrpc/)).
+The native desktop layer — handles window management, system tray, native menus, file dialogs, and spawning the backend sidecar. Uses Tauri IPC commands (defined in `src-tauri/src/commands/`) to communicate with the frontend.
 
-### wsh
+Changes here do not hot-reload — Tauri auto-rebuilds in `task dev` when Rust files change, but the process restarts.
 
-wsh can be found at [`/cmd/wsh`](./cmd/wsh/). It serves two purposes: it functions as a CLI tool for controlling Wave from the command line and it functions as a server on remote machines to facilitate multiplexing terminal sessions over a single connection and streaming files between the remote host and the local host. This process does not hot-reload, you will need to manually kill the dev instance and rerun it to apply changes.
+### Rust Backend (`agentmuxsrv-rs/`)
 
-Communication between agentmuxsrv and wsh is handled by wshrpc via either forwarded domain socket or WebSocket, depending on what the remote host supports.
+The async backend server — auto-spawned by Tauri, never launched manually. Handles:
+
+- Block/pane lifecycle and controller execution
+- WebSocket server for real-time frontend communication (JSON-RPC 2.0)
+- SQLite persistence (blocks, tabs, windows, metadata)
+- Shell execution with real PTY via `portable-pty`
+- AI provider integration (Claude API, multi-provider CLI)
+- Event pub-sub system
+- File operations and remote connections
+
+Changes here require `task build:backend` followed by restarting `task dev`.
+
+### Shell Helper (`wsh-rs/`)
+
+A small Rust binary (1.1 MB) deployed to remote hosts for multiplexed terminal sessions and file streaming. Communicates with the backend via WebSocket.
+
+Changes here require `task build:wsh`.
+
+### Communication Flow
+
+```
+Frontend (React)
+    ↕  Tauri IPC (window/platform commands)
+Tauri Shell (src-tauri)
+    ↕  WebSocket / JSON-RPC 2.0
+agentmuxsrv-rs (Rust backend)
+    ↕  WebSocket / wshrpc
+wsh-rs (remote hosts)
+```

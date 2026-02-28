@@ -1,8 +1,8 @@
 # Building AgentMux
 
-These instructions are for setting up dependencies and building AgentMux from source on Windows, macOS, and Linux.
+These instructions cover setting up dependencies and building AgentMux from source on Windows, macOS, and Linux.
 
-**Architecture:** AgentMux is built on **Tauri v2** (not Electron), with a Go backend sidecar.
+**Architecture:** AgentMux is built on **Tauri v2** with a **100% Rust backend** (Go removed in v0.31.0).
 
 ---
 
@@ -13,31 +13,26 @@ These instructions are for setting up dependencies and building AgentMux from so
 | Tool | Version | Purpose |
 |------|---------|---------|
 | **Node.js** | v22 LTS | Frontend build (React/Vite) |
-| **Go** | 1.23+ | Backend (agentmuxsrv, wsh) |
-| **Rust** | 1.77+ | Tauri frontend (Rust) |
+| **Rust** | 1.77+ | Backend (agentmuxsrv-rs, wsh-rs) + Tauri |
 | **Task** | Latest | Build orchestration |
-| **Zig** | 0.13+ | CGO cross-compilation (Windows/Linux) |
+
+> **Note:** Go and Zig are no longer required. The backend is 100% Rust since v0.31.0.
 
 ### Platform-Specific Setup
 
 #### Windows
 
-1. **Install Zig** (for CGO):
-   ```powershell
-   # Download from https://ziglang.org/download/
-   # Extract to C:\Systems\zig-windows-x86_64-0.13.0\
-   # Add to PATH
-   ```
-
-2. **Install Rust** (for Tauri):
+1. **Install Rust** (includes cargo):
    ```powershell
    # Download from https://rustup.rs/
    rustup-init.exe
    ```
 
-3. **Install Visual Studio Build Tools** (required by Rust):
+2. **Install Visual Studio Build Tools** (required by Rust):
    - Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
    - Install: "Desktop development with C++"
+
+3. **WebView2** is pre-installed on Windows 10/11. If missing, it will auto-install on first launch.
 
 #### macOS
 
@@ -51,8 +46,6 @@ These instructions are for setting up dependencies and building AgentMux from so
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
 
-3. **No Zig required** (macOS CGO works natively)
-
 #### Linux
 
 1. **Install dependencies** (Debian/Ubuntu):
@@ -60,9 +53,6 @@ These instructions are for setting up dependencies and building AgentMux from so
    sudo apt install zip libwebkit2gtk-4.1-dev \
      build-essential curl wget file libssl-dev \
      libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-
-   # Install Zig for CGO
-   sudo snap install zig --classic --beta
    ```
 
 2. **Install Rust**:
@@ -72,7 +62,7 @@ These instructions are for setting up dependencies and building AgentMux from so
 
 ### Install Task
 
-Task is our build orchestration tool (modern equivalent to GNU Make):
+Task is the primary build orchestrator:
 
 ```bash
 # macOS
@@ -100,14 +90,13 @@ cd agentmux
 
 ## Install Dependencies
 
-First time setup (run this after cloning):
+First-time setup after cloning:
 
 ```bash
-# Install Node and Go dependencies
-task init
+npm install
 ```
 
-If you have build issues later, run `task init` again to refresh dependencies.
+If you have build issues later, run `npm install` again to refresh dependencies.
 
 ---
 
@@ -122,10 +111,9 @@ task dev
 ```
 
 Features:
-- ✅ Frontend hot reload (React HMR)
-- ✅ Tauri auto-rebuild on Rust changes
-- ✅ Backend auto-restart on crash
-- ✅ DevTools available (Ctrl+Shift+I)
+- Frontend hot reload (React HMR via Vite)
+- Tauri auto-rebuild on Rust changes
+- DevTools available (Ctrl+Shift+I)
 
 **Important:** Always use `task dev` for development. Never launch from `src-tauri/target/` directly.
 
@@ -133,10 +121,10 @@ Features:
 
 ### Backend Rebuild
 
-If you modify Go backend code (`pkg/`, `cmd/`):
+If you modify Rust backend code (`agentmuxsrv-rs/src/` or `wsh-rs/src/`):
 
 ```bash
-# Rebuild Go binaries
+# Rebuild Rust binaries
 task build:backend
 
 # Then restart dev server
@@ -144,8 +132,8 @@ task dev
 ```
 
 This rebuilds:
-- `dist/bin/agentmuxsrv.x64.exe` (or platform-specific)
-- `dist/bin/wsh-{version}-{platform}.{arch}.exe`
+- `src-tauri/binaries/agentmuxsrv-rs-x86_64-pc-windows-msvc.exe` (backend server)
+- `dist/bin/wsh-{version}-{platform}.{arch}.exe` (shell integration)
 
 ---
 
@@ -154,7 +142,7 @@ This rebuilds:
 Create a production Tauri build with installer:
 
 ```bash
-task build
+task package
 ```
 
 Output locations:
@@ -162,7 +150,13 @@ Output locations:
 - **macOS:** `src-tauri/target/release/bundle/dmg/AgentMux_{version}_x64.dmg`
 - **Linux:** `src-tauri/target/release/bundle/deb/agentmux_{version}_amd64.deb`
 
-**Note:** This creates final installers for distribution, not for development.
+For a portable ZIP (Windows):
+
+```bash
+task package:portable
+```
+
+Output: `dist/agentmux-{version}-x64-portable.zip`
 
 ---
 
@@ -174,9 +168,6 @@ Output locations:
 # Bump version (updates package.json, Cargo.toml, tauri.conf.json, etc.)
 ./bump-version.sh patch --message "Your change description"
 
-# Rebuild backend with new version
-task build:backend
-
 # Verify consistency
 bash scripts/verify-version.sh
 
@@ -184,7 +175,7 @@ bash scripts/verify-version.sh
 git push origin <branch> --tags
 ```
 
-**Critical:** Always use `bump-version.sh` - never manually edit version numbers.
+**Critical:** Always use `bump-version.sh` — never manually edit version numbers.
 
 ---
 
@@ -205,16 +196,21 @@ task dev
 
 # 4. Make changes to code
 # - Frontend (frontend/): Auto-reloads
-# - Tauri (src-tauri/src/): Auto-rebuilds
-# - Backend (pkg/, cmd/): Run `task build:backend`, restart dev
+# - Tauri shell (src-tauri/src/): Auto-rebuilds
+# - Rust backend (agentmuxsrv-rs/src/): Run `task build:backend`, restart dev
+# - wsh (wsh-rs/src/): Run `task build:wsh`, restart dev
 
 # 5. Test changes in running app
 
-# 6. Commit and push
+# 6. Bump version
+./bump-version.sh patch --message "Description of change"
+
+# 7. Commit and push
+git add -p
 git commit -m "feat: description"
 git push -u origin agenta/feature-name
 
-# 7. Create PR
+# 8. Create PR
 gh pr create --title "Feature" --body "Description"
 ```
 
@@ -227,30 +223,36 @@ gh pr create --title "Feature" --body "Description"
 After building, you'll have:
 
 ```
-dist/
-├── bin/
-│   ├── agentmuxsrv.x64.exe       # Go backend (33MB)
-│   └── wsh-{version}-windows.x64.exe # Shell integration (11MB)
-└── frontend/                     # Vite output (embedded in Tauri)
+src-tauri/binaries/
+├── agentmuxsrv-rs-x86_64-pc-windows-msvc.exe  # Rust backend (sidecar)
+└── bin/
+    └── wsh-{version}-windows.x64.exe           # Shell integration
 
 src-tauri/target/release/
-├── agentmux.exe                   # Tauri app (14MB)
+├── agentmux.exe                                 # Tauri app
 └── bundle/
     └── nsis/
-        └── AgentMux_{version}_x64-setup.exe  # Installer (29MB)
+        └── AgentMux_{version}_x64-setup.exe     # Installer
+
+dist/
+└── agentmux-{version}-x64-portable/            # Portable build
+    ├── agentmux.exe
+    ├── agentmuxsrv-rs.x64.exe
+    └── bin/
+        └── wsh-{version}-windows.x64.exe
 ```
 
-### Component Sizes
+### Component Sizes (v0.31.0+)
 
 | Component | Size | Purpose |
 |-----------|------|---------|
-| `agentmux.exe` | ~14MB | Tauri frontend (Rust + webview) |
-| `agentmuxsrv.exe` | ~33MB | Go backend server |
-| `wsh.exe` | ~11MB | Shell integration |
-| **Total runtime** | ~58MB | All components |
-| **Installer (NSIS)** | ~29MB | Compressed with binaries |
+| `agentmux.exe` | ~14 MB | Tauri app (Rust + WebView2) |
+| `agentmuxsrv-rs.exe` | ~4 MB | Rust async backend server |
+| `wsh.exe` | ~1.1 MB | Shell integration binary |
+| **Total runtime** | ~19 MB | All components |
+| **Portable ZIP** | ~18 MB | Compressed (v0.31.10) |
 
-Compare to Electron version: ~135MB runtime, ~120-150MB installer.
+Compare to the old Go backend: ~25 MB for backend alone, ~58 MB total runtime.
 
 ---
 
@@ -266,40 +268,40 @@ Logs appear in the Console tab.
 
 ### Backend Logs
 
-Go backend logs (agentmuxsrv):
-- **Development:** `~/.waveterm-dev/waveapp.log`
-- **Production:** `~/.waveterm/waveapp.log`
+Rust backend logs (agentmuxsrv-rs):
+- **Development:** `~/.agentmux-dev/agentmux.log`
+- **Production:** `~/.agentmux/agentmux.log`
 
 View logs in real-time:
 
 ```bash
 # Development
-tail -f ~/.waveterm-dev/waveapp.log
+tail -f ~/.agentmux-dev/agentmux.log
 
 # Production
-tail -f ~/.waveterm/waveapp.log
+tail -f ~/.agentmux/agentmux.log
 ```
 
 ### Tauri Logs
 
-Rust logs appear in the terminal where you ran `task dev`.
+Rust/Tauri logs appear in the terminal where you ran `task dev`.
 
 ---
 
 ## Troubleshooting
 
-### Issue: "agentmuxsrv.x64.exe ENOENT"
+### Issue: Backend binary not found (ENOENT)
 
-**Cause:** Backend binary not found or wrong version.
+**Cause:** Backend binary not built or wrong version.
 
 **Fix:**
 ```bash
-# Check version mismatch
-cat package.json | grep version
-ls -lh dist/bin/wsh-*
-
-# Rebuild backend
+# Rebuild Rust backend
 task build:backend
+
+# Verify binaries exist
+ls -lh src-tauri/binaries/
+ls -lh dist/bin/wsh-*
 ```
 
 ### Issue: Tauri build fails with linker errors
@@ -317,30 +319,33 @@ task build:backend
 sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev
 ```
 
-### Issue: CGO errors during Go build
-
-**Cause:** Zig compiler not installed or not in PATH.
-
-**Fix:**
-```bash
-# Verify Zig is installed
-zig version
-
-# Add to PATH (example for Windows)
-$env:PATH += ";C:\Systems\zig-windows-x86_64-0.13.0"
-```
-
 ### Issue: Frontend not loading in dev mode
 
-**Cause:** Vite dev server failed to start.
+**Cause:** Vite dev server failed to start, or port conflict.
 
 **Fix:**
 ```bash
-# Clear node_modules and reinstall
+# Check if port 1420 is in use
+netstat -ano | grep :1420
+
+# Clear and reinstall
 rm -rf node_modules package-lock.json
 npm install
 task dev
 ```
+
+### Issue: Schema directory missing after clean
+
+**Cause:** `task clean` wipes `dist/schema/` but it's needed for the build.
+
+**Fix:**
+```bash
+task copy:schema
+# or manually:
+cp -r schema dist/schema
+```
+
+This is handled automatically in the normal build pipeline.
 
 ---
 
@@ -348,9 +353,9 @@ task dev
 
 ### GitHub Actions
 
-Automated builds run on every push to `main`:
+Automated builds run on push to `main`:
 
-- **Windows:** NSIS installer (.exe)
+- **Windows:** NSIS installer (.exe) + portable ZIP
 - **macOS:** DMG installer (.dmg)
 - **Linux:** DEB package (.deb), AppImage
 
@@ -358,17 +363,15 @@ Artifacts are uploaded to GitHub Releases on tagged commits.
 
 ### Local Release Build
 
-To create a release build locally:
-
 ```bash
 # 1. Bump version
-./bump-version.sh minor --message "v0.19.0 release"
+./bump-version.sh patch --message "v0.31.x release"
 
-# 2. Rebuild backend
+# 2. Rebuild Rust binaries
 task build:backend
 
 # 3. Build Tauri package
-task build
+task package
 
 # 4. Test installer
 # Install from src-tauri/target/release/bundle/
@@ -385,7 +388,7 @@ git push origin main --tags
 
 - Uses **NSIS** for installers
 - WebView2 runtime required (auto-installs if missing)
-- Zig required for CGO (Go → C compilation)
+- No CGO / no Zig required (pure Rust)
 
 ### macOS
 
@@ -398,23 +401,18 @@ git push origin main --tags
 
 - Uses **DEB** (Debian/Ubuntu) and **AppImage** (universal)
 - WebKitGTK required: `libwebkit2gtk-4.1-dev`
-- Different distros may need different dependencies
 
 ---
 
-## Advanced: Custom Build
+## Advanced
 
 ### Build Backend for Specific Platform
 
 ```bash
-# Windows x64
-GOOS=windows GOARCH=amd64 task build:server
-
-# macOS ARM64
-GOOS=darwin GOARCH=arm64 task build:server
-
-# Linux x64
-GOOS=linux GOARCH=amd64 task build:server
+# Rust cross-compilation
+cargo build --release --target x86_64-pc-windows-msvc
+cargo build --release --target aarch64-apple-darwin
+cargo build --release --target x86_64-unknown-linux-gnu
 ```
 
 ### Build Frontend Only
@@ -427,10 +425,10 @@ npm run build:dev
 npm run build:prod
 ```
 
-### Build Tauri Only (no backend rebuild)
+### Build Tauri Only (skip backend rebuild)
 
 ```bash
-npm run tauri build
+npx tauri build
 ```
 
 ---
@@ -439,22 +437,20 @@ npm run tauri build
 
 - **Tauri Documentation:** https://tauri.app/v2/
 - **Task Configuration:** [Taskfile.yml](Taskfile.yml)
-- **Architecture Docs:** [docs/architecture/agentmux-components.md](docs/architecture/agentmux-components.md)
-- **Version Management:** [README.md](README.md)
+- **Architecture Docs:** [docs/architecture/](docs/architecture/)
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Version History:** [VERSION_HISTORY.md](VERSION_HISTORY.md)
 
 ---
 
-## Summary
-
-**Quick Reference:**
+## Quick Reference
 
 | Task | Command |
 |------|---------|
 | **Development** | `task dev` |
-| **Rebuild backend** | `task build:backend` |
-| **Production build** | `task build` |
+| **Rebuild Rust backend** | `task build:backend` |
+| **Production build** | `task package` |
+| **Portable ZIP** | `task package:portable` |
 | **Bump version** | `./bump-version.sh patch` |
 | **Run tests** | `npm test` |
-
-**Remember:** Always use `task dev` for development, never launch stale builds from `make/` or `target/`!
+| **Verify versions** | `bash scripts/verify-version.sh` |

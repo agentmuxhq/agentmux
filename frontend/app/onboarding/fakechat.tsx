@@ -1,8 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveStreamdown } from "@/app/element/streamdown";
-import { memo, useEffect, useRef, useState } from "react";
+import React, { memo, Suspense, useEffect, useRef, useState } from "react";
+
+const WaveStreamdown = React.lazy(() => import("@/app/element/streamdown"));
 
 interface ChatConfig {
     userPrompt: string;
@@ -189,7 +190,9 @@ const FakeAssistantMessage = memo(({ config, onComplete }: { config: ChatConfig;
                         <div className="mb-2">
                             <FakeToolCall toolName={config.toolName} toolDescription={config.toolDescription} />
                         </div>
-                        <WaveStreamdown text={streamedText} parseIncompleteMarkdown={true} className="text-gray-100" />
+                        <Suspense fallback={<div className="text-gray-100 whitespace-pre-wrap">{streamedText}</div>}>
+                            <WaveStreamdown text={streamedText} parseIncompleteMarkdown={true} className="text-gray-100" />
+                        </Suspense>
                     </>
                 )}
             </div>

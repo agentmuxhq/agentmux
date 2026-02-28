@@ -2,13 +2,21 @@
 
 This document tracks the version history of the a5af/agentmux fork (formerly a5af/waveterm).
 
-## Latest Version: 0.31.4
+## Latest Version: 0.31.9
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.31.9-fork (2026-02-21)
+- **Agent:** AgentA
+- **Changes:**
+  - perf: Convert Hack Nerd Mono fonts from TTF to WOFF2 (-5 MB)
+  - perf: Exclude duplicate Monaco workers and NLS locales from static copy (-11.2 MB)
+  - perf: Lazy-load WaveStreamdown to defer shiki (9.4 MB) to on-demand
+  - perf: Strip redundant KaTeX TTF/WOFF fonts from build output (-876 KB)
 
 ### v0.31.4-fork (2026-02-21)
 - **Agent:** AgentA

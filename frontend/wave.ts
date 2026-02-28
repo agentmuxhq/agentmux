@@ -25,6 +25,8 @@ import {
     pushNotification,
     removeNotificationById,
     subscribeToConnEvents,
+    windowCountAtom,
+    windowInstanceNumAtom,
 } from "@/app/store/global";
 import * as WOS from "@/app/store/wos";
 import { loadFonts } from "@/util/fontutil";
@@ -143,6 +145,30 @@ function showStartupError(message: string) {
 const RPC_TIMEOUT = 5_000; // 5 seconds for individual RPC calls
 
 /**
+ * Initialize the window instance number and count atoms, and subscribe to
+ * the "window-instances-changed" Tauri event so the count stays reactive.
+ * Called once per window after the wave UI is fully initialized.
+ */
+async function initInstanceTracking(): Promise<void> {
+    try {
+        const [instanceNum, windowCount] = await Promise.all([
+            getApi().getInstanceNumber(),
+            getApi().getWindowCount(),
+        ]);
+        globalStore.set(windowInstanceNumAtom, instanceNum);
+        globalStore.set(windowCountAtom, windowCount);
+
+        // Keep count in sync whenever any window opens or closes.
+        const { listen } = await import("@tauri-apps/api/event");
+        await listen<number>("window-instances-changed", (event) => {
+            globalStore.set(windowCountAtom, event.payload);
+        });
+    } catch (e) {
+        console.warn("[initInstanceTracking] failed:", e);
+    }
+}
+
+/**
  * Initialize AgentMux in Tauri mode by fetching client/window/workspace/tab data
  * from backend, verifying objects exist, and creating missing ones if needed.
  * Handles first-window and new-window creation.
@@ -223,6 +249,9 @@ async function initTauriWave(): Promise<void> {
         await initWaveWrap(initOpts);
         tlog("initWaveWrap", t);
         tlog("TOTAL initTauriWave", t0);
+
+        // Initialize instance tracking (must come after initWaveWrap so globalStore is ready)
+        await initInstanceTracking();
 
         // Show the window now that it's fully initialized (Tauri starts hidden)
         try {
@@ -307,6 +336,9 @@ async function initTauriNewWindow(): Promise<void> {
         await initWaveWrap(initOpts);
         tlog("initWaveWrap", t);
         tlog("TOTAL initTauriNewWindow", t0);
+
+        // Initialize instance tracking (must come after initWaveWrap so globalStore is ready)
+        await initInstanceTracking();
 
         // Show the window now that it's initialized
         try {

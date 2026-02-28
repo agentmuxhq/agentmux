@@ -106,6 +106,8 @@ declare global {
         isMainWindow: () => Promise<boolean>; // is-main-window
         listWindows: () => Promise<string[]>; // list-windows
         focusWindow: (label: string) => Promise<void>; // focus-window
+        getInstanceNumber: () => Promise<number>; // get-instance-number
+        getWindowCount: () => Promise<number>; // get-window-count
         createWorkspace: () => void; // create-workspace
         switchWorkspace: (workspaceId: string) => void; // switch-workspace
         deleteWorkspace: (workspaceId: string) => void; // delete-workspace

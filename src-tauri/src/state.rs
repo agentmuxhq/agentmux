@@ -1,4 +1,44 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
+
+/// Tracks a stable sequential instance number for each open window.
+/// Main window is always 1. Additional windows get 2, 3, … in creation order.
+/// Numbers are never reused within a session.
+pub struct WindowInstanceRegistry {
+    instances: HashMap<String, u32>,
+    next_num: u32,
+}
+
+impl WindowInstanceRegistry {
+    pub fn new() -> Self {
+        let mut instances = HashMap::new();
+        instances.insert("main".to_string(), 1);
+        Self { instances, next_num: 2 }
+    }
+
+    /// Assign the next instance number to a new window label.
+    pub fn register(&mut self, label: &str) -> u32 {
+        let num = self.next_num;
+        self.instances.insert(label.to_string(), num);
+        self.next_num += 1;
+        num
+    }
+
+    /// Remove a window from the registry when it closes.
+    pub fn unregister(&mut self, label: &str) {
+        self.instances.remove(label);
+    }
+
+    /// Look up the instance number for a window label.
+    pub fn get(&self, label: &str) -> Option<u32> {
+        self.instances.get(label).copied()
+    }
+
+    /// Total number of currently open windows.
+    pub fn count(&self) -> usize {
+        self.instances.len()
+    }
+}
 
 /// Shared application state managed by Tauri.
 /// Replaces the scattered state across emain/*.ts files.
@@ -30,6 +70,9 @@ pub struct AppState {
 
     /// Window initialization status ("ready" or "wave-ready")
     pub window_init_status: Mutex<String>,
+
+    /// Sequential instance numbers for each open window.
+    pub window_instance_registry: Mutex<WindowInstanceRegistry>,
 }
 
 #[derive(Default, Clone, serde::Serialize)]
@@ -50,6 +93,7 @@ impl Default for AppState {
             window_id: Mutex::new(None),
             active_tab_id: Mutex::new(None),
             window_init_status: Mutex::new(String::new()),
+            window_instance_registry: Mutex::new(WindowInstanceRegistry::new()),
         }
     }
 }

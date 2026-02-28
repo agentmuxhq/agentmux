@@ -30,8 +30,36 @@ pub async fn open_new_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<Str
     .build()
     .map_err(|e| format!("Failed to create window: {}", e))?;
 
+    // Assign a stable instance number to the new window and notify all windows.
+    let state = app.state::<AppState>();
+    let count = {
+        let mut reg = state.window_instance_registry.lock().unwrap();
+        let num = reg.register(&label);
+        tracing::info!("New window {} assigned instance #{}", label, num);
+        reg.count()
+    };
+    let _ = app.emit("window-instances-changed", count);
+
     tracing::info!("Created new window with label: {}", label);
     Ok(label)
+}
+
+/// Returns the sequential instance number for the calling window (1-based).
+/// Returns 0 if the window is not found in the registry (should not happen in practice).
+#[tauri::command]
+pub fn get_instance_number(
+    window: tauri::Window,
+    state: tauri::State<'_, AppState>,
+) -> u32 {
+    let reg = state.window_instance_registry.lock().unwrap();
+    reg.get(window.label()).unwrap_or(0)
+}
+
+/// Returns the total number of currently open windows.
+#[tauri::command]
+pub fn get_window_count(state: tauri::State<'_, AppState>) -> usize {
+    let reg = state.window_instance_registry.lock().unwrap();
+    reg.count()
 }
 
 /// Get the current zoom factor.

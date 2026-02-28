@@ -27,6 +27,11 @@ import { getFileSubject, waveEventSubscribe } from "./wps";
 
 let atoms: GlobalAtomsType;
 let globalPrimaryTabStartup: boolean = false;
+
+// Instance number for this window (stable after init — never changes during the window's lifetime).
+const windowInstanceNumAtom = atom<number>(0) as PrimitiveAtom<number>;
+// Total number of open windows (reactive — updated via "window-instances-changed" Tauri event).
+const windowCountAtom = atom<number>(1) as PrimitiveAtom<number>;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
@@ -864,4 +869,6 @@ export {
     useSettingsKeyAtom,
     useTabMetaKeyAtom,
     WOS,
+    windowInstanceNumAtom,
+    windowCountAtom,
 };

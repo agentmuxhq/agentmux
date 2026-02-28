@@ -262,6 +262,12 @@ export function buildTauriApi(): AppApi {
         focusWindow: async (label: string) => {
             await invoke("focus_window", { label });
         },
+        getInstanceNumber: async () => {
+            return await invoke<number>("get_instance_number");
+        },
+        getWindowCount: async () => {
+            return await invoke<number>("get_window_count");
+        },
 
         // --- Workspace & Tabs ---
         // In Tauri, tabs are managed in the frontend (React state).

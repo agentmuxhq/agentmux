@@ -61,6 +61,8 @@ pub fn run() {
             commands::window::get_zoom_factor,
             commands::window::set_zoom_factor,
             commands::window::get_cursor_point,
+            commands::window::get_instance_number,
+            commands::window::get_window_count,
             // Backend commands
             commands::backend::get_backend_endpoints,
             commands::backend::get_wave_init_opts,
@@ -207,6 +209,16 @@ pub fn run() {
                         .keys()
                         .filter(|label| **label != closing_label)
                         .count();
+
+                    // Unregister the instance number and notify remaining windows.
+                    {
+                        let state = window.app_handle().state::<state::AppState>();
+                        let mut reg = state.window_instance_registry.lock().unwrap();
+                        reg.unregister(&closing_label);
+                        let count = reg.count();
+                        drop(reg);
+                        let _ = window.app_handle().emit("window-instances-changed", count);
+                    }
 
                     tracing::info!("Window {} closing, {} other window(s) remaining", closing_label, remaining_windows);
 

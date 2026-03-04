@@ -30,7 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": ["nsis", "deb", "appimage", "dmg"],
     "externalBin": [
       "binaries/agentmuxsrv-rs",
       "binaries/wsh"

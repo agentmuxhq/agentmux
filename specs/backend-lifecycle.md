@@ -111,85 +111,81 @@ The backend has no concept of "no frontends connected." It serves forever as lon
 
 ## Proposed Fixes
 
-### Phase 1: Reliable Cleanup (Short-term)
+### What was tried and failed: WS-based idle timeout
 
-#### 1a. Frontend shutdown: close stdin pipe before kill
+**Attempted in v0.31.59:** Backend tracked active WS client count. If count reached 0 for 30s (after 60s initial grace), backend self-terminated.
 
-Instead of just `child.kill()`, close the child's stdin handle first. This triggers the backend's stdin EOF handler for a graceful shutdown, then kill as fallback after a timeout.
+**Why it failed:** WebSocket connections are not continuously stable. React re-renders, tab switches, window refocuses, and multi-window scenarios all cause brief WS disconnects. The backend killed itself while the frontend was still running, causing "Failed to fetch" errors and total instability.
+
+**Lesson:** The backend must NEVER self-terminate based on WS client count. WS connections are a transport detail, not a reliable proxy for "frontend is alive."
+
+### Phase 1: Reliable Cleanup (Implemented)
+
+#### 1a. PID-based kill for reused backends (done, v0.31.59)
+
+When the frontend reuses an existing backend via `wave-endpoints.json`, it stores the PID. On last window close, if no child handle exists (reused case), it falls back to OS-level kill via stored PID (`taskkill /PID` on Windows, `kill` on Unix).
+
+#### 1b. Shutdown WS command (done, v0.31.59)
+
+Backend accepts `{"type":"shutdown"}` via WebSocket. Cancels the shutdown token and exits gracefully. Frontend can send this before closing.
+
+### Phase 2: Crash Recovery (TODO)
+
+The remaining gap: if the Tauri process crashes, neither `child.kill()` nor PID kill runs.
+
+#### 2a. Frontend heartbeat file (already exists)
+
+`src-tauri/src/heartbeat.rs` already writes `agentmux.heartbeat` every 5s. The backend needs to READ this file and self-terminate if it's stale.
 
 ```rust
-// In on_window_event CloseRequested handler:
-if let Some(child) = sidecar.take() {
-    // Close stdin to trigger graceful shutdown
-    drop(child.stdin()); // if available
-
-    // Give backend 2s to exit gracefully
-    tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        let _ = child.kill(); // force kill if still alive
-    });
-}
+// In main.rs, add heartbeat watchdog:
+// Read heartbeat file every 10s. If mtime > 30s old, frontend is dead.
+// This is safe because the heartbeat is written by the Tauri process,
+// not the WebSocket connection — it survives WS reconnects.
 ```
 
-#### 1b. Backend: add idle timeout
+This is fundamentally different from WS-based idle detection because:
+- The heartbeat is written by the **Tauri native process**, not the webview
+- It survives WS reconnects, tab switches, React re-renders
+- It only goes stale when the Tauri process actually dies
 
-If no WebSocket clients are connected for N seconds (e.g., 30s), the backend should self-terminate. This catches all cases where the frontend dies without cleanup.
+#### 2b. PID-based liveness check on reuse
 
-```rust
-// In main.rs, add to tokio::select!:
-_ = idle_watchdog(ws_client_count.clone(), Duration::from_secs(30)) => {
-    tracing::info!("No frontend connections for 30s, shutting down");
-}
-```
-
-The WebSocket upgrade handler already tracks connections. Add an atomic counter:
-- Increment on WS connect
-- Decrement on WS disconnect
-- Watchdog task: if count == 0, start a timer. If still 0 after timeout, cancel.
-
-#### 1c. PID-based liveness check on reuse
-
-When reading `wave-endpoints.json`, verify the recorded PID is still alive before attempting HTTP:
-
+Before attempting HTTP health check of an existing backend:
 ```rust
 let pid = json["pid"].as_u64().unwrap_or(0);
 if pid > 0 && !is_process_alive(pid as u32) {
-    tracing::warn!("Backend PID {} is dead, removing stale endpoints file");
+    // Backend is dead, remove stale file
     let _ = std::fs::remove_file(&endpoints_file);
-    // proceed to spawn
 }
 ```
 
-### Phase 2: Robust Lifecycle (Medium-term)
+### Phase 3: WebView2 Orphan Cleanup (TODO)
 
-#### 2a. Named mutex / lock file
+**New problem discovered:** WebView2 (`msedgewebview2.exe`) child processes survive after `agentmux.exe` exits. They hold directory handles on the portable folder, preventing deletion.
 
-On startup, the backend creates a lock file (`{instance_dir}/agentmuxsrv.lock`) with its PID. The frontend checks this lock before reuse. On backend exit (via `Drop` or atexit), the lock is removed.
+#### 3a. Kill WebView2 children on shutdown
 
-#### 2b. Heartbeat protocol (backend -> frontend)
+In `on_window_event(CloseRequested)`, after killing the backend sidecar, also kill WebView2 processes that are children of the current process:
 
-The frontend already writes heartbeats. Add a backend heartbeat:
-- Backend writes `{instance_dir}/agentmuxsrv.heartbeat` every 5s
-- Frontend checks this file's mtime before reuse
-- If stale (>15s old), consider the backend dead
+```rust
+// Get our PID, find msedgewebview2.exe processes with our PID as parent
+// Kill them with taskkill /T (tree kill)
+```
 
-#### 2c. Graceful shutdown RPC
+#### 3b. Use system-level WebView2 user data dir
 
-Add a `Shutdown` RPC command that the frontend calls before killing. This lets the backend:
-- Flush pending writes
-- Close WebSocket connections cleanly
-- Remove lock/endpoints files
-- Exit with code 0
+Instead of storing WebView2 data inside the portable folder, use `AppData/Local/agentmux/WebView2`. This avoids directory locks on the portable folder entirely.
 
-### Phase 3: Multi-Window Awareness (Long-term)
+### Phase 4: Multi-Window Awareness (Long-term)
 
-#### 3a. Connection registry
+#### 4a. Connection registry
 
 Backend tracks connected frontends (window ID + connect time). Exposed via RPC for debugging.
 
-#### 3b. Last-frontend-disconnected event
+#### 4b. Graceful multi-window shutdown
 
-When the last WS client disconnects, start the idle timer. If a new client connects within the timeout, cancel the timer. This replaces the blunt "no connections for N seconds" with a precise lifecycle.
+Frontend sends window ID on WS connect. Backend tracks which windows are alive. Only the last window triggers backend shutdown.
 
 ## Files Involved
 

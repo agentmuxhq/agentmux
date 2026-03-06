@@ -80,10 +80,18 @@ pub async fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendSpawnResult,
                                         existing.instance_id
                                     );
 
-                                    // Reuse the auth key from the existing backend
+                                    // Reuse the auth key and store the PID for shutdown
                                     let state = app.state::<crate::state::AppState>();
                                     let mut auth_key_guard = state.auth_key.lock().unwrap();
                                     *auth_key_guard = existing.auth_key.clone();
+                                    drop(auth_key_guard);
+
+                                    // Store PID so we can OS-kill on shutdown even without a child handle
+                                    if let Some(pid) = json["pid"].as_u64() {
+                                        let mut pid_guard = state.backend_pid.lock().unwrap();
+                                        *pid_guard = Some(pid as u32);
+                                        tracing::info!("Stored reused backend PID: {}", pid);
+                                    }
 
                                     return Ok(existing);
                                 } else {

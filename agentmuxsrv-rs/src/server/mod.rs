@@ -9,6 +9,7 @@ mod websocket;
 mod tests;
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 
 use axum::{
     body::Body,
@@ -45,6 +46,10 @@ pub struct AppState {
     pub poller: Arc<Poller>,
     pub config_watcher: Arc<wconfig::ConfigWatcher>,
     pub messagebus: Arc<MessageBus>,
+    /// Number of active WebSocket clients. Used by the idle shutdown watchdog.
+    pub ws_client_count: Arc<AtomicUsize>,
+    /// Token to trigger graceful shutdown from any context (idle watchdog, shutdown RPC, etc.)
+    pub shutdown_token: tokio_util::sync::CancellationToken,
 }
 
 /// Build the Axum router with all routes, auth middleware, and CORS.

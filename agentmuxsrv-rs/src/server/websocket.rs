@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::{
@@ -64,6 +65,10 @@ async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
     let ws_start = std::time::Instant::now();
     let conn_id = uuid::Uuid::new_v4().to_string();
     let tab_id = String::new();
+
+    // Track active WS clients for idle shutdown watchdog
+    let prev = state.ws_client_count.fetch_add(1, Ordering::Relaxed);
+    tracing::info!("ws client connected (conn_id={}), active clients: {}", conn_id, prev + 1);
 
     let mut event_rx = state.event_bus.register_ws(&conn_id, &tab_id);
     tracing::info!("[ws-perf] register_ws: {:.2}ms", ws_start.elapsed().as_secs_f64() * 1000.0);
@@ -194,6 +199,10 @@ async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
     if let Some(ref agent_id) = bus_agent_id {
         state.messagebus.unregister(agent_id);
     }
+
+    // Track active WS clients for idle shutdown watchdog
+    let prev = state.ws_client_count.fetch_sub(1, Ordering::Relaxed);
+    tracing::info!("ws client disconnected (conn_id={}), active clients: {}", conn_id, prev - 1);
 }
 
 /// Handle an incoming text message.
@@ -303,6 +312,16 @@ async fn handle_incoming_text(
                         _ => crate::backend::messagebus::Priority::Normal,
                     };
                     let _ = state.messagebus.broadcast(from, payload, priority);
+                }
+                return Ok(None);
+            }
+            "shutdown" => {
+                tracing::info!("shutdown requested via WebSocket");
+                state.shutdown_token.cancel();
+                let ack = json!({ "type": "shutdown:ack" });
+                let msg = serde_json::to_string(&ack).unwrap_or_default();
+                if socket.send(Message::Text(msg.into())).await.is_err() {
+                    return Err(true);
                 }
                 return Ok(None);
             }

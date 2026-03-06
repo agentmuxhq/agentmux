@@ -4,6 +4,7 @@ mod server;
 
 use std::future::IntoFuture;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use clap::Parser;
 use config::CliArgs;
@@ -125,6 +126,9 @@ async fn main() {
     // Local MessageBus for inter-agent communication
     let messagebus = Arc::new(backend::messagebus::MessageBus::new());
 
+    let ws_client_count = Arc::new(AtomicUsize::new(0));
+    let shutdown_token = tokio_util::sync::CancellationToken::new();
+
     let state = AppState {
         auth_key: config.auth_key.clone(),
         version: version.clone(),
@@ -137,6 +141,8 @@ async fn main() {
         poller,
         config_watcher,
         messagebus,
+        ws_client_count: ws_client_count.clone(),
+        shutdown_token: shutdown_token.clone(),
     };
 
     // 5. Bind 2 TCP listeners on 127.0.0.1:0 (web + ws — separate ports matching Go)
@@ -211,6 +217,35 @@ async fn main() {
         signal_token.cancel();
     });
 
+    // Idle watchdog: shut down if no WS clients are connected for 30 seconds.
+    // The initial grace period (60s) allows the frontend time to connect on startup.
+    let idle_ws_count = ws_client_count.clone();
+    let idle_shutdown = shutdown_token.clone();
+    tokio::spawn(async move {
+        // Give the frontend time to connect on first launch
+        tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+
+        let idle_timeout = std::time::Duration::from_secs(30);
+        let check_interval = std::time::Duration::from_secs(5);
+        let mut idle_since: Option<tokio::time::Instant> = None;
+
+        loop {
+            tokio::time::sleep(check_interval).await;
+            let count = idle_ws_count.load(Ordering::Relaxed);
+            if count == 0 {
+                let now = tokio::time::Instant::now();
+                let since = idle_since.get_or_insert(now);
+                if now.duration_since(*since) >= idle_timeout {
+                    tracing::info!("no WebSocket clients for {}s, shutting down", idle_timeout.as_secs());
+                    idle_shutdown.cancel();
+                    break;
+                }
+            } else {
+                idle_since = None;
+            }
+        }
+    });
+
     // Run both servers until shutdown
     tokio::select! {
         result = web_server.into_future() => {
@@ -224,7 +259,10 @@ async fn main() {
             }
         }
         _ = stdin_token.cancelled() => {
-            tracing::info!("shutdown signal received, exiting");
+            tracing::info!("stdin/signal shutdown, exiting");
+        }
+        _ = shutdown_token.cancelled() => {
+            tracing::info!("graceful shutdown requested, exiting");
         }
     }
 }

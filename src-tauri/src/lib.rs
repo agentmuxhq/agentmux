@@ -266,24 +266,48 @@ pub fn run() {
                     // Only shut down the backend sidecar when the last window is closing
                     if remaining_windows == 0 {
                         let state = window.app_handle().state::<state::AppState>();
-                        let mut sidecar = state.sidecar_child.lock().unwrap();
-                        if let Some(child) = sidecar.take() {
-                            tracing::info!("Shutting down backend sidecar (last window closing)");
-                            let _ = child.kill();
 
-                            // Clean up endpoints file to prevent stale file race conditions
-                            if let Ok(config_dir) = window.app_handle().path().app_config_dir() {
-                                let version = env!("CARGO_PKG_VERSION");
-                                let endpoints_file = config_dir
-                                    .join("instances")
-                                    .join(format!("v{}", version))
-                                    .join("wave-endpoints.json");
-                                if endpoints_file.exists() {
-                                    if let Err(e) = std::fs::remove_file(&endpoints_file) {
-                                        tracing::warn!("Failed to remove endpoints file on shutdown: {}", e);
-                                    } else {
-                                        tracing::info!("Removed endpoints file on shutdown: {}", endpoints_file.display());
-                                    }
+                        // Try 1: kill via child handle (if we spawned it)
+                        let mut sidecar = state.sidecar_child.lock().unwrap();
+                        let killed_via_child = if let Some(child) = sidecar.take() {
+                            tracing::info!("Shutting down backend sidecar via child handle (last window closing)");
+                            let _ = child.kill();
+                            true
+                        } else {
+                            false
+                        };
+                        drop(sidecar);
+
+                        // Try 2: OS kill via stored PID (covers reused backends with no child handle)
+                        if !killed_via_child {
+                            let mut pid_guard = state.backend_pid.lock().unwrap();
+                            if let Some(pid) = pid_guard.take() {
+                                tracing::info!("Shutting down reused backend via OS kill (PID {})", pid);
+                                #[cfg(target_os = "windows")]
+                                {
+                                    let _ = std::process::Command::new("taskkill")
+                                        .args(["/PID", &pid.to_string(), "/F"])
+                                        .output();
+                                }
+                                #[cfg(not(target_os = "windows"))]
+                                {
+                                    unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+                                }
+                            }
+                        }
+
+                        // Clean up endpoints file to prevent stale file race conditions
+                        if let Ok(config_dir) = window.app_handle().path().app_config_dir() {
+                            let version = env!("CARGO_PKG_VERSION");
+                            let endpoints_file = config_dir
+                                .join("instances")
+                                .join(format!("v{}", version))
+                                .join("wave-endpoints.json");
+                            if endpoints_file.exists() {
+                                if let Err(e) = std::fs::remove_file(&endpoints_file) {
+                                    tracing::warn!("Failed to remove endpoints file on shutdown: {}", e);
+                                } else {
+                                    tracing::info!("Removed endpoints file on shutdown: {}", endpoints_file.display());
                                 }
                             }
                         }

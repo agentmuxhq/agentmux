@@ -295,7 +295,7 @@ aws dynamodb query \
 
 ## Support
 
-- **Issues:** https://github.com/agentmuxhq/agentmux/issues
+- **Issues:** https://github.com/agentmuxai/agentmux/issues
 
 ---
 

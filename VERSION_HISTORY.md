@@ -472,7 +472,7 @@ Feature branches follow the pattern: `feature/description` or `agent/feature-nam
 
 - **Upstream repository:** https://github.com/wavetermdev/waveterm
 - **Base Upstream Version:** v0.12.0
-- **Fork repository:** https://github.com/agentmuxhq/agentmux
+- **Fork repository:** https://github.com/agentmuxai/agentmux
 - **Latest Fork:** v0.31.4
 - **Commits Ahead of Upstream:** 100+ commits with custom features
 

@@ -32,7 +32,7 @@ export function makeNativeLabel(isDirectory: boolean) {
         managerName = "Default Application";
     } else if (PLATFORM === PlatformMacOS) {
         managerName = "Finder";
-    } else if (PLATFORM == PlatformWindows) {
+    } else if (PLATFORM === PlatformWindows) {
         managerName = "Explorer";
     } else {
         managerName = "File Manager";

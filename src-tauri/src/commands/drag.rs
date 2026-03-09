@@ -243,18 +243,31 @@ pub async fn open_window_at_position(
     let version = env!("CARGO_PKG_VERSION");
     let title = format!("AgentMux {}", version);
 
+    let win_w = 1200.0_f64;
+    let win_h = 800.0_f64;
+
+    // Position the window so the cursor lands near the top-center.
+    // Offset left by half the width, and up by a small amount for the title bar area.
+    let pos_x = (screen_x - win_w / 2.0).max(0.0);
+    let pos_y = (screen_y - 40.0).max(0.0);
+
+    tracing::info!(
+        pos_x = %pos_x, pos_y = %pos_y,
+        "[dnd:tauri] open_window_at_position: adjusted for cursor centering"
+    );
+
     let builder = tauri::WebviewWindowBuilder::new(
         &app,
         &label,
         tauri::WebviewUrl::App("index.html".into()),
     )
     .title(&title)
-    .inner_size(1200.0, 800.0)
+    .inner_size(win_w, win_h)
     .min_inner_size(400.0, 300.0)
     .decorations(false)
     .transparent(true)
     .visible(false)
-    .position(screen_x, screen_y);
+    .position(pos_x, pos_y);
 
     let _new_window = builder
         .build()

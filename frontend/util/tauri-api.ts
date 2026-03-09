@@ -401,6 +401,14 @@ export function buildTauriApi(): AppApi {
         openWindowAtPosition: async (screenX: number, screenY: number) => {
             return await invoke<string>("open_window_at_position", { screenX, screenY });
         },
+
+        // --- Drag cursor ---
+        setDragCursor: async () => {
+            await invoke("set_drag_cursor");
+        },
+        restoreDragCursor: async () => {
+            await invoke("restore_drag_cursor");
+        },
     };
 
     return api;

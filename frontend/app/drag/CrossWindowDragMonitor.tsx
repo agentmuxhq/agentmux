@@ -58,9 +58,34 @@ const CrossWindowDragMonitor = memo(() => {
         }
     }, [isDragging, itemType, item]);
 
+    // Replace the system no-drop cursor with a crosshair while dragging
+    useEffect(() => {
+        if (isDragging) {
+            const typeStr = itemType ? String(itemType) : "";
+            if (typeStr === tileItemType || typeStr === tabItemType) {
+                fireAndForget(async () => {
+                    try {
+                        await getApi().setDragCursor();
+                    } catch (e) {
+                        Logger.debug("dnd:cross", "setDragCursor failed (non-critical)", { error: String(e) });
+                    }
+                });
+            }
+        }
+    }, [isDragging, itemType]);
+
     // Detect drag end: isDragging transitions from true to false
     useEffect(() => {
         if (prevDraggingRef.current && !isDragging) {
+            // Restore system cursors immediately
+            fireAndForget(async () => {
+                try {
+                    await getApi().restoreDragCursor();
+                } catch (e) {
+                    Logger.debug("dnd:cross", "restoreDragCursor failed (non-critical)", { error: String(e) });
+                }
+            });
+
             const { itemType: savedType, item: savedItem } = lastDragRef.current;
             Logger.info("dnd:cross", "drag ended — checking for cross-window", {
                 hasItem: !!savedType,

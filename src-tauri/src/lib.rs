@@ -114,6 +114,8 @@ pub fn run() {
             commands::drag::complete_cross_drag,
             commands::drag::cancel_cross_drag,
             commands::drag::open_window_at_position,
+            commands::drag::set_drag_cursor,
+            commands::drag::restore_drag_cursor,
         ])
         // Application setup
         .setup(|app| {

@@ -327,3 +327,53 @@ fn hit_test_windows(app: &tauri::AppHandle, screen_x: f64, screen_y: f64) -> Opt
     tracing::debug!("[dnd:tauri] hit_test: no window hit (tear-off zone)");
     None
 }
+
+/// Replace the system no-drop cursor with a crosshair while a drag is active.
+/// This makes the cursor show "+" instead of the circle-slash when dragging
+/// outside the webview window.
+#[tauri::command]
+pub async fn set_drag_cursor() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            CopyIcon, LoadCursorW, SetSystemCursor, IDC_CROSS, OCR_NO,
+        };
+        unsafe {
+            let cross = LoadCursorW(std::ptr::null_mut(), IDC_CROSS);
+            if cross.is_null() {
+                return Err("LoadCursorW(IDC_CROSS) failed".to_string());
+            }
+            // CopyCursor is a macro that expands to CopyIcon
+            let copy = CopyIcon(cross);
+            if copy.is_null() {
+                return Err("CopyIcon (CopyCursor) failed".to_string());
+            }
+            let ok = SetSystemCursor(copy, OCR_NO);
+            if ok == 0 {
+                return Err("SetSystemCursor failed".to_string());
+            }
+        }
+        tracing::debug!("[dnd:tauri] set_drag_cursor: replaced OCR_NO with IDC_CROSS");
+    }
+    Ok(())
+}
+
+/// Restore all system cursors to their defaults.
+/// Must be called when a drag ends (drop, tear-off, or cancel).
+#[tauri::command]
+pub async fn restore_drag_cursor() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            SystemParametersInfoW, SPI_SETCURSORS,
+        };
+        unsafe {
+            let ok = SystemParametersInfoW(SPI_SETCURSORS, 0, std::ptr::null_mut(), 0);
+            if ok == 0 {
+                return Err("SystemParametersInfoW(SPI_SETCURSORS) failed".to_string());
+            }
+        }
+        tracing::debug!("[dnd:tauri] restore_drag_cursor: system cursors restored");
+    }
+    Ok(())
+}

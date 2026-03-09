@@ -1,4 +1,4 @@
-import { atoms, getBlockComponentModel } from "@/app/store/global";
+import { getBlockComponentModel } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { focusedBlockId } from "@/util/focusutil";
 import { getLayoutModelForStaticTab } from "@/layout/index";

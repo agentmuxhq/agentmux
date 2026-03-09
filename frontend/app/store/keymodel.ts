@@ -232,7 +232,7 @@ function cyclePaneFocus(direction: "forward" | "backward") {
 
 function switchBlockInDirection(direction: NavigateDirection) {
     const layoutModel = getLayoutModelForStaticTab();
-    layoutModel.switchNodeFocusInDirection(direction, false);
+    layoutModel.switchNodeFocusInDirection(direction);
     setTimeout(() => {
         globalRefocus();
     }, 10);

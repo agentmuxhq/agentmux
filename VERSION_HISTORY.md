@@ -517,3 +517,5 @@ The bump scripts automatically:
 - Run `task build:backend` after Go changes
 - Run `task dev` for development with hot reload
 - Run `task package` only for final release builds
+
+| 0.31.87-fork | v0.12.0 | 2026-03-08 | AgentO-asaf | remove legacy AI panel sidebar |

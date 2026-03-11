@@ -70,9 +70,7 @@ function useFileDrop(
 
                 if (type === "enter" || type === "over") {
                     const inside = isOverElement();
-                    if (isDragOver !== inside) {
-                        console.log(`[dnd-debug] ${type}: setting isDragOver=${inside}`);
-                    }
+                    console.log(`[dnd-debug] ${type}: setting isDragOver=${inside}`);
                     setIsDragOver(inside);
                 } else if (type === "drop") {
                     const paths: string[] = (event.payload as any).paths ?? [];

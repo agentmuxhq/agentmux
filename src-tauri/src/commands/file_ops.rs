@@ -45,6 +45,35 @@ fn copy_recursive(src: &std::path::Path, dst: &std::path::Path) -> Result<(), St
     Ok(())
 }
 
+/// Return a destination path that does not yet exist.
+/// "file.txt" → "file_1.txt" → "file_2.txt" … up to _99, then error.
+fn deconflict_path(dir: &std::path::Path, name: &std::ffi::OsStr) -> Result<std::path::PathBuf, String> {
+    let candidate = dir.join(name);
+    if !candidate.exists() {
+        return Ok(candidate);
+    }
+
+    let name_str = name.to_string_lossy();
+    let (stem, ext) = match name_str.rfind('.') {
+        Some(dot) => (&name_str[..dot], &name_str[dot..]),
+        None => (name_str.as_ref(), ""),
+    };
+
+    for n in 1..=99 {
+        let new_name = format!("{stem}_{n}{ext}");
+        let candidate = dir.join(&new_name);
+        if !candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(format!(
+        "Could not find a free filename for '{}' in '{}'",
+        name_str,
+        dir.display()
+    ))
+}
+
 #[tauri::command]
 pub async fn copy_file_to_dir(
     source_path: String,
@@ -72,11 +101,10 @@ pub async fn copy_file_to_dir(
     let name = source
         .file_name()
         .ok_or_else(|| "Invalid source path".to_string())?;
-    let target = target_dir.join(name);
 
-    if target.exists() {
-        return Err(format!("Already exists: {}", target.display()));
-    }
+    // Resolve a non-colliding destination path.
+    // If "file.txt" already exists, try "file_1.txt", "file_2.txt", … up to 99.
+    let target = deconflict_path(target_dir, name)?;
 
     copy_recursive(source, &target)?;
 
@@ -162,22 +190,19 @@ mod tests {
     fn copy_file_to_dir_sync(source_path: &str, target_dir: &str) -> Result<String, String> {
         let source = Path::new(source_path);
         let target_dir_norm = normalize_path_for_platform(target_dir);
-        let target_dir = Path::new(&target_dir_norm);
+        let target_dir_path = Path::new(&target_dir_norm);
 
         if !source.exists() {
             return Err(format!("Source not found: {}", source.display()));
         }
-        if !target_dir.exists() {
-            return Err(format!("Target directory not found: {}", target_dir.display()));
+        if !target_dir_path.exists() {
+            return Err(format!("Target directory not found: {}", target_dir_path.display()));
         }
-        if !target_dir.is_dir() {
-            return Err(format!("Target path is not a directory: {}", target_dir.display()));
+        if !target_dir_path.is_dir() {
+            return Err(format!("Target path is not a directory: {}", target_dir_path.display()));
         }
         let name = source.file_name().ok_or_else(|| "Invalid source path".to_string())?;
-        let target = target_dir.join(name);
-        if target.exists() {
-            return Err(format!("Already exists: {}", target.display()));
-        }
+        let target = deconflict_path(target_dir_path, name)?;
         copy_recursive(source, &target)?;
         Ok(target.display().to_string())
     }
@@ -237,20 +262,47 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_file_to_dir_already_exists() {
+    fn test_copy_file_to_dir_deconflicts_on_collision() {
         let dir = tempdir();
         let src = dir.join("file.txt");
         let dst_dir = dir.join("out");
         fs::create_dir(&dst_dir).unwrap();
         fs::write(&src, b"data").unwrap();
+        // Pre-create "file.txt" and "file_1.txt" so deconflict should land on "file_2.txt"
         fs::write(dst_dir.join("file.txt"), b"existing").unwrap();
+        fs::write(dst_dir.join("file_1.txt"), b"also existing").unwrap();
 
-        let result = copy_file_to_dir_sync(
-            src.to_str().unwrap(),
-            dst_dir.to_str().unwrap(),
-        );
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Already exists"));
+        let result = copy_file_to_dir_sync(src.to_str().unwrap(), dst_dir.to_str().unwrap());
+        assert!(result.is_ok(), "expected ok, got: {:?}", result);
+        let dest = result.unwrap();
+        assert!(dest.ends_with("file_2.txt"), "expected file_2.txt, got: {dest}");
+        assert!(dst_dir.join("file_2.txt").exists());
+    }
+
+    #[test]
+    fn test_deconflict_path_no_collision() {
+        let dir = tempdir();
+        let name = std::ffi::OsStr::new("hello.txt");
+        let result = deconflict_path(&dir, name).unwrap();
+        assert_eq!(result, dir.join("hello.txt"));
+    }
+
+    #[test]
+    fn test_deconflict_path_with_collision() {
+        let dir = tempdir();
+        fs::write(dir.join("hello.txt"), b"").unwrap();
+        let name = std::ffi::OsStr::new("hello.txt");
+        let result = deconflict_path(&dir, name).unwrap();
+        assert_eq!(result, dir.join("hello_1.txt"));
+    }
+
+    #[test]
+    fn test_deconflict_path_no_extension() {
+        let dir = tempdir();
+        fs::write(dir.join("Makefile"), b"").unwrap();
+        let name = std::ffi::OsStr::new("Makefile");
+        let result = deconflict_path(&dir, name).unwrap();
+        assert_eq!(result, dir.join("Makefile_1"));
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────

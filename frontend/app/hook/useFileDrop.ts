@@ -35,7 +35,8 @@ function useFileDrop(
     // Use a ref for the callback to avoid re-subscribing on every render.
     React.useEffect(() => {
         console.log("[dnd-debug] useFileDrop: subscribing to Tauri onDragDropEvent");
-        let unlisten: (() => void) | null = null;
+        let unlistenFn: (() => void) | null = null;
+        let cancelled = false; // guard against unlisten resolving after unmount
 
         getCurrentWebview()
             .onDragDropEvent((event) => {
@@ -94,16 +95,23 @@ function useFileDrop(
                 }
             })
             .then((fn) => {
-                unlisten = fn;
-                console.log("[dnd-debug] useFileDrop: ✓ subscribed to onDragDropEvent");
+                if (cancelled) {
+                    // Component unmounted before the promise resolved — unlisten immediately
+                    console.log("[dnd-debug] useFileDrop: component already unmounted, unlistening immediately");
+                    fn();
+                } else {
+                    unlistenFn = fn;
+                    console.log("[dnd-debug] useFileDrop: ✓ subscribed to onDragDropEvent");
+                }
             })
             .catch((err) => {
                 console.error("[dnd-debug] useFileDrop: ✗ failed to subscribe to onDragDropEvent:", err);
             });
 
         return () => {
+            cancelled = true;
             console.log("[dnd-debug] useFileDrop: unsubscribing");
-            unlisten?.();
+            unlistenFn?.();
         };
     }, []); // subscribe once — callback accessed via ref
 

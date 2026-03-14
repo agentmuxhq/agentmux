@@ -213,16 +213,12 @@ function buildConfigPreamble(
 
     if (claudeMdParts.length > 0) {
         const claudeMd = claudeMdParts.join("");
-        lines.push(`cat > ${shellEscape(workDir)}/CLAUDE.md << 'FORGE_EOF'`);
-        lines.push(claudeMd);
-        lines.push("FORGE_EOF");
+        writeHeredoc(lines, `${shellEscape(workDir)}/CLAUDE.md`, claudeMd);
     }
 
     // Write .mcp.json if MCP content exists
     if (contentMap["mcp"]) {
-        lines.push(`cat > ${shellEscape(workDir)}/.mcp.json << 'FORGE_EOF'`);
-        lines.push(contentMap["mcp"]);
-        lines.push("FORGE_EOF");
+        writeHeredoc(lines, `${shellEscape(workDir)}/.mcp.json`, contentMap["mcp"]);
     }
 
     // Set environment variables from env content (key=value format, one per line)
@@ -230,9 +226,15 @@ function buildConfigPreamble(
         const envLines = contentMap["env"].split("\n").filter((l) => l.includes("=") && !l.startsWith("#"));
         for (const envLine of envLines) {
             const trimmed = envLine.trim();
-            if (trimmed) {
-                lines.push(`export ${trimmed}`);
-            }
+            if (!trimmed) continue;
+            // Validate KEY=VALUE format: key must be alphanumeric/underscore,
+            // value is single-quoted to prevent injection
+            const eqIdx = trimmed.indexOf("=");
+            if (eqIdx < 1) continue;
+            const key = trimmed.substring(0, eqIdx);
+            const val = trimmed.substring(eqIdx + 1);
+            if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) continue;
+            lines.push(`export ${key}=${shellQuote(val)}`);
         }
     }
 
@@ -242,8 +244,31 @@ function buildConfigPreamble(
     return lines.join("\n");
 }
 
-/** Simple shell escaping for paths */
+/**
+ * Write content to a file using a heredoc with a unique delimiter.
+ * Generates a delimiter that doesn't appear in the content to prevent
+ * heredoc injection attacks.
+ */
+function writeHeredoc(lines: string[], path: string, content: string): void {
+    let delimiter = "FORGE_EOF";
+    let suffix = 0;
+    // Ensure delimiter doesn't appear as a standalone line in content
+    while (content.split("\n").some((line) => line.trim() === delimiter)) {
+        suffix++;
+        delimiter = `FORGE_EOF_${suffix}`;
+    }
+    lines.push(`cat > ${path} << '${delimiter}'`);
+    lines.push(content);
+    lines.push(delimiter);
+}
+
+/** Single-quote a value for safe shell use (escapes embedded single quotes) */
+function shellQuote(s: string): string {
+    return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+/** Shell escaping for paths — uses single quotes for safety */
 function shellEscape(s: string): string {
-    if (/^[a-zA-Z0-9_.~/-]+$/.test(s)) return s;
-    return `"${s.replace(/["\\$`]/g, "\\$&")}"`;
+    if (/^[a-zA-Z0-9_.\/-]+$/.test(s)) return s;
+    return shellQuote(s);
 }

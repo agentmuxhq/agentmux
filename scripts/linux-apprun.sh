@@ -4,11 +4,9 @@
 # does not set WEBKIT_DISABLE_DMABUF_RENDERER=1.
 #
 # Icon / desktop registration:
-#   On Wayland, GNOME matches windows to .desktop files by xdg_toplevel.app_id,
-#   which equals the GTK application-id (= the tauri identifier baked into
-#   usr/share/agentmux/appid at build time).  We register both:
-#     - agentmux.desktop        (X11: matched via StartupWMClass=agentmux)
-#     - ${app_id}.desktop       (Wayland: matched by app_id filename)
+#   On both X11 and Wayland, GNOME matches windows to .desktop files via
+#   xdg_toplevel.app_id (Wayland) or WM_CLASS (X11), both of which equal
+#   the binary name "agentmux".  We register agentmux.desktop only.
 set -e
 this_dir="$(readlink -f "$(dirname "$0")")"
 export APPDIR="$this_dir"
@@ -26,13 +24,12 @@ if [ -n "$APPIMAGE" ]; then
     _apps_dir="$HOME/.local/share/applications"
     mkdir -p "$_icon_dir" "$_apps_dir"
     cp -f "$this_dir/AgentMux.png" "$_icon_dir/agentmux.png"
-    # Read the GTK app-id embedded at build time.
-    _appid=$(cat "$this_dir/usr/share/agentmux/appid" 2>/dev/null || echo "agentmux")
-    _cur=$(grep -m1 "^Exec=" "$_apps_dir/agentmux.desktop" 2>/dev/null | cut -d= -f2- || true)
-    if [ "$_cur" != "$APPIMAGE" ]; then
+    _cur_exec=$(grep -m1 "^Exec=" "$_apps_dir/agentmux.desktop" 2>/dev/null | cut -d= -f2- || true)
+    _cur_icon=$(grep -m1 "^Icon=" "$_apps_dir/agentmux.desktop" 2>/dev/null | cut -d= -f2- || true)
+    # Update if Exec= is stale OR if Icon= is an absolute path (old broken format).
+    if [ "$_cur_exec" != "$APPIMAGE" ] || echo "$_cur_icon" | grep -q "^/"; then
         _content=$(sed "s|^Exec=.*|Exec=$APPIMAGE|" "$this_dir/AgentMux.desktop")
         printf '%s\n' "$_content" > "$_apps_dir/agentmux.desktop"
-        printf '%s\n' "$_content" > "$_apps_dir/${_appid}.desktop"
         # Ensure hicolor has an index.theme so gtk-update-icon-cache succeeds
         if [ ! -f "$HOME/.local/share/icons/hicolor/index.theme" ]; then
             cp /usr/share/icons/hicolor/index.theme "$HOME/.local/share/icons/hicolor/index.theme" 2>/dev/null || true

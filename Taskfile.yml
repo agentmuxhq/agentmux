@@ -143,13 +143,14 @@ tasks:
                 rm -rf "$APPDIR/usr/lib"
                 echo "✓ Stripped bundled system libraries (using host WebKitGTK)"
                 rm -rf "$APPDIR/apprun-hooks"
-                # Embed the GTK app-id (= tauri identifier) so AppRun can register the
-                # correct Wayland .desktop filename at runtime (app_id must match .desktop
-                # basename for GNOME to associate the window with the icon).
-                APPID=$(python3 -c "import json; d=json.load(open('src-tauri/tauri.conf.json')); print(d['identifier'])")
-                mkdir -p "$APPDIR/usr/share/agentmux"
-                echo "$APPID" > "$APPDIR/usr/share/agentmux/appid"
-                echo "✓ Embedded app-id: $APPID"
+                # Replace .DirIcon symlink with a real file copy so the icon resolves
+                # after distribution (absolute symlinks to the build machine's AppDir path
+                # are broken on any other machine / after the build tree is removed).
+                if [ -L "$APPDIR/.DirIcon" ] || [ ! -f "$APPDIR/.DirIcon" ]; then
+                  rm -f "$APPDIR/.DirIcon"
+                  cp "$APPDIR/AgentMux.png" "$APPDIR/.DirIcon"
+                  echo "✓ Replaced .DirIcon symlink with file copy"
+                fi
                 cp scripts/linux-apprun.sh "$APPDIR/AppRun"
                 chmod +x "$APPDIR/AppRun"
                 echo "✓ Patched AppRun (WEBKIT_DISABLE_DMABUF_RENDERER=1, GDK_BACKEND auto)"
@@ -285,7 +286,6 @@ tasks:
                 # immediately, before the app is run for the first time.
                 # AppRun repeats this at runtime to keep paths current.
                 APPDIR="target/release/bundle/appimage/AgentMux.AppDir"
-                APPID=$(cat "$APPDIR/usr/share/agentmux/appid" 2>/dev/null || echo "agentmux")
                 APPIMAGE_PATH="$HOME/Desktop/AgentMux_${VERSION}_amd64.AppImage"
                 ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
                 APPS_DIR="$HOME/.local/share/applications"
@@ -294,18 +294,17 @@ tasks:
                   cp -f "$APPDIR/AgentMux.png" "$ICON_DIR/agentmux.png"
                   echo "✓ Pre-registered icon in hicolor theme"
                 fi
-                # Register agentmux.desktop (X11: StartupWMClass=agentmux matches binary WM_CLASS)
-                # Register ${APPID}.desktop (Wayland: xdg_toplevel.app_id = tauri identifier)
+                # Register agentmux.desktop — Wayland app_id and X11 WM_CLASS both equal
+                # the binary name "agentmux", so only this one file is needed.
                 _desktop_content=$(sed "s|^Exec=.*|Exec=$APPIMAGE_PATH|" "$APPDIR/AgentMux.desktop")
                 printf '%s\n' "$_desktop_content" > "$APPS_DIR/agentmux.desktop"
-                printf '%s\n' "$_desktop_content" > "$APPS_DIR/${APPID}.desktop"
                 # Ensure hicolor has an index.theme so gtk-update-icon-cache succeeds
                 if [ ! -f "$HOME/.local/share/icons/hicolor/index.theme" ]; then
                   cp /usr/share/icons/hicolor/index.theme "$HOME/.local/share/icons/hicolor/index.theme" 2>/dev/null || true
                 fi
                 update-desktop-database "$APPS_DIR" 2>/dev/null || true
                 gtk-update-icon-cache -f "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
-                echo "✓ Registered desktop files: agentmux.desktop + ${APPID}.desktop"
+                echo "✓ Registered desktop file: agentmux.desktop"
                 # Create trusted .desktop launcher on Desktop for double-click support
                 DESKTOP_FILE="$HOME/Desktop/AgentMux.desktop"
                 sed "s|^Exec=.*|Exec=$APPIMAGE_PATH|" "$APPDIR/AgentMux.desktop" > "$DESKTOP_FILE"

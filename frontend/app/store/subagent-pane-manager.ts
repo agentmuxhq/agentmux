@@ -7,8 +7,8 @@
 
 import { createBlockSplitHorizontally, createBlockSplitVertically } from "./global";
 
-// Track open subagent panes: subagentId -> blockId
-const openPanes = new Map<string, string>();
+// Track open subagent panes: subagentId -> { blockId, parentBlockId }
+const openPanes = new Map<string, { blockId: string; parentBlockId: string }>();
 // Track how many subagent panes are open for a given parent block
 const parentPaneCount = new Map<string, number>();
 
@@ -31,7 +31,7 @@ export async function openSubagentPane(req: SubagentPaneRequest): Promise<string
         console.log(
             `[subagent-pane] pane already open for ${req.subagentId}`
         );
-        return openPanes.get(req.subagentId) ?? null;
+        return openPanes.get(req.subagentId)?.blockId ?? null;
     }
 
     const blockDef: BlockDef = {
@@ -77,7 +77,7 @@ export async function openSubagentPane(req: SubagentPaneRequest): Promise<string
         return null;
     }
 
-    openPanes.set(req.subagentId, newBlockId);
+    openPanes.set(req.subagentId, { blockId: newBlockId, parentBlockId: req.parentBlockId });
     parentPaneCount.set(req.parentBlockId, count + 1);
 
     console.log(
@@ -105,11 +105,13 @@ export function onSubagentPaneClosed(subagentId: string, parentBlockId: string):
 }
 
 /**
- * Find an existing open subagent pane to stack next to.
+ * Find an existing open subagent pane belonging to the same parent to stack next to.
  */
-function findOpenSiblingPane(_parentBlockId: string): string | null {
-    for (const [, blockId] of openPanes) {
-        return blockId;
+function findOpenSiblingPane(parentBlockId: string): string | null {
+    for (const [, entry] of openPanes) {
+        if (entry.parentBlockId === parentBlockId) {
+            return entry.blockId;
+        }
     }
     return null;
 }

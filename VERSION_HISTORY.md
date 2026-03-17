@@ -10,6 +10,14 @@ This document tracks the version history of AgentMux (forked from waveterm).
 
 ## Version History (Latest First)
 
+### v0.32.9-fork (2026-03-17)
+- **Agent:** Claude Sonnet 4.6
+- **Changes:**
+  - fix: Linux AppImage cog icon — replace .DirIcon absolute symlink with real file copy
+  - fix: backspace regression on Linux — force xterm.js Canvas renderer on WebKitGTK
+  - fix: remove stale versioned .desktop registration (Wayland app_id = binary name)
+  - docs: CLAUDE.md — document recurring Linux issues to prevent regressions
+
 ### v0.31.42-fork (2026-03-04)
 - **Agent:** AgentX
 - **Changes:**

@@ -59,58 +59,30 @@ When `AGENTMUX_LOCAL_URL` is set, the client routes all `inject_terminal` calls 
 
 ## Implementation
 
-### The Port Discovery Problem
+### Approach: `std::env::set_var` + Process Env Inheritance
 
-`shell.rs` (where env vars are injected) has no access to the web address:
+`main.rs` sets `AGENTMUX_LOCAL_URL` as a process-level env var immediately after binding the web listener. Child processes (PTY shells) inherit the parent process's environment, so every pane automatically gets the correct URL. `shell.rs` re-injects it explicitly via `c.env(...)` to ensure it survives any env filtering in portable-pty.
 
-- `web_addr` is computed in `main.rs` at startup via `TcpListener::bind("127.0.0.1:0")`
-- It's emitted to stderr as `WAVESRV-ESTART web:<addr>` for the Tauri frontend
-- It is **not** stored in `AppState` and **not** passed to `ShellController`
-
-### Approach: `OnceLock<String>` Module-Level Global
-
-Since `web_addr` is set once at startup and never changes, a module-level `OnceLock` is the minimal, clean solution. No constructor chain changes needed.
-
-**New file:** `agentmuxsrv-rs/src/server_addr.rs`
+**`main.rs`** — after binding `web_listener`, before `WAVESRV-ESTART`:
 
 ```rust
-use std::sync::OnceLock;
+let web_addr = web_listener.local_addr().unwrap();
+let local_web_url = format!("http://{}", web_addr);
 
-static BACKEND_WEB_ADDR: OnceLock<String> = OnceLock::new();
-
-/// Called once from main.rs after the web listener binds.
-pub fn set(addr: &str) {
-    let _ = BACKEND_WEB_ADDR.set(addr.to_string());
-}
-
-/// Returns `http://127.0.0.1:{port}` or None if not yet set.
-pub fn local_url() -> Option<String> {
-    BACKEND_WEB_ADDR.get().map(|addr| format!("http://{}", addr))
-}
-```
-
-**`main.rs`** — after `web_addr` is bound, before `WAVESRV-ESTART`:
-
-```rust
-crate::server_addr::set(&web_addr.to_string());
-eprintln!("WAVESRV-ESTART ws:{} web:{} ...", ws_addr, web_addr, ...);
+// Make local backend URL available to child processes (PTY shells).
+// agentbus-client reads AGENTMUX_LOCAL_URL and uses it for local PTY delivery
+// instead of routing through the cloud agentbus.
+std::env::set_var("AGENTMUX_LOCAL_URL", &local_web_url);
 ```
 
 **`shell.rs`** — in the env var injection block, after existing `AGENTMUX_*` vars:
 
 ```rust
-// Inject local AgentMux URL so agentbus-client uses direct PTY injection
-// instead of cloud polling. Each pane gets the URL for the backend instance
-// that owns it, which handles multiple AgentMux versions running simultaneously.
-if let Some(local_url) = crate::server_addr::local_url() {
+// Propagate local backend URL so agentbus-client prefers local PTY delivery.
+// Set by main.rs after binding; absent in test/mock contexts (graceful no-op).
+if let Ok(local_url) = std::env::var("AGENTMUX_LOCAL_URL") {
     c.env("AGENTMUX_LOCAL_URL", &local_url);
 }
-```
-
-**`lib.rs`** — declare the new module:
-
-```rust
-pub mod server_addr;
 ```
 
 ---
@@ -119,10 +91,8 @@ pub mod server_addr;
 
 | File | Change |
 |------|--------|
-| `agentmuxsrv-rs/src/server_addr.rs` | New file — OnceLock storage |
-| `agentmuxsrv-rs/src/lib.rs` | Add `pub mod server_addr;` |
-| `agentmuxsrv-rs/src/main.rs` | Call `crate::server_addr::set(...)` after binding |
-| `agentmuxsrv-rs/src/backend/blockcontroller/shell.rs` | Inject `AGENTMUX_LOCAL_URL` env var |
+| `agentmuxsrv-rs/src/main.rs` | `std::env::set_var("AGENTMUX_LOCAL_URL", ...)` after binding + store in `AppState.local_web_url` |
+| `agentmuxsrv-rs/src/backend/blockcontroller/shell.rs` | Re-inject `AGENTMUX_LOCAL_URL` into PTY env via `std::env::var` |
 
 ---
 

@@ -174,16 +174,6 @@ export interface UserMessageNode {
 }
 
 /**
- * Terminal output block (bootstrap / non-JSON PTY output)
- */
-export interface TerminalOutputNode {
-    type: "terminal_output";
-    id: string;
-    content: string; // Raw terminal text (ANSI already stripped)
-    complete: boolean; // true once JSON streaming begins
-}
-
-/**
  * Stream events from Claude Code NDJSON output
  */
 export type StreamEvent =

@@ -38,6 +38,7 @@ import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
 import { render } from "solid-js/web";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { initSubagentPaneManager } from "@/app/store/subagent-pane-manager";
 // Static import — avoids dynamic import() hang in WebKitGTK over tauri:// protocol.
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -577,6 +578,7 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     t = performance.now();
     initGlobalEventSubs(initOpts);
     subscribeToConnEvents();
+    initSubagentPaneManager();
     tlog("initEventSubs", t);
 
     // ensures client/window/workspace are loaded into the cache before rendering

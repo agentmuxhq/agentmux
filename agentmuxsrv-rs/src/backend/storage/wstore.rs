@@ -13,11 +13,12 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use rusqlite::{params, Connection};
+use serde::{Deserialize, Serialize};
 
 use crate::backend::waveobj::{wave_obj_from_json, wave_obj_to_json, WaveObj};
 
 use super::error::StoreError;
-use super::migrations::run_wstore_migrations;
+use super::migrations::{run_forge_migrations, run_wstore_migrations};
 
 /// SQLite-backed object store for WaveObj types.
 pub struct WaveStore {
@@ -48,6 +49,7 @@ impl WaveStore {
              PRAGMA temp_store=MEMORY;",
         )?;
         run_wstore_migrations(&conn)?;
+        run_forge_migrations(&conn)?;
         Ok(Self {
             conn: Mutex::new(conn),
         })
@@ -383,6 +385,502 @@ impl<'a> StoreTx<'a> {
         )?;
         Ok(())
     }
+}
+
+// ====================================================================
+// ForgeAgent CRUD
+// ====================================================================
+
+/// A user-defined AI agent managed by the Forge widget.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForgeAgent {
+    pub id: String,
+    pub name: String,
+    pub icon: String,
+    pub provider: String,
+    pub description: String,
+    #[serde(default)]
+    pub working_directory: String,
+    #[serde(default)]
+    pub shell: String,
+    #[serde(default)]
+    pub provider_flags: String,
+    #[serde(default)]
+    pub auto_start: i64,
+    #[serde(default)]
+    pub restart_on_crash: i64,
+    #[serde(default)]
+    pub idle_timeout_minutes: i64,
+    pub created_at: i64,
+    #[serde(default = "default_agent_type")]
+    pub agent_type: String,
+    #[serde(default)]
+    pub environment: String,
+    #[serde(default)]
+    pub agent_bus_id: String,
+    #[serde(default)]
+    pub is_seeded: i64,
+}
+
+fn default_agent_type() -> String {
+    "standalone".to_string()
+}
+
+/// A content blob associated with a forge agent.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForgeContent {
+    pub agent_id: String,
+    pub content_type: String,
+    pub content: String,
+    pub updated_at: i64,
+}
+
+/// A reusable skill/capability attached to a forge agent.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForgeSkill {
+    pub id: String,
+    pub agent_id: String,
+    pub name: String,
+    pub trigger: String,
+    pub skill_type: String,
+    pub description: String,
+    pub content: String,
+    pub created_at: i64,
+}
+
+/// An append-only session history entry for a forge agent.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForgeHistory {
+    pub id: i64,
+    pub agent_id: String,
+    pub session_date: String,
+    pub entry: String,
+    pub timestamp: i64,
+}
+
+impl WaveStore {
+    /// List all forge agents, ordered by created_at ascending.
+    pub fn forge_list(&self) -> Result<Vec<ForgeAgent>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, icon, provider, description, working_directory, shell,
+                    provider_flags, auto_start, restart_on_crash, idle_timeout_minutes, created_at,
+                    agent_type, environment, agent_bus_id, is_seeded
+             FROM db_forge_agents ORDER BY created_at ASC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(ForgeAgent {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                icon: row.get(2)?,
+                provider: row.get(3)?,
+                description: row.get(4)?,
+                working_directory: row.get(5)?,
+                shell: row.get(6)?,
+                provider_flags: row.get(7)?,
+                auto_start: row.get(8)?,
+                restart_on_crash: row.get(9)?,
+                idle_timeout_minutes: row.get(10)?,
+                created_at: row.get(11)?,
+                agent_type: row.get(12)?,
+                environment: row.get(13)?,
+                agent_bus_id: row.get(14)?,
+                is_seeded: row.get(15)?,
+            })
+        })?;
+        let mut agents = Vec::new();
+        for row in rows {
+            agents.push(row?);
+        }
+        Ok(agents)
+    }
+
+    /// Count forge agents (used by seed engine to check if seeding is needed).
+    pub fn forge_count(&self) -> Result<i64, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM db_forge_agents",
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(count)
+    }
+
+    /// Delete all seeded agents (is_seeded=1). Used by reseed to clear built-in agents.
+    pub fn forge_delete_seeded(&self) -> Result<usize, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let rows = conn.execute("DELETE FROM db_forge_agents WHERE is_seeded=1", [])?;
+        Ok(rows)
+    }
+
+    /// Insert a new forge agent.
+    pub fn forge_insert(&self, agent: &ForgeAgent) -> Result<(), StoreError> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO db_forge_agents (id, name, icon, provider, description,
+             working_directory, shell, provider_flags, auto_start, restart_on_crash,
+             idle_timeout_minutes, created_at, agent_type, environment, agent_bus_id, is_seeded)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            params![
+                agent.id,
+                agent.name,
+                agent.icon,
+                agent.provider,
+                agent.description,
+                agent.working_directory,
+                agent.shell,
+                agent.provider_flags,
+                agent.auto_start,
+                agent.restart_on_crash,
+                agent.idle_timeout_minutes,
+                agent.created_at,
+                agent.agent_type,
+                agent.environment,
+                agent.agent_bus_id,
+                agent.is_seeded
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Update an existing forge agent (all fields except id, created_at, is_seeded).
+    pub fn forge_update(&self, agent: &ForgeAgent) -> Result<bool, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let rows = conn.execute(
+            "UPDATE db_forge_agents SET name=?1, icon=?2, provider=?3, description=?4,
+             working_directory=?5, shell=?6, provider_flags=?7, auto_start=?8,
+             restart_on_crash=?9, idle_timeout_minutes=?10,
+             agent_type=?11, environment=?12, agent_bus_id=?13
+             WHERE id=?14",
+            params![
+                agent.name,
+                agent.icon,
+                agent.provider,
+                agent.description,
+                agent.working_directory,
+                agent.shell,
+                agent.provider_flags,
+                agent.auto_start,
+                agent.restart_on_crash,
+                agent.idle_timeout_minutes,
+                agent.agent_type,
+                agent.environment,
+                agent.agent_bus_id,
+                agent.id
+            ],
+        )?;
+        Ok(rows > 0)
+    }
+
+    /// Delete a forge agent by id. Returns true if a row was deleted.
+    pub fn forge_delete(&self, id: &str) -> Result<bool, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let rows = conn.execute(
+            "DELETE FROM db_forge_agents WHERE id=?1",
+            params![id],
+        )?;
+        Ok(rows > 0)
+    }
+
+    // ---- ForgeContent CRUD ----
+
+    /// Get a single content blob for an agent.
+    pub fn forge_get_content(&self, agent_id: &str, content_type: &str) -> Result<Option<ForgeContent>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT agent_id, content_type, content, updated_at
+             FROM db_forge_content WHERE agent_id=?1 AND content_type=?2",
+        )?;
+        let result = stmt.query_row(params![agent_id, content_type], |row| {
+            Ok(ForgeContent {
+                agent_id: row.get(0)?,
+                content_type: row.get(1)?,
+                content: row.get(2)?,
+                updated_at: row.get(3)?,
+            })
+        });
+        match result {
+            Ok(content) => Ok(Some(content)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(StoreError::Sqlite(e)),
+        }
+    }
+
+    /// Upsert a content blob for an agent.
+    pub fn forge_set_content(&self, content: &ForgeContent) -> Result<(), StoreError> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO db_forge_content (agent_id, content_type, content, updated_at)
+             VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(agent_id, content_type) DO UPDATE SET content=?3, updated_at=?4",
+            params![
+                content.agent_id,
+                content.content_type,
+                content.content,
+                content.updated_at,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Get all content blobs for an agent.
+    pub fn forge_get_all_content(&self, agent_id: &str) -> Result<Vec<ForgeContent>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT agent_id, content_type, content, updated_at
+             FROM db_forge_content WHERE agent_id=?1 ORDER BY content_type ASC",
+        )?;
+        let rows = stmt.query_map(params![agent_id], |row| {
+            Ok(ForgeContent {
+                agent_id: row.get(0)?,
+                content_type: row.get(1)?,
+                content: row.get(2)?,
+                updated_at: row.get(3)?,
+            })
+        })?;
+        let mut contents = Vec::new();
+        for row in rows {
+            contents.push(row?);
+        }
+        Ok(contents)
+    }
+
+    /// Delete a specific content blob. Returns true if a row was deleted.
+    pub fn forge_delete_content(&self, agent_id: &str, content_type: &str) -> Result<bool, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let rows = conn.execute(
+            "DELETE FROM db_forge_content WHERE agent_id=?1 AND content_type=?2",
+            params![agent_id, content_type],
+        )?;
+        Ok(rows > 0)
+    }
+
+    // ---- ForgeSkill CRUD ----
+
+    /// List all skills for an agent, ordered by created_at ascending.
+    pub fn forge_list_skills(&self, agent_id: &str) -> Result<Vec<ForgeSkill>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, agent_id, name, trigger, skill_type, description, content, created_at
+             FROM db_forge_skills WHERE agent_id=?1 ORDER BY created_at ASC",
+        )?;
+        let rows = stmt.query_map(params![agent_id], |row| {
+            Ok(ForgeSkill {
+                id: row.get(0)?,
+                agent_id: row.get(1)?,
+                name: row.get(2)?,
+                trigger: row.get(3)?,
+                skill_type: row.get(4)?,
+                description: row.get(5)?,
+                content: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        })?;
+        let mut skills = Vec::new();
+        for row in rows {
+            skills.push(row?);
+        }
+        Ok(skills)
+    }
+
+    /// Get a single skill by id.
+    pub fn forge_get_skill(&self, id: &str) -> Result<Option<ForgeSkill>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, agent_id, name, trigger, skill_type, description, content, created_at
+             FROM db_forge_skills WHERE id=?1",
+        )?;
+        let result = stmt.query_row(params![id], |row| {
+            Ok(ForgeSkill {
+                id: row.get(0)?,
+                agent_id: row.get(1)?,
+                name: row.get(2)?,
+                trigger: row.get(3)?,
+                skill_type: row.get(4)?,
+                description: row.get(5)?,
+                content: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        });
+        match result {
+            Ok(skill) => Ok(Some(skill)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(StoreError::Sqlite(e)),
+        }
+    }
+
+    /// Insert a new skill.
+    pub fn forge_insert_skill(&self, skill: &ForgeSkill) -> Result<(), StoreError> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO db_forge_skills (id, agent_id, name, trigger, skill_type, description, content, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                skill.id,
+                skill.agent_id,
+                skill.name,
+                skill.trigger,
+                skill.skill_type,
+                skill.description,
+                skill.content,
+                skill.created_at
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Update an existing skill (all fields except id, agent_id, created_at).
+    pub fn forge_update_skill(&self, skill: &ForgeSkill) -> Result<bool, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let rows = conn.execute(
+            "UPDATE db_forge_skills SET name=?1, trigger=?2, skill_type=?3, description=?4, content=?5
+             WHERE id=?6",
+            params![
+                skill.name,
+                skill.trigger,
+                skill.skill_type,
+                skill.description,
+                skill.content,
+                skill.id
+            ],
+        )?;
+        Ok(rows > 0)
+    }
+
+    /// Delete a skill by id. Returns true if a row was deleted.
+    pub fn forge_delete_skill(&self, id: &str) -> Result<bool, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let rows = conn.execute(
+            "DELETE FROM db_forge_skills WHERE id=?1",
+            params![id],
+        )?;
+        Ok(rows > 0)
+    }
+
+    // ---- ForgeHistory methods ----
+
+    /// Append a history entry for an agent. Auto-sets session_date (today) and timestamp.
+    pub fn forge_append_history(&self, agent_id: &str, entry: &str) -> Result<ForgeHistory, StoreError> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as i64;
+        // session_date as YYYY-MM-DD
+        let secs = (now / 1000) as u64;
+        let days = secs / 86400;
+        // Simple date calculation (no chrono dependency needed)
+        let session_date = format_epoch_date(days);
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO db_forge_history (agent_id, session_date, entry, timestamp) VALUES (?1, ?2, ?3, ?4)",
+            params![agent_id, session_date, entry, now],
+        )?;
+        let id = conn.last_insert_rowid();
+        Ok(ForgeHistory {
+            id,
+            agent_id: agent_id.to_string(),
+            session_date,
+            entry: entry.to_string(),
+            timestamp: now,
+        })
+    }
+
+    /// List history entries for an agent, with optional date filter and pagination.
+    pub fn forge_list_history(
+        &self,
+        agent_id: &str,
+        session_date: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ForgeHistory>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let (sql, params_vec): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match session_date {
+            Some(date) => (
+                "SELECT id, agent_id, session_date, entry, timestamp
+                 FROM db_forge_history WHERE agent_id=?1 AND session_date=?2
+                 ORDER BY timestamp DESC LIMIT ?3 OFFSET ?4".to_string(),
+                vec![
+                    Box::new(agent_id.to_string()),
+                    Box::new(date.to_string()),
+                    Box::new(limit),
+                    Box::new(offset),
+                ],
+            ),
+            None => (
+                "SELECT id, agent_id, session_date, entry, timestamp
+                 FROM db_forge_history WHERE agent_id=?1
+                 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3".to_string(),
+                vec![
+                    Box::new(agent_id.to_string()),
+                    Box::new(limit),
+                    Box::new(offset),
+                ],
+            ),
+        };
+        let params_refs: Vec<&dyn rusqlite::types::ToSql> = params_vec.iter().map(|b| b.as_ref()).collect();
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt.query_map(params_refs.as_slice(), |row| {
+            Ok(ForgeHistory {
+                id: row.get(0)?,
+                agent_id: row.get(1)?,
+                session_date: row.get(2)?,
+                entry: row.get(3)?,
+                timestamp: row.get(4)?,
+            })
+        })?;
+        let mut entries = Vec::new();
+        for row in rows {
+            entries.push(row?);
+        }
+        Ok(entries)
+    }
+
+    /// Search history entries for an agent using LIKE-based matching.
+    pub fn forge_search_history(
+        &self,
+        agent_id: &str,
+        query: &str,
+        limit: i64,
+    ) -> Result<Vec<ForgeHistory>, StoreError> {
+        let conn = self.conn.lock().unwrap();
+        let pattern = format!("%{}%", query);
+        let mut stmt = conn.prepare(
+            "SELECT id, agent_id, session_date, entry, timestamp
+             FROM db_forge_history WHERE agent_id=?1 AND entry LIKE ?2
+             ORDER BY timestamp DESC LIMIT ?3",
+        )?;
+        let rows = stmt.query_map(params![agent_id, pattern, limit], |row| {
+            Ok(ForgeHistory {
+                id: row.get(0)?,
+                agent_id: row.get(1)?,
+                session_date: row.get(2)?,
+                entry: row.get(3)?,
+                timestamp: row.get(4)?,
+            })
+        })?;
+        let mut entries = Vec::new();
+        for row in rows {
+            entries.push(row?);
+        }
+        Ok(entries)
+    }
+}
+
+/// Format days-since-epoch as YYYY-MM-DD string.
+/// Simple implementation without chrono dependency.
+fn format_epoch_date(days_since_epoch: u64) -> String {
+    // Algorithm from https://howardhinnant.github.io/date_algorithms.html
+    let z = days_since_epoch + 719468;
+    let era = z / 146097;
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{:04}-{:02}-{:02}", y, m, d)
 }
 
 // ====================================================================

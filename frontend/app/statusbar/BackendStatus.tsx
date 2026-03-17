@@ -1,50 +1,82 @@
 // Copyright 2026, AgentMux Corp.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi } from "@/store/global";
-import { atoms } from "@/store/global";
-import { useAtomValue } from "jotai";
-import { memo, useEffect, useRef, useState } from "react";
+import { atoms, getApi } from "@/store/global";
+import { createEffect, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js";
 
-const BackendStatus = memo(() => {
-    const backendStatus = useAtomValue(atoms.backendStatusAtom);
-    const [popoverOpen, setPopoverOpen] = useState(false);
-    const [backendInfo, setBackendInfo] = useState<{
+function pad2(n: number): string {
+    return n < 10 ? `0${n}` : `${n}`;
+}
+
+function formatUptime(secs: number): string {
+    const s = secs % 60;
+    const m = Math.floor(secs / 60) % 60;
+    const h = Math.floor(secs / 3600) % 24;
+    const d = Math.floor(secs / 86400);
+    if (d > 0) return `${d}:${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+    if (h > 0) return `${h}:${pad2(m)}:${pad2(s)}`;
+    return `${m}:${pad2(s)}`;
+}
+
+const BackendStatus = (): JSX.Element => {
+    const backendStatus = atoms.backendStatusAtom;
+    const [popoverOpen, setPopoverOpen] = createSignal(false);
+    const [startedAt, setStartedAt] = createSignal<number | null>(null);
+    const [uptimeSecs, setUptimeSecs] = createSignal(0);
+    const [backendInfo, setBackendInfo] = createSignal<{
         pid?: number;
         started_at?: string;
         web_endpoint?: string;
         version: string;
     } | null>(null);
-    const popoverRef = useRef<HTMLDivElement>(null);
+    let popoverRef!: HTMLDivElement;
 
-    let icon: string;
-    let color: string;
-    let label: string;
-    let iconSpin = false;
+    // Fetch started_at when backend becomes running
+    createEffect(() => {
+        const status = backendStatus();
+        if (status === "running" && startedAt() == null) {
+            getApi().getBackendInfo().then((info) => {
+                setBackendInfo(info);
+                if (info?.started_at) {
+                    setStartedAt(new Date(info.started_at).getTime());
+                }
+            }).catch(() => {});
+        }
+    });
 
-    switch (backendStatus) {
-        case "running":
-            icon = "●";
-            color = "var(--accent-color)";
-            label = "Backend";
-            break;
-        case "connecting":
-            icon = "◌";
-            color = "var(--warning-color)";
-            label = "Connecting…";
-            iconSpin = true;
-            break;
-        case "crashed":
-            icon = "●";
-            color = "var(--error-color)";
-            label = "Backend offline";
-            break;
-        default:
-            return null;
-    }
+    // Tick uptime every second
+    onMount(() => {
+        const iv = setInterval(() => {
+            const start = startedAt();
+            if (start != null) {
+                setUptimeSecs(Math.floor((Date.now() - start) / 1000));
+            }
+        }, 1000);
+        onCleanup(() => clearInterval(iv));
+    });
+
+    const icon = () => {
+        switch (backendStatus()) {
+            case "running": return "●";
+            case "connecting": return "◌";
+            case "crashed": return "●";
+            default: return null;
+        }
+    };
+
+    const color = () => {
+        switch (backendStatus()) {
+            case "running": return "var(--accent-color)";
+            case "connecting": return "var(--warning-color)";
+            case "crashed": return "var(--error-color)";
+            default: return null;
+        }
+    };
+
+    const iconSpin = () => backendStatus() === "connecting";
 
     const handleClick = async () => {
-        if (popoverOpen) {
+        if (popoverOpen()) {
             setPopoverOpen(false);
             return;
         }
@@ -57,75 +89,74 @@ const BackendStatus = memo(() => {
         setPopoverOpen(true);
     };
 
-    useEffect(() => {
-        if (!popoverOpen) return;
+    createEffect(() => {
+        if (!popoverOpen()) return;
         const handleOutsideClick = (e: MouseEvent) => {
-            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+            if (popoverRef && !popoverRef.contains(e.target as Node)) {
                 setPopoverOpen(false);
             }
         };
         document.addEventListener("mousedown", handleOutsideClick);
         return () => document.removeEventListener("mousedown", handleOutsideClick);
-    }, [popoverOpen]);
-
-    const formatUptime = (startedAt: string): string => {
-        const start = new Date(startedAt).getTime();
-        const now = Date.now();
-        const secs = Math.floor((now - start) / 1000);
-        if (secs < 60) return `${secs}s`;
-        const mins = Math.floor(secs / 60);
-        if (mins < 60) return `${mins}m`;
-        const hrs = Math.floor(mins / 60);
-        return `${hrs}h ${mins % 60}m`;
-    };
+    });
 
     return (
-        <div style={{ position: "relative" }} ref={popoverRef}>
-            <div
-                className="status-bar-item clickable"
-                title="Click for backend details"
-                onClick={handleClick}
-            >
-                <span className={`status-icon${iconSpin ? " status-icon-spin" : ""}`} style={{ color }}>
-                    {icon}
-                </span>
-                <span style={{ color }}>{label}</span>
-            </div>
-            {popoverOpen && (
-                <div className="status-bar-popover">
-                    <div className="status-bar-popover-row">
-                        <span className="status-bar-popover-label">Status</span>
-                        <span style={{ color }}>{backendStatus}</span>
-                    </div>
-                    {backendInfo?.pid && (
-                        <div className="status-bar-popover-row">
-                            <span className="status-bar-popover-label">PID</span>
-                            <span>{backendInfo.pid}</span>
-                        </div>
-                    )}
-                    {backendInfo?.started_at && (
-                        <div className="status-bar-popover-row">
-                            <span className="status-bar-popover-label">Uptime</span>
-                            <span>{formatUptime(backendInfo.started_at)}</span>
-                        </div>
-                    )}
-                    {backendInfo?.web_endpoint && (
-                        <div className="status-bar-popover-row">
-                            <span className="status-bar-popover-label">Endpoint</span>
-                            <span className="status-bar-popover-mono">{backendInfo.web_endpoint}</span>
-                        </div>
-                    )}
-                    {backendInfo?.version && (
-                        <div className="status-bar-popover-row">
-                            <span className="status-bar-popover-label">Version</span>
-                            <span>{backendInfo.version}</span>
-                        </div>
-                    )}
+        <Show when={backendStatus() !== null && icon() !== null}>
+            <div style={{ position: "relative" }} ref={popoverRef}>
+                <div
+                    class="status-bar-item clickable"
+                    title="Click for backend details"
+                    onClick={handleClick}
+                >
+                    <span class={`status-icon${iconSpin() ? " status-icon-spin" : ""}`} style={{ color: color() }}>
+                        {icon()}
+                    </span>
+                    <Show when={backendStatus() === "running" && startedAt() != null}>
+                        <span class="stat-mono stat-uptime">{formatUptime(uptimeSecs())}</span>
+                    </Show>
+                    <Show when={backendStatus() === "connecting"}>
+                        <span style={{ color: color() }}>Connecting…</span>
+                    </Show>
+                    <Show when={backendStatus() === "crashed"}>
+                        <span style={{ color: color() }}>Offline</span>
+                    </Show>
                 </div>
-            )}
-        </div>
+                <Show when={popoverOpen()}>
+                    <div class="status-bar-popover">
+                        <div class="status-bar-popover-row">
+                            <span class="status-bar-popover-label">Status</span>
+                            <span style={{ color: color() }}>{backendStatus()}</span>
+                        </div>
+                        <Show when={backendInfo()?.pid}>
+                            <div class="status-bar-popover-row">
+                                <span class="status-bar-popover-label">PID</span>
+                                <span>{backendInfo().pid}</span>
+                            </div>
+                        </Show>
+                        <Show when={startedAt() != null}>
+                            <div class="status-bar-popover-row">
+                                <span class="status-bar-popover-label">Uptime</span>
+                                <span>{formatUptime(uptimeSecs())}</span>
+                            </div>
+                        </Show>
+                        <Show when={backendInfo()?.web_endpoint}>
+                            <div class="status-bar-popover-row">
+                                <span class="status-bar-popover-label">Endpoint</span>
+                                <span class="status-bar-popover-mono">{backendInfo().web_endpoint}</span>
+                            </div>
+                        </Show>
+                        <Show when={backendInfo()?.version}>
+                            <div class="status-bar-popover-row">
+                                <span class="status-bar-popover-label">Version</span>
+                                <span>{backendInfo().version}</span>
+                            </div>
+                        </Show>
+                    </div>
+                </Show>
+            </div>
+        </Show>
     );
-});
+};
 
 BackendStatus.displayName = "BackendStatus";
 

@@ -146,7 +146,7 @@ export function focusNode(model: LayoutModel, nodeId: string) {
         if (ephemeralNode?.id === nodeId) {
             layoutNode = ephemeralNode;
         } else {
-            console.error("unable to focus node, cannot find it in tree", nodeId);
+            console.error("[focus:focusNode] unable to focus node, cannot find it in tree", nodeId);
             return;
         }
     }

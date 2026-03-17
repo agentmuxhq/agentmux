@@ -6,7 +6,11 @@ import { atoms, getApi, globalStore } from "./global";
 class ContextMenuModelType {
     handlers: Map<string, () => void> = new Map(); // id -> handler
 
-    constructor() {
+    constructor() {}
+
+    // Must be called from wave.ts:initBare() after setupTauriApi() has installed window.api.
+    // Calling getApi() here (module level) would crash before window.api exists.
+    init() {
         getApi().onContextMenuClick(this.handleContextMenuClick.bind(this));
     }
 
@@ -45,11 +49,12 @@ class ContextMenuModelType {
         return nativeMenuItems;
     }
 
-    showContextMenu(menu: ContextMenuItem[], ev: React.MouseEvent<any>): void {
+    showContextMenu(menu: ContextMenuItem[], ev: MouseEvent | { stopPropagation(): void }): void {
         ev.stopPropagation();
         this.handlers.clear();
         const nativeMenuItems = this._convertAndRegisterMenu(menu);
-        getApi().showContextMenu(globalStore.get(atoms.workspace).oid, nativeMenuItems);
+        const position = { x: Math.round((ev as MouseEvent).clientX), y: Math.round((ev as MouseEvent).clientY) };
+        getApi().showContextMenu(atoms.workspace()?.oid, nativeMenuItems, position);
     }
 }
 

@@ -2,7 +2,7 @@ mod ai;
 mod files;
 mod messagebus;
 mod reactive;
-mod service;
+pub(crate) mod service;
 mod websocket;
 
 #[cfg(test)]
@@ -45,6 +45,11 @@ pub struct AppState {
     pub poller: Arc<Poller>,
     pub config_watcher: Arc<wconfig::ConfigWatcher>,
     pub messagebus: Arc<MessageBus>,
+    /// Local HTTP URL of this instance (e.g. "http://127.0.0.1:PORT").
+    /// Used for cross-instance inject forwarding and file registry entries.
+    pub local_web_url: String,
+    /// Shared HTTP client for cross-instance inject forwarding.
+    pub http_client: reqwest::Client,
 }
 
 /// Build the Axum router with all routes, auth middleware, and CORS.
@@ -87,11 +92,6 @@ pub fn build_router(state: AppState) -> Router {
             get(reactive::handle_reactive_poller_status),
         );
 
-    // Authed routes
-    let vdom_router = Router::new()
-        .route("/{uuid}", get(stub_501))
-        .route("/{uuid}/*rest", get(stub_501));
-
     // MessageBus routes (authed, localhost-only)
     let bus_routes = Router::new()
         .route("/api/bus/register", post(messagebus::handle_register))
@@ -110,7 +110,6 @@ pub fn build_router(state: AppState) -> Router {
         .route("/wave/stream-file/*path", get(stub_501))
         .route("/wave/stream-local-file", get(stub_501))
         .route("/wave/aichat", post(ai::handle_ai_chat))
-        .nest("/vdom", vdom_router)
         .route("/api/post-chat-message", get(stub_501).post(stub_501))
         .route("/docsite/*path", get(files::handle_docsite))
         .route("/schema/*path", get(files::handle_schema))

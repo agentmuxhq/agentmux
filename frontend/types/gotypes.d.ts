@@ -194,6 +194,170 @@ declare global {
         blockdef: BlockDef;
     };
 
+    // ForgeAgent
+    type ForgeAgent = {
+        id: string;
+        name: string;
+        icon: string;
+        provider: string;
+        description: string;
+        working_directory: string;
+        shell: string;
+        provider_flags: string;
+        auto_start: number;
+        restart_on_crash: number;
+        idle_timeout_minutes: number;
+        created_at: number;
+        agent_type: string;
+        environment: string;
+        agent_bus_id: string;
+        is_seeded: number;
+    };
+
+    // ForgeContent
+    type ForgeContent = {
+        agent_id: string;
+        content_type: string;
+        content: string;
+        updated_at: number;
+    };
+
+    // CommandCreateForgeAgentData
+    type CommandCreateForgeAgentData = {
+        name: string;
+        icon: string;
+        provider: string;
+        description: string;
+        working_directory?: string;
+        shell?: string;
+        provider_flags?: string;
+        auto_start?: number;
+        restart_on_crash?: number;
+        idle_timeout_minutes?: number;
+        agent_type?: string;
+        environment?: string;
+        agent_bus_id?: string;
+    };
+
+    // CommandUpdateForgeAgentData
+    type CommandUpdateForgeAgentData = {
+        id: string;
+        name: string;
+        icon: string;
+        provider: string;
+        description: string;
+        working_directory?: string;
+        shell?: string;
+        provider_flags?: string;
+        auto_start?: number;
+        restart_on_crash?: number;
+        idle_timeout_minutes?: number;
+        agent_type?: string;
+        environment?: string;
+        agent_bus_id?: string;
+    };
+
+    // CommandDeleteForgeAgentData
+    type CommandDeleteForgeAgentData = {
+        id: string;
+    };
+
+    // CommandGetForgeContentData
+    type CommandGetForgeContentData = {
+        agent_id: string;
+        content_type: string;
+    };
+
+    // CommandSetForgeContentData
+    type CommandSetForgeContentData = {
+        agent_id: string;
+        content_type: string;
+        content: string;
+    };
+
+    // CommandGetAllForgeContentData
+    type CommandGetAllForgeContentData = {
+        agent_id: string;
+    };
+
+    // ForgeSkill
+    type ForgeSkill = {
+        id: string;
+        agent_id: string;
+        name: string;
+        trigger: string;
+        skill_type: string;
+        description: string;
+        content: string;
+        created_at: number;
+    };
+
+    // CommandListForgeSkillsData
+    type CommandListForgeSkillsData = {
+        agent_id: string;
+    };
+
+    // CommandCreateForgeSkillData
+    type CommandCreateForgeSkillData = {
+        agent_id: string;
+        name: string;
+        trigger?: string;
+        skill_type?: string;
+        description?: string;
+        content?: string;
+    };
+
+    // CommandUpdateForgeSkillData
+    type CommandUpdateForgeSkillData = {
+        id: string;
+        name: string;
+        trigger?: string;
+        skill_type?: string;
+        description?: string;
+        content?: string;
+    };
+
+    // CommandDeleteForgeSkillData
+    type CommandDeleteForgeSkillData = {
+        id: string;
+    };
+
+    // ForgeHistory
+    type ForgeHistory = {
+        id: number;
+        agent_id: string;
+        session_date: string;
+        entry: string;
+        timestamp: number;
+    };
+
+    // CommandAppendForgeHistoryData
+    type CommandAppendForgeHistoryData = {
+        agent_id: string;
+        entry: string;
+    };
+
+    // CommandListForgeHistoryData
+    type CommandListForgeHistoryData = {
+        agent_id: string;
+        session_date?: string;
+        limit?: number;
+        offset?: number;
+    };
+
+    // CommandSearchForgeHistoryData
+    type CommandSearchForgeHistoryData = {
+        agent_id: string;
+        query: string;
+        limit?: number;
+    };
+
+    // CommandImportForgeFromClawData
+    type CommandImportForgeFromClawData = {
+        workspace_path: string;
+        agent_name: string;
+    };
+
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
@@ -663,23 +827,20 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
-        "term:vdomblockid"?: string;
-        "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
         "term:conndebug"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
-        "vdom:*"?: boolean;
-        "vdom:initialized"?: boolean;
-        "vdom:correlationid"?: string;
-        "vdom:route"?: string;
-        "vdom:persist"?: boolean;
         "onboarding:githubstar"?: boolean;
         "onboarding:lastversion"?: string;
         count?: number;
+        "widget:order"?: string[];
         "agent:*"?: boolean;
+        agentId?: string;
+        agentName?: string;
+        agentIcon?: string;
         agentMode?: string;
         agentProvider?: string;
         agentCliPath?: string;
@@ -840,6 +1001,7 @@ declare global {
         "markdown:fixedfontsize"?: number;
         "preview:showhiddenfiles"?: boolean;
         "tab:preset"?: string;
+        "tab:color"?: string | null;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "widget:icononly"?: boolean;
@@ -865,6 +1027,7 @@ declare global {
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "telemetry:interval"?: number;
+        "telemetry:numpoints"?: number;
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
@@ -1129,199 +1292,6 @@ declare global {
         checkboxstat?: boolean;
     };
 
-    // vdom.VDomAsyncInitiationRequest
-    type VDomAsyncInitiationRequest = {
-        type: "asyncinitiationrequest";
-        ts: number;
-        blockid?: string;
-    };
-
-    // vdom.VDomBackendOpts
-    type VDomBackendOpts = {
-        closeonctrlc?: boolean;
-        globalkeyboardevents?: boolean;
-        globalstyles?: boolean;
-    };
-
-    // vdom.VDomBackendUpdate
-    type VDomBackendUpdate = {
-        type: "backendupdate";
-        ts: number;
-        blockid: string;
-        opts?: VDomBackendOpts;
-        haswork?: boolean;
-        renderupdates?: VDomRenderUpdate[];
-        transferelems?: VDomTransferElem[];
-        statesync?: VDomStateSync[];
-        refoperations?: VDomRefOperation[];
-        messages?: VDomMessage[];
-    };
-
-    // vdom.VDomBinding
-    type VDomBinding = {
-        type: "binding";
-        bind: string;
-    };
-
-    // vdom.VDomCreateContext
-    type VDomCreateContext = {
-        type: "createcontext";
-        ts: number;
-        meta?: MetaType;
-        target?: VDomTarget;
-        persist?: boolean;
-    };
-
-    // vdom.VDomElem
-    type VDomElem = {
-        waveid?: string;
-        tag: string;
-        props?: {[key: string]: any};
-        children?: VDomElem[];
-        text?: string;
-    };
-
-    // vdom.VDomEvent
-    type VDomEvent = {
-        waveid: string;
-        eventtype: string;
-        globaleventtype?: string;
-        targetvalue?: string;
-        targetchecked?: boolean;
-        targetname?: string;
-        targetid?: string;
-        keydata?: WaveKeyboardEvent;
-        mousedata?: WavePointerData;
-    };
-
-    // vdom.VDomFrontendUpdate
-    type VDomFrontendUpdate = {
-        type: "frontendupdate";
-        ts: number;
-        blockid: string;
-        correlationid?: string;
-        dispose?: boolean;
-        resync?: boolean;
-        rendercontext?: VDomRenderContext;
-        events?: VDomEvent[];
-        statesync?: VDomStateSync[];
-        refupdates?: VDomRefUpdate[];
-        messages?: VDomMessage[];
-    };
-
-    // vdom.VDomFunc
-    type VDomFunc = {
-        type: "func";
-        stoppropagation?: boolean;
-        preventdefault?: boolean;
-        globalevent?: string;
-        #keys?: string[];
-    };
-
-    // vdom.VDomMessage
-    type VDomMessage = {
-        messagetype: string;
-        message: string;
-        stacktrace?: string;
-        params?: any[];
-    };
-
-    // vdom.VDomRef
-    type VDomRef = {
-        type: "ref";
-        refid: string;
-        trackposition?: boolean;
-        position?: VDomRefPosition;
-        hascurrent?: boolean;
-    };
-
-    // vdom.VDomRefOperation
-    type VDomRefOperation = {
-        refid: string;
-        op: string;
-        params?: any[];
-        outputref?: string;
-    };
-
-    // vdom.VDomRefPosition
-    type VDomRefPosition = {
-        offsetheight: number;
-        offsetwidth: number;
-        scrollheight: number;
-        scrollwidth: number;
-        scrolltop: number;
-        boundingclientrect: DomRect;
-    };
-
-    // vdom.VDomRefUpdate
-    type VDomRefUpdate = {
-        refid: string;
-        hascurrent: boolean;
-        position?: VDomRefPosition;
-    };
-
-    // vdom.VDomRenderContext
-    type VDomRenderContext = {
-        blockid: string;
-        focused: boolean;
-        width: number;
-        height: number;
-        rootrefid: string;
-        background?: boolean;
-    };
-
-    // vdom.VDomRenderUpdate
-    type VDomRenderUpdate = {
-        updatetype: "root"|"append"|"replace"|"remove"|"insert";
-        waveid?: string;
-        vdomwaveid?: string;
-        vdom?: VDomElem;
-        index?: number;
-    };
-
-    // vdom.VDomStateSync
-    type VDomStateSync = {
-        atom: string;
-        value: any;
-    };
-
-    // vdom.VDomTarget
-    type VDomTarget = {
-        newblock?: boolean;
-        magnified?: boolean;
-        toolbar?: VDomTargetToolbar;
-    };
-
-    // vdom.VDomTargetToolbar
-    type VDomTargetToolbar = {
-        toolbar: boolean;
-        height?: string;
-    };
-
-    // vdom.VDomTransferElem
-    type VDomTransferElem = {
-        waveid?: string;
-        tag: string;
-        props?: {[key: string]: any};
-        children?: string[];
-        text?: string;
-    };
-
-    // wshrpc.VDomUrlRequestData
-    type VDomUrlRequestData = {
-        method: string;
-        url: string;
-        headers: {[key: string]: string};
-        body?: string;
-    };
-
-    // wshrpc.VDomUrlRequestResponse
-    type VDomUrlRequestResponse = {
-        statuscode?: number;
-        headers?: {[key: string]: string};
-        body?: string;
-    };
-
     type WSCommandType = {
         wscommand: string;
     } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand | WSRpcCommand );
@@ -1570,6 +1540,41 @@ declare global {
     // wshrpc.WshServerCommandMeta
     type WshServerCommandMeta = {
         commandtype: string;
+    };
+
+    // wshrpc.CommandSubprocessSpawnData
+    type CommandSubprocessSpawnData = {
+        blockid: string;
+        tabid: string;
+        cli_command: string;
+        cli_args?: string[];
+        working_dir?: string;
+        env_vars?: {[key: string]: string};
+        message: string;
+    };
+
+    // wshrpc.CommandAgentInputData
+    type CommandAgentInputData = {
+        blockid: string;
+        message: string;
+    };
+
+    // wshrpc.CommandAgentStopData
+    type CommandAgentStopData = {
+        blockid: string;
+        force?: boolean;
+    };
+
+    // wshrpc.AgentConfigFile
+    type AgentConfigFile = {
+        path: string;
+        content: string;
+    };
+
+    // wshrpc.CommandWriteAgentConfigData
+    type CommandWriteAgentConfigData = {
+        working_dir: string;
+        files: AgentConfigFile[];
     };
 
 }

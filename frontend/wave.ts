@@ -27,19 +27,25 @@ import {
     subscribeToConnEvents,
     windowCountAtom,
     windowInstanceNumAtom,
+    setWindowInstanceNumAtom,
+    setWindowCountAtom,
+    setReinitVersion,
+    setUpdaterStatusAtom,
+    setFullConfigAtom,
 } from "@/app/store/global";
 import * as WOS from "@/app/store/wos";
 import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
-import { createElement } from "react";
-import { createRoot } from "react-dom/client";
+import { render } from "solid-js/web";
+import { ContextMenuModel } from "@/app/store/contextmenu";
+// Static import — avoids dynamic import() hang in WebKitGTK over tauri:// protocol.
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
-
-const platform = getApi().getPlatform();
-
-const appVersion = getApi().getAboutModalDetails().version;
-
-document.title = `AgentMux ${appVersion}`;
+// Deferred — assigned inside initBare() after window.api is ready.
+// Do NOT call getApi() at module level: this file is statically imported by
+// tauri-bootstrap.ts before setupTauriApi() runs, so window.api does not exist yet.
+let platform: string;
+let appVersion: string;
 let savedInitOpts: AgentMuxInitOpts = null;
 
 // Update window title with instance ID if running in multi-instance mode
@@ -52,7 +58,6 @@ async function updateWindowTitleWithInstanceID() {
 
         const { invoke } = await import("@tauri-apps/api/core");
         const { readTextFile, exists } = await import("@tauri-apps/plugin-fs");
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
 
         const dataDir = await invoke<string>("get_data_dir");
         // Use platform-agnostic path joining
@@ -151,13 +156,13 @@ async function initInstanceTracking(): Promise<void> {
             getApi().getInstanceNumber(),
             getApi().getWindowCount(),
         ]);
-        globalStore.set(windowInstanceNumAtom, instanceNum);
-        globalStore.set(windowCountAtom, windowCount);
+        setWindowInstanceNumAtom(instanceNum);
+        setWindowCountAtom(windowCount);
 
         // Keep count in sync whenever any window opens or closes.
         const { listen } = await import("@tauri-apps/api/event");
         await listen<number>("window-instances-changed", (event) => {
-            globalStore.set(windowCountAtom, event.payload);
+            setWindowCountAtom(event.payload);
         });
     } catch (e) {
         console.warn("[initInstanceTracking] failed:", e);
@@ -251,9 +256,11 @@ async function initTauriWave(): Promise<void> {
 
         // Show the window now that it's fully initialized (Tauri starts hidden)
         try {
-            const { getCurrentWindow } = await import("@tauri-apps/api/window");
             const currentWindow = getCurrentWindow();
             await currentWindow.show();
+            if (platform === "linux") {
+                await currentWindow.center();
+            }
             await currentWindow.setFocus();
         } catch (showError) {
             console.warn("[initTauriWave] Failed to show window:", showError);
@@ -265,7 +272,6 @@ async function initTauriWave(): Promise<void> {
         showStartupError(String(error));
         // Show window even on error so user can see the error message
         try {
-            const { getCurrentWindow } = await import("@tauri-apps/api/window");
             await getCurrentWindow().show();
         } catch {}
     }
@@ -338,7 +344,6 @@ async function initTauriNewWindow(): Promise<void> {
 
         // Show the window now that it's initialized
         try {
-            const { getCurrentWindow } = await import("@tauri-apps/api/window");
             const currentWindow = getCurrentWindow();
             await currentWindow.show();
             await currentWindow.setFocus();
@@ -353,13 +358,21 @@ async function initTauriNewWindow(): Promise<void> {
         showStartupError("New window: " + String(error));
         // Show Tauri window so user sees the error
         try {
-            const { getCurrentWindow } = await import("@tauri-apps/api/window");
             await getCurrentWindow().show();
         } catch {}
     }
 }
 
-async function initBare() {
+export async function initBare() {
+    // window.api is guaranteed to exist here — tauri-bootstrap.ts calls setupTauriApi()
+    // before calling initBare(). Assign deferred module-level values now.
+    platform = getApi().getPlatform();
+    appVersion = getApi().getAboutModalDetails().version;
+    document.title = `AgentMux ${appVersion}`;
+
+    // Register context menu click handler now that window.api exists.
+    ContextMenuModel.init();
+
     const bareStart = performance.now();
     (window as any).__startupPerfStart = bareStart;
     getApi().sendLog("Init Bare");
@@ -439,12 +452,15 @@ async function initBare() {
     });
 }
 
-// Handle both cases: DOM not yet loaded, or already loaded (Tauri dynamic import)
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initBare);
-} else {
-    // DOM already loaded (e.g., when dynamically imported from tauri-bootstrap)
-    initBare();
+// tauri-bootstrap.ts calls initBare() directly (static import).
+// This self-start path is kept only for non-Tauri/dev environments where
+// tauri-bootstrap is not the entry point.
+if (typeof (window as any).__TAURI_INTERNALS__ === "undefined") {
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initBare);
+    } else {
+        initBare();
+    }
 }
 
 async function initWaveWrap(initOpts: AgentMuxInitOpts) {
@@ -485,8 +501,8 @@ async function reinitWave() {
     reloadAllWorkspaceTabs(ws);
     document.title = `AgentMux ${appVersion} - ${initialTab.name}`; // TODO update with tab name change
     getApi().setWindowInitStatus("wave-ready");
-    globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
-    globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
+    setReinitVersion((v) => v + 1);
+    setUpdaterStatusAtom(getApi().getUpdaterStatus());
     setTimeout(() => {
         globalRefocus();
     }, 50);
@@ -602,20 +618,13 @@ async function initWave(initOpts: AgentMuxInitOpts) {
     t = performance.now();
     const fullConfig = await withTimeout(RpcApi.GetFullConfigCommand(TabRpcClient), RPC_TIMEOUT, "GetFullConfig");
     tlog("GetFullConfig", t);
-    globalStore.set(atoms.fullConfigAtom, fullConfig);
+    setFullConfigAtom(fullConfig);
 
     t = performance.now();
     console.log("Wave First Render");
-    let firstRenderResolveFn: () => void = null;
-    let firstRenderPromise = new Promise<void>((resolve) => {
-        firstRenderResolveFn = resolve;
-    });
-    const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn }, null);
     const elem = document.getElementById("main");
-    const root = createRoot(elem);
-    root.render(reactElem);
-    await firstRenderPromise;
-    tlog("React render", t);
+    render(App, elem);
+    tlog("SolidJS render", t);
     tlog("TOTAL initWave", t0);
 
     // Hide startup loading message

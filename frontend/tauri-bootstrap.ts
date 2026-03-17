@@ -4,10 +4,25 @@
 // Tauri bootstrap with verbose logging.
 // This is the true entry point for Tauri builds.
 
+import { initLogPipe } from "./log/log-pipe";
 import { setupTauriApi } from "./tauri-init";
+// Static import — avoids the dynamic import() hang in WebKitGTK over tauri:// protocol.
+// setupTauriApi() must be called before initBare() so window.api exists.
+import { initBare } from "./wave";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readTextFile, exists } from "@tauri-apps/plugin-fs";
+
+// Pipe all console.log/warn/error to the Rust host log file.
+// Must run before any other code so early messages are captured.
+initLogPipe();
+
+// Static CSS imports so Vite includes them in the HTML <link> tags.
+// wave.ts is dynamically imported (for error handling), but its CSS must
+// be loaded eagerly — Tauri's webview doesn't process Vite's dynamic CSS injection.
+import "overlayscrollbars/overlayscrollbars.css";
+import "./app/app.scss";
+import "./tailwindsetup.css";
 
 // Deep verbose logging
 const log = (level: string, ...args: any[]) => {
@@ -141,18 +156,18 @@ async function bootstrap() {
             log("INFO", "Not running in Tauri, skipping Tauri init");
         }
 
-        // Now dynamically import wave.ts
-        log("INFO", "Loading main application (wave.ts)...");
+        // Call initBare() — imported statically above.
+        // Static import avoids the dynamic import() hang in WebKitGTK over tauri:// protocol.
+        // window.api is guaranteed to exist at this point (setupTauriApi() ran above).
+        log("INFO", "Starting main application (wave.ts initBare)...");
         try {
-            await import("./wave");
+            await initBare();
             log("INFO", "✅ Main application loaded successfully");
         } catch (waveError) {
-            log("ERROR", "Failed to load wave.ts:", waveError);
+            log("ERROR", "Failed in initBare:", waveError);
             log("ERROR", "Wave error name:", (waveError as Error)?.name);
             log("ERROR", "Wave error message:", (waveError as Error)?.message);
             log("ERROR", "Wave error stack:", (waveError as Error)?.stack);
-            log("ERROR", "Wave error type:", typeof waveError);
-            log("ERROR", "Wave error constructor:", (waveError as any)?.constructor?.name);
             throw waveError;
         }
 

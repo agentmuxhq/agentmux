@@ -5,25 +5,22 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, getApi, globalStore, WOS } from "@/app/store/global";
-import { atom, Atom, PrimitiveAtom } from "jotai";
-import React from "react";
+import { SignalAtom } from "@/util/util";
 import { AgentViewWrapper } from "./agent-view";
 import { PROVIDERS } from "./providers";
-import { buildBootstrapScript, guessShellType } from "./bootstrap";
 import { Logger } from "@/util/logger";
-import { stringToBase64 } from "@/util/util";
 
 export class AgentViewModel implements ViewModel {
     viewType = "agent";
     blockId: string;
     nodeModel: BlockNodeModel;
-    blockAtom: Atom<Block>;
+    blockAtom: SignalAtom<Block>;
 
-    viewIcon: Atom<string>;
-    viewName: Atom<string>;
-    viewText: Atom<string | HeaderElem[]>;
+    viewIcon: () => string;
+    viewName: () => string;
+    viewText: () => string | HeaderElem[];
     viewComponent: ViewComponent;
-    noPadding = atom(true);
+    noPadding: () => boolean;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
@@ -31,125 +28,185 @@ export class AgentViewModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewComponent = AgentViewWrapper as any;
 
-        this.viewIcon = atom("sparkles");
-        this.viewName = atom("Agent");
-        this.viewText = atom<string | HeaderElem[]>([]);
+        this.viewIcon = () => "sparkles";
+        this.viewName = () => "Agent";
+        this.viewText = () => [] as HeaderElem[];
+        this.noPadding = () => true;
     }
 
     /**
-     * Called when user clicks a provider button (raw mode).
-     * Switches to terminal view, injects a bootstrap script that:
-     * 1. Checks for the CLI in a version-isolated directory
-     * 2. Installs via npm if missing (visible in terminal)
-     * 3. Launches the CLI
+     * Launch an agent in presentation view.
+     * For Phase 1, agentId maps to a provider ID (claude/codex/gemini).
+     * Sets block metadata with CLI config and creates a SubprocessController.
+     * The agent CLI is not started until the user sends the first message.
      */
-    connectWithProvider = async (providerId: string, _cliPath: string): Promise<void> => {
-        const provider = PROVIDERS[providerId];
+    launchAgent = async (agentId: string): Promise<void> => {
+        const provider = PROVIDERS[agentId];
         if (!provider) {
-            Logger.error("agent", "Unknown provider", { providerId });
+            Logger.error("agent", "Unknown agent", { agentId });
             return;
         }
 
         const version = getApi().getAboutModalDetails().version;
-        const shellType = guessShellType(getApi().getPlatform());
+        const cliDir = resolveCliDir(version, provider.id);
+        const cliBin = `${cliDir}/node_modules/.bin/${provider.cliCommand}`;
 
-        Logger.info("agent", `Starting ${provider.id} — isolated CLI (v${version})`, {
-            provider: provider.id,
-            shellType,
-            args: provider.defaultArgs,
-        });
-
-        const oref = WOS.makeORef("block", this.blockId);
-        const blockId = this.blockId;
-        try {
-            await RpcApi.SetMetaCommand(TabRpcClient, {
-                oref,
-                meta: {
-                    "view": "term",
-                    "controller": "shell",
-                },
-            });
-            await RpcApi.ControllerResyncCommand(TabRpcClient, {
-                tabid: globalStore.get(atoms.staticTabId),
-                blockid: blockId,
-                forcerestart: true,
-            });
-
-            setTimeout(async () => {
-                const script = buildBootstrapScript({
-                    version,
-                    provider,
-                    shellType,
-                    args: provider.defaultArgs,
-                });
-                const b64data = stringToBase64(script + "\r");
-                await RpcApi.ControllerInputCommand(TabRpcClient, {
-                    blockid: blockId,
-                    inputdata64: b64data,
-                });
-            }, 500);
-        } catch (e: any) {
-            Logger.error("agent", "Failed to start session", { error: String(e) });
-        }
-    };
-
-    /**
-     * Called when user clicks a styled provider button.
-     * Keeps view as "agent" but starts a shell controller underneath,
-     * then injects a bootstrap script with styled output flags.
-     * The PTY output is subscribed to by useAgentStream and rendered as styled blocks.
-     */
-    connectStyled = async (providerId: string, _cliPath: string): Promise<void> => {
-        const provider = PROVIDERS[providerId];
-        if (!provider) {
-            Logger.error("agent", "Unknown provider", { providerId });
-            return;
-        }
-
-        const version = getApi().getAboutModalDetails().version;
-        const shellType = guessShellType(getApi().getPlatform());
-
-        Logger.info("agent", `Starting ${provider.id} in styled mode (v${version})`, {
-            provider: provider.id,
-            shellType,
+        Logger.info("agent", `Launching agent ${agentId} (v${version})`, {
+            agentId,
             styledArgs: provider.styledArgs,
             outputFormat: provider.styledOutputFormat,
         });
 
         const oref = WOS.makeORef("block", this.blockId);
         const blockId = this.blockId;
+
+        // Build CLI args: -p for non-interactive, plus provider's streaming flags
+        const cliArgs = ["-p", ...provider.styledArgs];
+
+        // Build env vars: unset nested-session guards by setting them empty
+        const envVars: Record<string, string> = {};
+        if (provider.unsetEnv) {
+            for (const key of provider.unsetEnv) {
+                envVars[key] = "";
+            }
+        }
+
         try {
+            // Store CLI config in block metadata for the backend to read on AgentInput
             await RpcApi.SetMetaCommand(TabRpcClient, {
                 oref,
                 meta: {
-                    "agentMode": "styled",
-                    "agentProvider": provider.id,
-                    "agentOutputFormat": provider.styledOutputFormat,
-                    "controller": "shell",
+                    agentId: agentId,
+                    agentOutputFormat: provider.styledOutputFormat,
+                    controller: "subprocess",
+                    cmd: cliBin,
+                    "cmd:args": cliArgs,
+                    "cmd:env": envVars,
                 },
             });
 
+            // Create SubprocessController (no-op start — waits for first message)
             await RpcApi.ControllerResyncCommand(TabRpcClient, {
                 tabid: globalStore.get(atoms.staticTabId),
                 blockid: blockId,
                 forcerestart: true,
             });
-
-            setTimeout(async () => {
-                const script = buildBootstrapScript({
-                    version,
-                    provider,
-                    shellType,
-                    args: provider.styledArgs,
-                });
-                const b64data = stringToBase64(script + "\r");
-                await RpcApi.ControllerInputCommand(TabRpcClient, {
-                    blockid: blockId,
-                    inputdata64: b64data,
-                });
-            }, 500);
         } catch (e: any) {
-            Logger.error("agent", "Failed to start styled session", { error: String(e) });
+            Logger.error("agent", "Failed to launch agent", { error: String(e) });
+        }
+    };
+
+    /**
+     * Launch a Forge-managed agent in presentation view.
+     * Uses the ForgeAgent's provider to look up CLI config.
+     * Loads content blobs (soul, agentmd, mcp, env) and writes config files
+     * to the working directory via WriteAgentConfigCommand, then creates
+     * a SubprocessController ready for user input.
+     */
+    launchForgeAgent = async (agent: ForgeAgent): Promise<void> => {
+        const provider = PROVIDERS[agent.provider];
+        if (!provider) {
+            Logger.error("agent", "Unknown provider in forge agent", { agentId: agent.id, provider: agent.provider });
+            return;
+        }
+
+        const version = getApi().getAboutModalDetails().version;
+        const cliDir = resolveCliDir(version, provider.id);
+        const cliBin = `${cliDir}/node_modules/.bin/${provider.cliCommand}`;
+
+        Logger.info("agent", `Launching forge agent ${agent.name} (${agent.provider})`, {
+            agentId: agent.id,
+            provider: agent.provider,
+        });
+
+        // Load all content for this agent
+        let contents: ForgeContent[] = [];
+        try {
+            contents = await RpcApi.GetAllForgeContentCommand(TabRpcClient, { agent_id: agent.id }) ?? [];
+        } catch (e: any) {
+            Logger.error("agent", "Failed to load forge content", { error: String(e) });
+        }
+        const contentMap: Record<string, string> = {};
+        for (const c of contents) {
+            contentMap[c.content_type] = c.content;
+        }
+
+        // Load skills for this agent (lazy-loading: only names/descriptions injected)
+        let skills: ForgeSkill[] = [];
+        try {
+            skills = await RpcApi.ListForgeSkillsCommand(TabRpcClient, { agent_id: agent.id }) ?? [];
+        } catch (e: any) {
+            Logger.error("agent", "Failed to load forge skills", { error: String(e) });
+        }
+
+        // Determine working directory
+        const workDir = agent.working_directory || `~/.agentmux/agents/${agent.name.toLowerCase().replace(/[^a-z0-9-_]/g, "-")}`;
+
+        // Build CLI args: -p for non-interactive, plus provider's streaming flags, plus forge flags
+        const cliArgs = ["-p", ...provider.styledArgs];
+        if (agent.provider_flags) {
+            cliArgs.push(...agent.provider_flags.split(/\s+/).filter(Boolean));
+        }
+
+        // Build env vars from provider unsetEnv + forge env content
+        const envVars: Record<string, string> = {};
+        if (provider.unsetEnv) {
+            for (const key of provider.unsetEnv) {
+                envVars[key] = "";
+            }
+        }
+        if (contentMap["env"]) {
+            for (const line of contentMap["env"].split("\n")) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith("#")) continue;
+                const eqIdx = trimmed.indexOf("=");
+                if (eqIdx < 1) continue;
+                const key = trimmed.substring(0, eqIdx);
+                const val = trimmed.substring(eqIdx + 1);
+                if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) continue;
+                envVars[key] = val;
+            }
+        }
+
+        // Build config files to write via backend RPC
+        const configFiles = buildConfigFiles(contentMap, skills);
+
+        const oref = WOS.makeORef("block", this.blockId);
+        const blockId = this.blockId;
+        try {
+            // Store CLI config in block metadata
+            await RpcApi.SetMetaCommand(TabRpcClient, {
+                oref,
+                meta: {
+                    agentId: agent.id,
+                    agentProvider: agent.provider,
+                    agentOutputFormat: provider.styledOutputFormat,
+                    agentName: agent.name,
+                    agentIcon: agent.icon,
+                    controller: "subprocess",
+                    cmd: cliBin,
+                    "cmd:args": cliArgs,
+                    "cmd:cwd": workDir,
+                    "cmd:env": envVars,
+                },
+            });
+
+            // Write config files (CLAUDE.md, .mcp.json) to working directory via backend
+            if (configFiles.length > 0) {
+                await RpcApi.WriteAgentConfigCommand(TabRpcClient, {
+                    working_dir: workDir,
+                    files: configFiles,
+                });
+            }
+
+            // Create SubprocessController (no-op start — waits for first message)
+            await RpcApi.ControllerResyncCommand(TabRpcClient, {
+                tabid: globalStore.get(atoms.staticTabId),
+                blockid: blockId,
+                forcerestart: true,
+            });
+        } catch (e: any) {
+            Logger.error("agent", "Failed to launch forge agent", { error: String(e) });
         }
     };
 
@@ -158,4 +215,58 @@ export class AgentViewModel implements ViewModel {
     }
 
     dispose(): void {}
+}
+
+/**
+ * Resolve the version-isolated CLI install directory.
+ */
+function resolveCliDir(version: string, providerId: string): string {
+    return `~/.agentmux/instances/v${version}/cli/${providerId}`;
+}
+
+/**
+ * Build the list of config files to write to the agent working directory.
+ * Assembles CLAUDE.md from soul + agentmd + memory + skills index,
+ * and includes .mcp.json if present.
+ */
+function buildConfigFiles(
+    contentMap: Record<string, string>,
+    skills: ForgeSkill[] = []
+): AgentConfigFile[] {
+    const files: AgentConfigFile[] = [];
+
+    // Build CLAUDE.md content: Soul + AgentMD + Memory + Skills Index
+    const claudeMdParts: string[] = [];
+    if (contentMap["soul"]) {
+        claudeMdParts.push(contentMap["soul"]);
+    }
+    if (contentMap["agentmd"]) {
+        if (claudeMdParts.length > 0) claudeMdParts.push("\n---\n");
+        claudeMdParts.push(contentMap["agentmd"]);
+    }
+    if (contentMap["memory"]) {
+        claudeMdParts.push("\n# Memory\n");
+        claudeMdParts.push(contentMap["memory"]);
+    }
+
+    // Append skill index (lazy-loading: only names/descriptions, not full content)
+    if (skills.length > 0) {
+        claudeMdParts.push("\n# Available Skills\n\n");
+        for (const skill of skills) {
+            const triggerPart = skill.trigger ? ` (trigger: /${skill.trigger})` : "";
+            const descPart = skill.description ? ` \u2014 ${skill.description}` : "";
+            claudeMdParts.push(`- **${skill.name}**${triggerPart}${descPart}\n`);
+        }
+    }
+
+    if (claudeMdParts.length > 0) {
+        files.push({ path: "CLAUDE.md", content: claudeMdParts.join("") });
+    }
+
+    // Write .mcp.json if MCP content exists
+    if (contentMap["mcp"]) {
+        files.push({ path: ".mcp.json", content: contentMap["mcp"] });
+    }
+
+    return files;
 }

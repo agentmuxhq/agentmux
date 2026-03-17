@@ -33,6 +33,7 @@ use super::{
 };
 use crate::backend::eventbus::EventBus;
 use crate::backend::shellexec::{ConnInterface, ShellProc};
+use crate::backend::storage::wstore::WaveStore;
 use crate::backend::waveobj::{self, MetaMapType};
 use crate::backend::wps;
 
@@ -108,6 +109,8 @@ pub struct ShellController {
     /// Event bus (unused for now, reserved for future event routing).
     #[allow(dead_code)]
     event_bus: Option<Arc<EventBus>>,
+    /// Wave object store — used to seed cmd:cwd on shell spawn.
+    wstore: Option<Arc<WaveStore>>,
 }
 
 impl ShellController {
@@ -118,6 +121,7 @@ impl ShellController {
         block_id: String,
         broker: Option<Arc<wps::Broker>>,
         event_bus: Option<Arc<EventBus>>,
+        wstore: Option<Arc<WaveStore>>,
     ) -> Self {
         Self {
             controller_type,
@@ -135,6 +139,7 @@ impl ShellController {
             conn_factory: Mutex::new(None),
             broker,
             event_bus,
+            wstore,
         }
     }
 
@@ -364,6 +369,22 @@ impl Controller for ShellController {
         let cmd_args = Self::get_cmd_args(&block_meta);
         let interactive = Self::is_interactive(&block_meta);
 
+        // Resolve effective AGENTMUX_AGENT_ID for jekt auto-registration.
+        // Priority: block metadata > global settings > WAVEMUX_AGENT_ID env compat.
+        let agent_id_for_jekt: Option<String> = block_meta
+            .get(META_KEY_CMD_ENV)
+            .and_then(|m| m.as_object())
+            .and_then(|obj| obj.get("AGENTMUX_AGENT_ID"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| {
+                let cfg = crate::backend::wconfig::ConfigWatcher::with_config(
+                    crate::backend::wconfig::build_default_config(),
+                );
+                cfg.get_settings().cmd_env.get("AGENTMUX_AGENT_ID").cloned()
+            })
+            .or_else(|| std::env::var("WAVEMUX_AGENT_ID").ok());
+
         let mut cmd = if !cmd_str.is_empty() && (!cmd_args.is_empty() || interactive) {
             // Direct spawn: cmd:args provided or cmd:interactive set.
             // Spawn the CLI directly (no sh -c wrapper) so args are passed correctly.
@@ -426,6 +447,12 @@ impl Controller for ShellController {
             c.env("AGENTMUX_TABID", &self.tab_id);
             c.env("AGENTMUX_VERSION", env!("CARGO_PKG_VERSION"));
 
+            // Propagate local backend URL so agentbus-client prefers local PTY delivery.
+            // Set by main.rs after binding; absent in test/mock contexts (graceful no-op).
+            if let Ok(local_url) = std::env::var("AGENTMUX_LOCAL_URL") {
+                c.env("AGENTMUX_LOCAL_URL", &local_url);
+            }
+
             // Set AGENTMUX to the wsh binary path for portable mode detection in scripts
             if let Some(wsh_path) = crate::backend::shellintegration::find_wsh_binary() {
                 c.env("AGENTMUX", wsh_path.to_string_lossy().as_ref());
@@ -475,14 +502,6 @@ impl Controller for ShellController {
                 }
             }
 
-            // Inject local AgentMux URL so agentbus-client uses direct PTY injection
-            // (Path A) instead of cloud polling (Path B). Each pane gets the URL for
-            // the backend instance that owns it, so multiple AgentMux versions running
-            // simultaneously each inject their own port without conflicts.
-            if let Some(local_url) = crate::server_addr::local_url() {
-                c.env("AGENTMUX_LOCAL_URL", &local_url);
-            }
-
             c
         };
 
@@ -502,6 +521,110 @@ impl Controller for ShellController {
             format!("failed to spawn command: {e}")
         })?;
         tracing::info!(block_id = %self.block_id, "process spawned successfully");
+
+        // Register PID for per-pane metrics collection
+        if let Some(pid) = child.process_id() {
+            super::pidregistry::register(&self.block_id, pid);
+        }
+
+        // Auto-register with jekt if AGENTMUX_AGENT_ID was set in the block env.
+        // This maps agent_id → block_id in the ReactiveHandler so jekt can deliver
+        // messages directly to this PTY without a separate /wave/reactive/register call.
+        if let Some(ref agent_id) = agent_id_for_jekt {
+            match crate::backend::reactive::get_global_handler()
+                .register_agent(agent_id, &self.block_id, Some(&self.tab_id))
+            {
+                Ok(()) => {
+                    tracing::info!(
+                        block_id = %self.block_id,
+                        agent_id = %agent_id,
+                        "jekt: auto-registered"
+                    );
+                    // Also write to cross-instance file registry.
+                    if let Ok(local_url) = std::env::var("AGENTMUX_LOCAL_URL") {
+                        let data_dir = crate::backend::wavebase::get_wave_data_dir();
+                        crate::backend::reactive::registry::write(
+                            &data_dir,
+                            agent_id,
+                            &local_url,
+                            &self.block_id,
+                        );
+                    }
+                }
+                Err(e) => tracing::warn!(
+                    block_id = %self.block_id,
+                    agent_id = %agent_id,
+                    error = %e,
+                    "jekt: auto-register failed"
+                ),
+            }
+        }
+        tracing::info!(
+            block_id = %self.block_id,
+            wstore_present = self.wstore.is_some(),
+            event_bus_present = self.event_bus.is_some(),
+            "[dnd-debug] pre-seed state after spawn"
+        );
+
+        // Seed cmd:cwd in block meta immediately after spawn so drag-and-drop works
+        // before the shell emits its first OSC 7 (or for shells without integration).
+        if let Some(ref store) = self.wstore {
+            let effective_cwd = if !cwd.is_empty() {
+                cwd.clone()
+            } else {
+                std::env::current_dir()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_default()
+            };
+            tracing::debug!(block_id = %self.block_id, cwd = %effective_cwd, "seeding cmd:cwd");
+            if !effective_cwd.is_empty() {
+                let oref_str = format!("block:{}", self.block_id);
+                let mut meta_update = MetaMapType::new();
+                meta_update.insert(
+                    super::META_KEY_CMD_CWD.to_string(),
+                    serde_json::Value::String(effective_cwd),
+                );
+                // Only set if not already populated — don't clobber a restored session CWD
+                match store.must_get::<crate::backend::waveobj::Block>(&self.block_id) {
+                    Ok(block) if waveobj::meta_get_string(&block.meta, super::META_KEY_CMD_CWD, "").is_empty() => {
+                        match crate::server::service::update_object_meta(store, &oref_str, &meta_update) {
+                            Ok(()) => {
+                                // Re-read updated block and broadcast waveobj:update so the
+                                // frontend Jotai atom refreshes (update_object_meta only writes
+                                // to SQLite — it does NOT send a WebSocket event on its own).
+                                if let Ok(updated_block) = store.must_get::<crate::backend::waveobj::Block>(&self.block_id) {
+                                    if let Some(ref event_bus) = self.event_bus {
+                                        let update_data = serde_json::to_value(&waveobj::WaveObjUpdate {
+                                            updatetype: "update".into(),
+                                            otype: "block".into(),
+                                            oid: self.block_id.clone(),
+                                            obj: Some(waveobj::wave_obj_to_value(&updated_block)),
+                                        }).ok();
+                                        event_bus.broadcast_event(&crate::backend::eventbus::WSEventType {
+                                            eventtype: "waveobj:update".to_string(),
+                                            oref: oref_str.clone(),
+                                            data: update_data,
+                                        });
+                                        tracing::info!(block_id = %self.block_id, "cmd:cwd seeded and broadcast to frontend");
+                                    } else {
+                                        tracing::warn!(block_id = %self.block_id, "cmd:cwd written to store but no event_bus to broadcast — frontend won't update");
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!(block_id = %self.block_id, error = %e, "failed to seed cmd:cwd in store");
+                            }
+                        }
+                    }
+                    Ok(_) => {
+                        tracing::debug!(block_id = %self.block_id, "cmd:cwd already set, skipping seed");
+                    }
+                    Err(e) => {
+                        tracing::warn!(block_id = %self.block_id, error = %e, "failed to read block for cmd:cwd seed");
+                    }
+                }
+            }
+        }
 
         // Get reader/writer from master
         let reader = pair.master.try_clone_reader().map_err(|e| {
@@ -587,6 +710,7 @@ impl Controller for ShellController {
         // Spawn wait task (monitors process exit)
         let inner_wait = Arc::clone(&self.inner);
         let block_id_wait = self.block_id.clone();
+        let agent_id_wait = agent_id_for_jekt.clone();
         let broker_wait = self.broker.clone();
         let run_lock = Arc::clone(&self.run_lock);
         tokio::task::spawn_blocking(move || {
@@ -610,6 +734,19 @@ impl Controller for ShellController {
             };
 
             tracing::info!(block_id = %block_id_wait, exit_code = exit_code, "process exited");
+
+            // Unregister PID from per-pane metrics
+            super::pidregistry::unregister(&block_id_wait);
+
+            // Deregister from jekt — removes the agent_id → block_id mapping so
+            // subsequent jekt attempts fall back to MessageBus rather than a dead PTY.
+            crate::backend::reactive::get_global_handler().unregister_block(&block_id_wait);
+
+            // Also remove from cross-instance file registry.
+            if let Some(ref agent_id) = agent_id_wait {
+                let data_dir = crate::backend::wavebase::get_wave_data_dir();
+                crate::backend::reactive::registry::remove(&data_dir, agent_id);
+            }
 
             // Update inner state
             {
@@ -679,6 +816,10 @@ impl Controller for ShellController {
 
     fn block_id(&self) -> &str {
         &self.block_id
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -771,6 +912,7 @@ mod tests {
             "block-1".to_string(),
             None,
             None,
+            None,
         );
         assert_eq!(ctrl.controller_type(), "shell");
         assert_eq!(ctrl.block_id(), "block-1");
@@ -787,6 +929,7 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
             None,
             None,
         );
@@ -817,6 +960,7 @@ mod tests {
             "block-1".to_string(),
             None,
             None,
+            None,
         );
 
         let mut meta = make_shell_meta();
@@ -839,6 +983,7 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
             None,
             None,
         );
@@ -870,6 +1015,7 @@ mod tests {
             "block-1".to_string(),
             None,
             None,
+            None,
         );
 
         // Set a custom factory that returns a mock with exit code 42
@@ -892,6 +1038,7 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
             None,
             None,
         );
@@ -918,6 +1065,7 @@ mod tests {
             "block-1".to_string(),
             None,
             None,
+            None,
         );
 
         let result = ctrl.send_input(BlockInputUnion::data(b"hello".to_vec()));
@@ -931,6 +1079,7 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
             None,
             None,
         );
@@ -955,6 +1104,7 @@ mod tests {
             "shell".to_string(),
             "tab-1".to_string(),
             "block-1".to_string(),
+            None,
             None,
             None,
         ));
@@ -1053,6 +1203,7 @@ mod tests {
             "test-register-block".to_string(),
             None,
             None,
+            None,
         ));
 
         super::super::register_controller("test-register-block", ctrl.clone());
@@ -1088,7 +1239,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = super::super::resync_controller(&block, "tab-1", None, false, None, None);
+        let result = super::super::resync_controller(&block, "tab-1", None, false, None, None, None);
         assert!(result.is_ok());
 
         let ctrl = super::super::get_controller("resync-test-block");

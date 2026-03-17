@@ -447,26 +447,6 @@ class RpcApiType {
         return client.wshRpcCall("test", data, opts);
     }
 
-    // command "vdomasyncinitiation" [call]
-    VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("vdomasyncinitiation", data, opts);
-    }
-
-    // command "vdomcreatecontext" [call]
-    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<ORef> {
-        return client.wshRpcCall("vdomcreatecontext", data, opts);
-    }
-
-    // command "vdomrender" [responsestream]
-	VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): AsyncGenerator<VDomBackendUpdate, void, boolean> {
-        return client.wshRpcStream("vdomrender", data, opts);
-    }
-
-    // command "vdomurlrequest" [responsestream]
-	VDomUrlRequestCommand(client: WshClient, data: VDomUrlRequestData, opts?: RpcOpts): AsyncGenerator<VDomUrlRequestResponse, void, boolean> {
-        return client.wshRpcStream("vdomurlrequest", data, opts);
-    }
-
     // command "waitforroute" [call]
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("waitforroute", data, opts);
@@ -506,6 +486,106 @@ class RpcApiType {
     // command "wslstatus" [call]
     WslStatusCommand(client: WshClient, opts?: RpcOpts): Promise<ConnStatus[]> {
         return client.wshRpcCall("wslstatus", null, opts);
+    }
+
+    // command "listforgeagents" [call]
+    ListForgeAgentsCommand(client: WshClient, opts?: RpcOpts): Promise<ForgeAgent[]> {
+        return client.wshRpcCall("listforgeagents", {}, opts);
+    }
+
+    // command "createforgeagent" [call]
+    CreateForgeAgentCommand(client: WshClient, data: CommandCreateForgeAgentData, opts?: RpcOpts): Promise<ForgeAgent> {
+        return client.wshRpcCall("createforgeagent", data, opts);
+    }
+
+    // command "updateforgeagent" [call]
+    UpdateForgeAgentCommand(client: WshClient, data: CommandUpdateForgeAgentData, opts?: RpcOpts): Promise<ForgeAgent> {
+        return client.wshRpcCall("updateforgeagent", data, opts);
+    }
+
+    // command "deleteforgeagent" [call]
+    DeleteForgeAgentCommand(client: WshClient, data: CommandDeleteForgeAgentData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("deleteforgeagent", data, opts);
+    }
+
+    // command "getforgecontent" [call]
+    GetForgeContentCommand(client: WshClient, data: CommandGetForgeContentData, opts?: RpcOpts): Promise<ForgeContent | null> {
+        return client.wshRpcCall("getforgecontent", data, opts);
+    }
+
+    // command "setforgecontent" [call]
+    SetForgeContentCommand(client: WshClient, data: CommandSetForgeContentData, opts?: RpcOpts): Promise<ForgeContent> {
+        return client.wshRpcCall("setforgecontent", data, opts);
+    }
+
+    // command "getallforgecontent" [call]
+    GetAllForgeContentCommand(client: WshClient, data: CommandGetAllForgeContentData, opts?: RpcOpts): Promise<ForgeContent[]> {
+        return client.wshRpcCall("getallforgecontent", data, opts);
+    }
+
+    // command "listforgeskills" [call]
+    ListForgeSkillsCommand(client: WshClient, data: CommandListForgeSkillsData, opts?: RpcOpts): Promise<ForgeSkill[]> {
+        return client.wshRpcCall("listforgeskills", data, opts);
+    }
+
+    // command "createforgeskill" [call]
+    CreateForgeSkillCommand(client: WshClient, data: CommandCreateForgeSkillData, opts?: RpcOpts): Promise<ForgeSkill> {
+        return client.wshRpcCall("createforgeskill", data, opts);
+    }
+
+    // command "updateforgeskill" [call]
+    UpdateForgeSkillCommand(client: WshClient, data: CommandUpdateForgeSkillData, opts?: RpcOpts): Promise<ForgeSkill> {
+        return client.wshRpcCall("updateforgeskill", data, opts);
+    }
+
+    // command "deleteforgeskill" [call]
+    DeleteForgeSkillCommand(client: WshClient, data: CommandDeleteForgeSkillData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("deleteforgeskill", data, opts);
+    }
+
+    // command "appendforgehistory" [call]
+    AppendForgeHistoryCommand(client: WshClient, data: CommandAppendForgeHistoryData, opts?: RpcOpts): Promise<ForgeHistory> {
+        return client.wshRpcCall("appendforgehistory", data, opts);
+    }
+
+    // command "listforgehistory" [call]
+    ListForgeHistoryCommand(client: WshClient, data: CommandListForgeHistoryData, opts?: RpcOpts): Promise<ForgeHistory[]> {
+        return client.wshRpcCall("listforgehistory", data, opts);
+    }
+
+    // command "searchforgehistory" [call]
+    SearchForgeHistoryCommand(client: WshClient, data: CommandSearchForgeHistoryData, opts?: RpcOpts): Promise<ForgeHistory[]> {
+        return client.wshRpcCall("searchforgehistory", data, opts);
+    }
+
+    // command "importforgefromclaw" [call]
+    ImportForgeFromClawCommand(client: WshClient, data: CommandImportForgeFromClawData, opts?: RpcOpts): Promise<ForgeAgent> {
+        return client.wshRpcCall("importforgefromclaw", data, opts);
+    }
+
+    // command "reseedforgeagents" [call]
+    ReseedForgeAgentsCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("reseedforgeagents", {}, opts);
+    }
+
+    // command "subprocessspawn" [call]
+    SubprocessSpawnCommand(client: WshClient, data: CommandSubprocessSpawnData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("subprocessspawn", data, opts);
+    }
+
+    // command "agentinput" [call]
+    AgentInputCommand(client: WshClient, data: CommandAgentInputData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("agentinput", data, opts);
+    }
+
+    // command "agentstop" [call]
+    AgentStopCommand(client: WshClient, data: CommandAgentStopData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("agentstop", data, opts);
+    }
+
+    // command "writeagentconfig" [call]
+    WriteAgentConfigCommand(client: WshClient, data: CommandWriteAgentConfigData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("writeagentconfig", data, opts);
     }
 
 }

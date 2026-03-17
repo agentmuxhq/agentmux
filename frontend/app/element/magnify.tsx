@@ -2,17 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
-import MagnifySVG from "../asset/magnify.svg";
+import { JSX } from "solid-js";
+import magnifySvg from "../asset/magnify.svg?raw";
 import "./magnify.scss";
 
 interface MagnifyIconProps {
     enabled: boolean;
 }
 
-export function MagnifyIcon({ enabled }: MagnifyIconProps) {
+export function MagnifyIcon(props: MagnifyIconProps): JSX.Element {
     return (
-        <div className={clsx("magnify-icon", { enabled })}>
-            <MagnifySVG />
-        </div>
+        <div class={clsx("magnify-icon", { enabled: props.enabled })} innerHTML={magnifySvg} />
     );
 }

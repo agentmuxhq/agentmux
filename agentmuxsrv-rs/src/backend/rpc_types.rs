@@ -149,6 +149,12 @@ pub const COMMAND_CONTROLLER_RESTART: &str = "controllerrestart";
 pub const COMMAND_CONTROLLER_STOP: &str = "controllerstop";
 pub const COMMAND_CONTROLLER_RESYNC: &str = "controllerresync";
 
+// Subprocess agent commands
+pub const COMMAND_SUBPROCESS_SPAWN: &str = "subprocessspawn";
+pub const COMMAND_AGENT_INPUT: &str = "agentinput";
+pub const COMMAND_AGENT_STOP: &str = "agentstop";
+pub const COMMAND_WRITE_AGENT_CONFIG: &str = "writeagentconfig";
+
 // Block commands
 pub const COMMAND_MKDIR: &str = "mkdir";
 pub const COMMAND_RESOLVE_IDS: &str = "resolveids";
@@ -253,6 +259,32 @@ pub const COMMAND_SET_RT_INFO: &str = "setrtinfo";
 
 // Terminal
 pub const COMMAND_TERM_GET_SCROLLBACK_LINES: &str = "termgetscrollbacklines";
+
+// Forge
+pub const COMMAND_LIST_FORGE_AGENTS: &str = "listforgeagents";
+pub const COMMAND_CREATE_FORGE_AGENT: &str = "createforgeagent";
+pub const COMMAND_UPDATE_FORGE_AGENT: &str = "updateforgeagent";
+pub const COMMAND_DELETE_FORGE_AGENT: &str = "deleteforgeagent";
+pub const COMMAND_GET_FORGE_CONTENT: &str = "getforgecontent";
+pub const COMMAND_SET_FORGE_CONTENT: &str = "setforgecontent";
+pub const COMMAND_GET_ALL_FORGE_CONTENT: &str = "getallforgecontent";
+
+// Forge Skills
+pub const COMMAND_LIST_FORGE_SKILLS: &str = "listforgeskills";
+pub const COMMAND_CREATE_FORGE_SKILL: &str = "createforgeskill";
+pub const COMMAND_UPDATE_FORGE_SKILL: &str = "updateforgeskill";
+pub const COMMAND_DELETE_FORGE_SKILL: &str = "deleteforgeskill";
+
+// Forge History
+pub const COMMAND_APPEND_FORGE_HISTORY: &str = "appendforgehistory";
+pub const COMMAND_LIST_FORGE_HISTORY: &str = "listforgehistory";
+pub const COMMAND_SEARCH_FORGE_HISTORY: &str = "searchforgehistory";
+
+// Forge Import
+pub const COMMAND_IMPORT_FORGE_FROM_CLAW: &str = "importforgefromclaw";
+
+// Forge Seed
+pub const COMMAND_RESEED_FORGE_AGENTS: &str = "reseedforgeagents";
 
 // ---- Client type constants ----
 
@@ -377,6 +409,56 @@ pub struct CommandBlockInputData {
     pub signame: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub termsize: Option<serde_json::Value>,
+}
+
+// ---- Subprocess agent command data types ----
+
+/// Data for SubprocessSpawnCommand — spawn agent CLI for a single turn.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandSubprocessSpawnData {
+    pub blockid: String,
+    pub tabid: String,
+    pub cli_command: String,
+    #[serde(default)]
+    pub cli_args: Vec<String>,
+    #[serde(default)]
+    pub working_dir: String,
+    #[serde(default)]
+    pub env_vars: std::collections::HashMap<String, String>,
+    /// The user's JSON message to write to subprocess stdin.
+    pub message: String,
+}
+
+/// Data for AgentInputCommand — send a follow-up message (re-spawns with --resume).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandAgentInputData {
+    pub blockid: String,
+    /// The user's JSON message string.
+    pub message: String,
+}
+
+/// Data for AgentStopCommand — stop the running subprocess.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandAgentStopData {
+    pub blockid: String,
+    #[serde(default)]
+    pub force: bool,
+}
+
+/// A file to write as part of agent config.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentConfigFile {
+    pub path: String,
+    pub content: String,
+}
+
+/// Data for WriteAgentConfigCommand — write config files atomically.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandWriteAgentConfigData {
+    /// Agent working directory where files are written.
+    pub working_dir: String,
+    /// Files to write (path relative to working_dir, content).
+    pub files: Vec<AgentConfigFile>,
 }
 
 /// Matches Go's `FileDataAt`
@@ -606,6 +688,192 @@ fn is_zero_i64(v: &i64) -> bool {
 
 fn is_zero_usize(v: &usize) -> bool {
     *v == 0
+}
+
+// ---- Forge command data types ----
+
+/// Input for createforgeagent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandCreateForgeAgentData {
+    pub name: String,
+    #[serde(default = "default_forge_icon")]
+    pub icon: String,
+    pub provider: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub working_directory: String,
+    #[serde(default)]
+    pub shell: String,
+    #[serde(default)]
+    pub provider_flags: String,
+    #[serde(default)]
+    pub auto_start: i64,
+    #[serde(default)]
+    pub restart_on_crash: i64,
+    #[serde(default)]
+    pub idle_timeout_minutes: i64,
+    #[serde(default = "default_agent_type")]
+    pub agent_type: String,
+    #[serde(default)]
+    pub environment: String,
+    #[serde(default)]
+    pub agent_bus_id: String,
+}
+
+fn default_agent_type() -> String {
+    "standalone".to_string()
+}
+
+fn default_forge_icon() -> String {
+    "✦".to_string()
+}
+
+/// Input for updateforgeagent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandUpdateForgeAgentData {
+    pub id: String,
+    pub name: String,
+    pub icon: String,
+    pub provider: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub working_directory: String,
+    #[serde(default)]
+    pub shell: String,
+    #[serde(default)]
+    pub provider_flags: String,
+    #[serde(default)]
+    pub auto_start: i64,
+    #[serde(default)]
+    pub restart_on_crash: i64,
+    #[serde(default)]
+    pub idle_timeout_minutes: i64,
+    #[serde(default = "default_agent_type")]
+    pub agent_type: String,
+    #[serde(default)]
+    pub environment: String,
+    #[serde(default)]
+    pub agent_bus_id: String,
+}
+
+/// Input for deleteforgeagent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandDeleteForgeAgentData {
+    pub id: String,
+}
+
+/// Input for getforgecontent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandGetForgeContentData {
+    pub agent_id: String,
+    pub content_type: String,
+}
+
+/// Input for setforgecontent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandSetForgeContentData {
+    pub agent_id: String,
+    pub content_type: String,
+    pub content: String,
+}
+
+/// Input for getallforgecontent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandGetAllForgeContentData {
+    pub agent_id: String,
+}
+
+// ---- Forge Skills command data types ----
+
+/// Input for listforgeskills
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandListForgeSkillsData {
+    pub agent_id: String,
+}
+
+/// Input for createforgeskill
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandCreateForgeSkillData {
+    pub agent_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub trigger: String,
+    #[serde(default = "default_skill_type")]
+    pub skill_type: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub content: String,
+}
+
+fn default_skill_type() -> String {
+    "prompt".to_string()
+}
+
+/// Input for updateforgeskill
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandUpdateForgeSkillData {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub trigger: String,
+    #[serde(default)]
+    pub skill_type: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub content: String,
+}
+
+/// Input for deleteforgeskill
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandDeleteForgeSkillData {
+    pub id: String,
+}
+
+// ---- Forge History command data types ----
+
+/// Input for appendforgehistory
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandAppendForgeHistoryData {
+    pub agent_id: String,
+    pub entry: String,
+}
+
+/// Input for listforgehistory
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandListForgeHistoryData {
+    pub agent_id: String,
+    #[serde(default)]
+    pub session_date: Option<String>,
+    #[serde(default = "default_history_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+}
+
+fn default_history_limit() -> i64 {
+    50
+}
+
+/// Input for searchforgehistory
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandSearchForgeHistoryData {
+    pub agent_id: String,
+    pub query: String,
+    #[serde(default = "default_history_limit")]
+    pub limit: i64,
+}
+
+// ---- Forge Import command data types ----
+
+/// Input for importforgefromclaw
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandImportForgeFromClawData {
+    pub workspace_path: String,
+    pub agent_name: String,
 }
 
 // ====================================================================

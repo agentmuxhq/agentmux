@@ -12,14 +12,18 @@
 //! - ShellController handles "shell" and "cmd" block types
 //! - Controllers dispatch I/O between the user and the process/service
 
+pub mod pidregistry;
 pub mod shell;
+pub mod subprocess;
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
 
 use super::eventbus::EventBus;
+use super::storage::wstore::WaveStore;
 use super::waveobj::{Block, MetaMapType, TermSize};
 use super::wps::Broker;
 
@@ -34,6 +38,7 @@ pub const STATUS_DONE: &str = "done";
 pub const BLOCK_CONTROLLER_SHELL: &str = "shell";
 pub const BLOCK_CONTROLLER_CMD: &str = "cmd";
 pub const BLOCK_CONTROLLER_TSUNAMI: &str = "tsunami";
+pub const BLOCK_CONTROLLER_SUBPROCESS: &str = "subprocess";
 
 // ---- Block metadata key constants (match Go) ----
 
@@ -153,6 +158,9 @@ pub trait Controller: Send + Sync {
 
     /// Get the block ID.
     fn block_id(&self) -> &str;
+
+    /// Downcast support for concrete controller types.
+    fn as_any(&self) -> &dyn Any;
 }
 
 // ---- Global controller registry ----
@@ -239,6 +247,7 @@ pub fn resync_controller(
     force: bool,
     broker: Option<Arc<Broker>>,
     event_bus: Option<Arc<EventBus>>,
+    wstore: Option<Arc<WaveStore>>,
 ) -> Result<(), String> {
     let block_id = &block.oid;
     let block_meta = &block.meta;
@@ -250,6 +259,15 @@ pub fn resync_controller(
         // No controller type = web/static block, nothing to manage
         return Ok(());
     }
+
+    tracing::info!(
+        block_id = %block_id,
+        controller_type = %controller_type,
+        wstore_present = wstore.is_some(),
+        event_bus_present = event_bus.is_some(),
+        force,
+        "[dnd-debug] resync_controller entry"
+    );
 
     // Check if existing controller needs to be replaced
     let existing = get_controller(block_id);
@@ -270,6 +288,11 @@ pub fn resync_controller(
         } else {
             // Existing controller is fine, just check if it needs starting
             let status = ctrl.get_runtime_status();
+            tracing::info!(
+                block_id = %block_id,
+                status = %status.shellprocstatus,
+                "[dnd-debug] existing controller — skipping spawn (no cmd:cwd seed)"
+            );
             if status.shellprocstatus == STATUS_INIT || status.shellprocstatus == STATUS_DONE {
                 return ctrl.start(block_meta.clone(), rt_opts, force);
             }
@@ -286,6 +309,19 @@ pub fn resync_controller(
                 block_id.to_string(),
                 broker,
                 event_bus,
+                wstore,
+            );
+            let ctrl = Arc::new(ctrl);
+            register_controller(block_id, ctrl.clone());
+            ctrl.start(block_meta.clone(), rt_opts, force)
+        }
+        BLOCK_CONTROLLER_SUBPROCESS => {
+            let ctrl = subprocess::SubprocessController::new(
+                tab_id.to_string(),
+                block_id.to_string(),
+                broker,
+                event_bus,
+                wstore,
             );
             let ctrl = Arc::new(ctrl);
             register_controller(block_id, ctrl.clone());
@@ -428,7 +464,7 @@ mod tests {
             ..Default::default()
         };
         // No "controller" key in meta = no-op
-        let result = resync_controller(&block, "tab-1", None, false, None, None);
+        let result = resync_controller(&block, "tab-1", None, false, None, None, None);
         assert!(result.is_ok());
     }
 
@@ -445,7 +481,7 @@ mod tests {
             meta,
             ..Default::default()
         };
-        let result = resync_controller(&block, "tab-1", None, false, None, None);
+        let result = resync_controller(&block, "tab-1", None, false, None, None, None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("unknown controller type"));
     }

@@ -62,6 +62,134 @@ pub fn run_filestore_migrations(conn: &Connection) -> Result<(), StoreError> {
     Ok(())
 }
 
+/// Initialize the Forge schema.
+/// Creates the db_forge_agents table for user-defined AI agents.
+pub fn run_forge_migrations(conn: &Connection) -> Result<(), StoreError> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS db_forge_agents (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            icon TEXT NOT NULL DEFAULT '✦',
+            provider TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL DEFAULT 0
+        );",
+    )?;
+    run_forge_v2_migrations(conn)?;
+    run_forge_v3_migrations(conn)?;
+    Ok(())
+}
+
+/// Forge v2 migrations: extend db_forge_agents with operational fields
+/// and create db_forge_content table for content blobs (soul, agentmd, mcp, env, memory).
+pub fn run_forge_v2_migrations(conn: &Connection) -> Result<(), StoreError> {
+    // Add new columns to db_forge_agents (ALTER TABLE ADD COLUMN is idempotent-safe
+    // because we catch "duplicate column" errors).
+    let alter_statements = [
+        "ALTER TABLE db_forge_agents ADD COLUMN working_directory TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE db_forge_agents ADD COLUMN shell TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE db_forge_agents ADD COLUMN provider_flags TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE db_forge_agents ADD COLUMN auto_start INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE db_forge_agents ADD COLUMN restart_on_crash INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE db_forge_agents ADD COLUMN idle_timeout_minutes INTEGER NOT NULL DEFAULT 0",
+    ];
+    for stmt in &alter_statements {
+        match conn.execute_batch(stmt) {
+            Ok(_) => {}
+            Err(e) => {
+                let msg = e.to_string();
+                if msg.contains("duplicate column") {
+                    // Column already exists, skip
+                } else {
+                    return Err(StoreError::Sqlite(
+                        match e {
+                            rusqlite::Error::SqliteFailure(code, _) => {
+                                rusqlite::Error::SqliteFailure(code, Some(msg))
+                            }
+                            other => other,
+                        },
+                    ));
+                }
+            }
+        }
+    }
+
+    // Create db_forge_content table for content blobs
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS db_forge_content (
+            agent_id TEXT NOT NULL,
+            content_type TEXT NOT NULL,
+            content TEXT NOT NULL DEFAULT '',
+            updated_at INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (agent_id, content_type),
+            FOREIGN KEY (agent_id) REFERENCES db_forge_agents(id) ON DELETE CASCADE
+        );",
+    )?;
+
+    // Create db_forge_skills table for reusable agent skills
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS db_forge_skills (
+            id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            trigger TEXT NOT NULL DEFAULT '',
+            skill_type TEXT NOT NULL DEFAULT 'prompt',
+            description TEXT NOT NULL DEFAULT '',
+            content TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (agent_id) REFERENCES db_forge_agents(id) ON DELETE CASCADE
+        );",
+    )?;
+
+    // Create db_forge_history table for append-only session logs
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS db_forge_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_id TEXT NOT NULL,
+            session_date TEXT NOT NULL,
+            entry TEXT NOT NULL,
+            timestamp INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (agent_id) REFERENCES db_forge_agents(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_forge_history_agent_date
+            ON db_forge_history(agent_id, session_date);",
+    )?;
+
+    Ok(())
+}
+
+/// Forge v3 migrations: add agent_type, environment, agent_bus_id, and is_seeded
+/// to support host/container agent classification and seed-based preloading.
+pub fn run_forge_v3_migrations(conn: &Connection) -> Result<(), StoreError> {
+    let alter_statements = [
+        "ALTER TABLE db_forge_agents ADD COLUMN agent_type TEXT NOT NULL DEFAULT 'standalone'",
+        "ALTER TABLE db_forge_agents ADD COLUMN environment TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE db_forge_agents ADD COLUMN agent_bus_id TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE db_forge_agents ADD COLUMN is_seeded INTEGER NOT NULL DEFAULT 0",
+    ];
+    for stmt in &alter_statements {
+        match conn.execute_batch(stmt) {
+            Ok(_) => {}
+            Err(e) => {
+                let msg = e.to_string();
+                if msg.contains("duplicate column") {
+                    // Column already exists, skip
+                } else {
+                    return Err(StoreError::Sqlite(
+                        match e {
+                            rusqlite::Error::SqliteFailure(code, _) => {
+                                rusqlite::Error::SqliteFailure(code, Some(msg))
+                            }
+                            other => other,
+                        },
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

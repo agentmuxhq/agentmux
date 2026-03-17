@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/agentmux-logo.svg" alt="AgentMux Logo" width="120">
+  <img src="./frontend/logos/agentmux-logo.svg" alt="AgentMux Logo" width="120">
 </p>
 
 # AgentMux
@@ -10,8 +10,6 @@ A rich monitoring and orchestration UI for AI agents. See every tool call, catch
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Website](https://img.shields.io/badge/Website-agentmux.ai-blue)](https://agentmux.ai)
-
-> Developed by **[AgentMux Corp.](https://agentmux.ai)** - Delaware corporation, California registered.
 
 ## The Problem
 
@@ -27,25 +25,45 @@ AgentMux is an open-source desktop application that surfaces what agents are doi
 
 Cross-platform (Windows, macOS, Linux). 100% Rust backend (Tokio + Axum). Tauri v2. Apache 2.0.
 
-- **Live agent monitoring** - Watch every tool call and decision step as it happens. Catch an agent undoing correct work mid-task and redirect it before the damage compounds.
-- **Multi-agent orchestration** - Run parallel agents and see all of them at once. Spot conflicts before synthesis. Redirect any agent without killing the others.
-- **Guardrail observability** - See which constraints are active and firing. Tune your agent system from live signal, not post-mortem guesswork.
-- **Built-in Claude integration** - Agent sessions are first-class citizens alongside terminals, editor, and system metrics.
-- **Multiple pane types** - Terminal, AI Agent, Code Editor, System Info, Web, and more
-- **Real PTY support** - Authentic terminal emulation via xterm.js and portable-pty
-- **Shell integration** - `wsh` binary deployable to remote hosts for multiplexed sessions
+- **Live agent monitoring** — Watch every tool call and decision step as it happens. Catch an agent undoing correct work mid-task and redirect it before the damage compounds.
+- **Multi-agent orchestration** — Run parallel agents and see all of them at once. Spot conflicts before synthesis. Redirect any agent without killing the others.
+- **Guardrail observability** — See which constraints are active and firing. Tune your agent system from live signal, not post-mortem guesswork.
+- **Built-in Claude integration** — Agent sessions are first-class citizens alongside terminals, editor, and system metrics.
+- **Forge widget** — Agent picker wired to live Forge data for orchestration workflows.
+- **Drag and drop** — Drag files into terminal panes, reorder widgets, drag panes and tabs across windows.
+- **Per-pane zoom** — Independent zoom level per pane, plus global chrome zoom.
+- **Real PTY support** — Authentic terminal emulation via xterm.js and portable-pty.
+- **Shell integration** — `wsh` binary deployable to remote hosts for multiplexed sessions.
 
 ## Quick Start
 
+### Prerequisites
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **Node.js** | 22 LTS | Frontend build |
+| **Rust** | 1.77+ | Backend + Tauri |
+| **[Task](https://taskfile.dev/)** | Latest | Build orchestration |
+
+Platform-specific:
+- **Windows:** WebView2 (pre-installed on 10/11), Visual Studio Build Tools
+- **macOS:** Xcode Command Line Tools
+- **Linux:** `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`
+
+### Development
+
 ```bash
-# Install dependencies
-npm install
+npm install        # install frontend dependencies
+task dev           # hot reload — frontend auto-reloads, Tauri rebuilds on Rust changes
+```
 
-# Development mode (hot reload)
-task dev
+### Production Build
 
-# Production build
-task package
+```bash
+task package              # platform installer (NSIS / DMG / AppImage)
+task package:macos        # macOS .app + .dmg (copies to Desktop)
+task package:portable     # Windows portable ZIP
+task package:portable:linux  # Linux AppImage
 ```
 
 ## Pane Types
@@ -53,22 +71,19 @@ task package
 | View | Description |
 |------|-------------|
 | `term` | Terminal with xterm.js and real PTY |
-| `agent` | Claude AI agent (multi-provider CLI support) |
+| `agent` | AI agent pane (Claude integration, multi-provider) |
 | `codeeditor` | Monaco-based code editor |
-| `sysinfo` | System metrics (CPU, memory, network) |
+| `sysinfo` | Live system metrics (CPU, memory, network) |
 | `webview` | Embedded web browser |
-| `chat` | Multi-user chat widget |
-| `tsunami` | Network protocol visualization |
-| `vdom` | Virtual DOM component renderer |
+| `forge` | Agent orchestration — picker wired to live Forge data |
 | `help` | Built-in documentation viewer |
-| `launcher` | Application launcher |
 
 ## Architecture
 
 ```
-AgentMux.exe  (Tauri v2 - Rust + WebView2)
-    +-- agentmuxsrv-rs  (Rust async backend - Tokio + Axum, auto-spawned)
-        +-- wsh-rs      (Rust shell integration binary, deployed to remotes)
+AgentMux          (Tauri v2 — Rust + platform WebView)
+ └── agentmuxsrv-rs   (Rust async backend — Tokio + Axum + SQLite, auto-spawned sidecar)
+      └── wsh-rs       (Rust shell integration CLI, deployed to remotes)
 ```
 
 **Stack:**
@@ -79,76 +94,31 @@ AgentMux.exe  (Tauri v2 - Rust + WebView2)
 
 ## Build Commands
 
-AgentMux uses [Task](https://taskfile.dev/) for build orchestration.
-
 | Command | Description |
 |---------|-------------|
-| `task dev` | Start development mode with hot reload |
-| `task package` | Build production installer (NSIS) |
-| `task package:portable` | Build installer + portable ZIP |
-| `task build:backend` | Build Rust binaries (agentmuxsrv-rs + wsh-rs) |
+| `task dev` | Development mode with hot reload |
+| `task quickdev` | Fast dev (skips wsh build) |
+| `task package` | Production installer for current platform |
+| `task package:macos` | macOS .app + .dmg |
+| `task package:portable` | Windows portable ZIP |
+| `task package:portable:linux` | Linux AppImage |
+| `task build:backend` | Build agentmuxsrv-rs + wsh-rs |
 | `task build:frontend` | Build frontend only |
-| `task test` | Run all tests |
+| `task test` | Run tests (vitest) |
 | `task clean` | Clean build artifacts |
-
-### npm Aliases
-
-```bash
-npm run dev           # task dev
-npm run package       # task package
-npm run build:backend # task build:backend
-npm test              # vitest
-```
 
 ### Build Outputs
 
-- **Installer:** `src-tauri/target/release/bundle/nsis/AgentMux_*.exe`
-- **Portable:** `dist/agentmux-*-portable.zip`
-- **Standalone:** `src-tauri/target/release/agentmux.exe`
-
-## Prerequisites
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| **Node.js** | 22 LTS | Frontend build |
-| **Rust** | 1.77+ | Backend + Tauri |
-| **Task** | Latest | Build orchestration |
-
-**Windows-specific:**
-- WebView2 (pre-installed on Windows 10/11)
-- Visual Studio Build Tools (required by Rust)
-
-> No Go or Zig required - the backend is 100% Rust since v0.31.0.
-
-## Development
-
-```bash
-# Hot reload - frontend auto-reloads, Tauri auto-rebuilds on Rust changes
-task dev
-
-# After modifying Rust backend code
-task build:backend
-# Then restart: task dev
-
-# Run tests
-npm test
-
-# Run with coverage
-npm run coverage
-```
+| Platform | Artifact |
+|----------|----------|
+| **macOS** | `target/release/bundle/macos/AgentMux_*_aarch64.dmg` |
+| **Windows** | `src-tauri/target/release/bundle/nsis/AgentMux_*.exe` |
+| **Linux** | `target/release/bundle/appimage/AgentMux_*_amd64.AppImage` |
 
 ## Version Management
 
-Always use `@a5af/bump-cli` — never edit version numbers manually.
+Always use [`@a5af/bump-cli`](https://github.com/a5af/bump-cli) — never edit version numbers manually.
 
-**Install (one-time):**
-```bash
-echo "@a5af:registry=https://npm.pkg.github.com" >> ~/.npmrc
-echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> ~/.npmrc
-npm install -g @a5af/bump-cli
-```
-
-**Usage:**
 ```bash
 bump patch -m "Description" --commit   # bump, stage, and commit all version files
 bump verify                            # check all files are consistent
@@ -157,6 +127,69 @@ bump show                              # display current version state
 
 Config lives in `.bump.json`. See [BUILD.md](./BUILD.md) for the full workflow.
 
+## Releases
+
+Releases are built by [`agentmuxai/agentmux-builder`](https://github.com/agentmuxai/agentmux-builder) — a private repo that holds CI/CD workflows and signing secrets separate from the public source.
+
+### How it works
+
+1. The builder's `tauri-build.yml` workflow checks out this repo at the given ref
+2. Builds run in parallel on `ubuntu-latest`, `macos-latest`, and `windows-latest`
+3. Each job builds Rust backend binaries (agentmuxsrv-rs + wsh-rs), then builds the Tauri app
+4. macOS builds are code-signed and notarized via Apple Developer credentials
+5. Windows builds include both an NSIS installer and a portable ZIP
+6. A final `create-release` job collects all artifacts and creates a GitHub Release on this repo
+
+### Triggering a release
+
+```bash
+# Option 1: Manual workflow dispatch (pass a tag, branch, or SHA)
+gh workflow run tauri-build.yml -R agentmuxai/agentmux-builder -f ref=v0.32.0
+
+# Option 2: Repository dispatch from this repo
+gh api repos/agentmuxai/agentmux-builder/dispatches \
+  -f event_type=build \
+  -f 'client_payload[ref]=v0.32.0'
+```
+
+### Release artifacts
+
+| Platform | Artifact |
+|----------|----------|
+| macOS Apple Silicon | `AgentMux_*_aarch64.dmg` |
+| Windows x64 (installer) | `AgentMux_*_x64-setup.exe` |
+| Windows x64 (portable) | `agentmux-*-x64-portable.zip` |
+| Linux x64 (AppImage) | `AgentMux_*_amd64.AppImage` |
+| Linux x64 (deb) | `AgentMux_*_amd64.deb` |
+
+### Full release checklist
+
+```bash
+# 1. Bump version and commit
+bump patch -m "Description" --commit
+bump verify
+
+# 2. Push and tag
+git push origin main
+git tag v0.X.Y && git push origin v0.X.Y
+
+# 3. Trigger the builder (builds all platforms, creates GitHub Release)
+gh workflow run tauri-build.yml -R agentmuxai/agentmux-builder -f ref=v0.X.Y
+
+# 4. Wait for build to complete (~15-20 min)
+gh run list -R agentmuxai/agentmux-builder --limit 1
+
+# 5. Deploy landing site (fetches new release, updates download links)
+cd /workspace/agentmux-landing
+deploy run --env prod
+
+# 6. Verify
+gh release view v0.X.Y --repo agentmuxai/agentmux    # release exists with assets
+curl -sf https://agentmux.ai/release.json | jq .version  # landing shows new version
+```
+
 ## License
 
-Apache-2.0 - Originally forked from [Wave Terminal](https://github.com/wavetermdev/waveterm)
+Developed by **[AgentMux Corp.](https://agentmux.ai)** — Delaware corporation.
+
+Apache-2.0 — Originally forked from [Wave Terminal](https://github.com/wavetermdev/waveterm)

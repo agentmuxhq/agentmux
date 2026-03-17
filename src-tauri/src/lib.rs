@@ -10,6 +10,31 @@ mod state;
 use tauri::Emitter;
 use tauri::Manager;
 
+/// On macOS, override the NSWindow styleMask to restore native resize handles.
+/// `decorations:false` gives Borderless with ~1px thin resize edges (unusable).
+/// Switching to Titled + FullSizeContentView with a transparent hidden titlebar
+/// gives proper native resize handles while keeping the frameless appearance.
+#[cfg(target_os = "macos")]
+pub(crate) fn apply_macos_frameless_resize<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
+    use objc2_app_kit::{NSWindow, NSWindowStyleMask, NSWindowTitleVisibility};
+
+    if let Ok(ns_win_ptr) = window.ns_window() {
+        let ns_window: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
+        let mask = NSWindowStyleMask::Titled
+            | NSWindowStyleMask::Resizable
+            | NSWindowStyleMask::Miniaturizable
+            | NSWindowStyleMask::Closable
+            | NSWindowStyleMask::FullSizeContentView;
+        ns_window.setStyleMask(mask);
+        ns_window.setTitlebarAppearsTransparent(true);
+        ns_window.setTitleVisibility(NSWindowTitleVisibility::Hidden);
+        ns_window.setMovableByWindowBackground(true);
+        tracing::info!("macOS: applied Titled+FullSizeContentView styleMask for window '{}'", window.label());
+    } else {
+        tracing::warn!("macOS: failed to get NSWindow handle for '{}'", window.label());
+    }
+}
+
 /// Initialize and run the AgentMux Tauri application.
 ///
 /// This replaces the Electron main process (emain/emain.ts).
@@ -116,6 +141,8 @@ pub fn run() {
             commands::drag::open_window_at_position,
             commands::drag::set_drag_cursor,
             commands::drag::restore_drag_cursor,
+            // File operations
+            commands::file_ops::copy_file_to_dir,
         ])
         // Application setup
         .setup(|app| {
@@ -162,16 +189,17 @@ pub fn run() {
             // System tray now managed by backend (agentmuxsrv)
             // See cmd/server/tray.go for implementation
 
-            // Create main window programmatically (frameless on all platforms).
-            // Linux drag: native GTK motion handler in drag.rs (Wayland-safe).
-            // macOS/Windows drag: useWindowDrag() hook — data-tauri-drag-region + startDragging().
-            // Set window title with version
+            // Set window title with version and configure platform-specific behavior.
             if let Some(window) = handle.get_webview_window("main") {
                 let version = env!("CARGO_PKG_VERSION");
                 let title = format!("AgentMux {}", version);
                 if let Err(e) = window.set_title(&title) {
                     tracing::error!("Failed to set window title: {}", e);
                 }
+
+                // macOS: override NSWindow styleMask to restore native resize handles.
+                #[cfg(target_os = "macos")]
+                apply_macos_frameless_resize(&window);
 
                 // On Linux: attach native GTK drag handler to this window.
                 #[cfg(target_os = "linux")]
@@ -185,6 +213,18 @@ pub fn run() {
                 #[cfg(target_os = "linux")]
                 if window.outer_position().map(|p| p.x == 0 && p.y == 0).unwrap_or(true) {
                     let _ = window.center();
+                }
+
+                // On Linux: show the window from Rust as a fallback.
+                // The window is created with visible:false to avoid FOUC; JS calls
+                // currentWindow.show() after initialization. But if the JS bundle fails
+                // to execute, the window would stay invisible forever. Showing it from
+                // Rust ensures the window is always visible even if JS fails.
+                // JS calling show() again later is harmless (idempotent).
+                #[cfg(target_os = "linux")]
+                {
+                    let _ = window.show();
+                    tracing::info!("[diag] window.show() called from Rust (Linux fallback)");
                 }
             }
 

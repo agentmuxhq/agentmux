@@ -18,6 +18,7 @@
     "core:window:allow-unmaximize",
     "core:window:allow-show",
     "core:window:allow-hide",
+    "core:window:allow-center",
     "core:window:allow-start-dragging",
     "core:webview:default",
     "core:webview:allow-create-webview-window",
@@ -36,7 +37,8 @@
       ]
     },
     "notification:default",
-    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
     "fs:default",
     {
       "identifier": "fs:allow-read-file",

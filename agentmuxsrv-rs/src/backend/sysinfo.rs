@@ -9,12 +9,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use sysinfo::Networks;
+use sysinfo::{Disks, Networks, Pid, ProcessesToUpdate};
 use tokio::time::MissedTickBehavior;
 
+use crate::backend::blockcontroller::pidregistry;
 use crate::backend::rpc_types::TimeSeriesData;
 use crate::backend::wconfig::ConfigWatcher;
-use crate::backend::wps::{Broker, WaveEvent, EVENT_SYS_INFO};
+use crate::backend::wps::{Broker, WaveEvent, EVENT_BLOCK_STATS, EVENT_SYS_INFO};
 
 const BYTES_PER_GB: f64 = 1_073_741_824.0;
 const BYTES_PER_MB: f64 = 1_048_576.0;
@@ -94,6 +95,24 @@ impl NetState {
     }
 }
 
+/// Collect disk I/O rates (in MB/s).
+/// sysinfo Disk::usage() returns deltas (bytes since last refresh) so we
+/// divide by elapsed time to get rates.
+fn get_disk_data(disks: &Disks, elapsed_secs: f64, values: &mut HashMap<String, f64>) {
+    if elapsed_secs <= 0.0 {
+        return;
+    }
+    let (total_read, total_write) = disks.list().iter().fold((0u64, 0u64), |(r, w), disk| {
+        let u = disk.usage();
+        (r + u.read_bytes, w + u.written_bytes)
+    });
+    let read_rate = total_read as f64 / elapsed_secs / BYTES_PER_MB;
+    let write_rate = total_write as f64 / elapsed_secs / BYTES_PER_MB;
+    values.insert("disk:read".to_string(), read_rate);
+    values.insert("disk:write".to_string(), write_rate);
+    values.insert("disk:total".to_string(), read_rate + write_rate);
+}
+
 /// Read the telemetry interval from config, clamped to [MIN, MAX].
 fn get_interval_secs(config_watcher: &ConfigWatcher) -> f64 {
     let val = config_watcher.get_settings().telemetry_interval;
@@ -110,6 +129,8 @@ pub async fn run_sysinfo_loop(broker: Arc<Broker>, config_watcher: Arc<ConfigWat
     let mut sys = sysinfo::System::new_all();
     let mut networks = Networks::new_with_refreshed_list();
     let mut net_state = NetState::new();
+    let mut disks = Disks::new_with_refreshed_list();
+    let mut last_tick = Instant::now();
 
     let mut current_interval = get_interval_secs(&config_watcher);
     let mut ticker = tokio::time::interval(Duration::from_secs_f64(current_interval));
@@ -132,15 +153,21 @@ pub async fn run_sysinfo_loop(broker: Arc<Broker>, config_watcher: Arc<ConfigWat
             tracing::info!("sysinfo interval changed to {}s", current_interval);
         }
 
-        // Refresh CPU and memory data
+        // Refresh all metrics
         sys.refresh_cpu_usage();
         sys.refresh_memory();
         networks.refresh(true);
+        disks.refresh(true);
+
+        let now_instant = Instant::now();
+        let elapsed_secs = now_instant.duration_since(last_tick).as_secs_f64();
+        last_tick = now_instant;
 
         let mut values = HashMap::new();
         get_cpu_data(&sys, &mut values);
         get_mem_data(&sys, &mut values);
         net_state.get_net_data(&networks, &mut values);
+        get_disk_data(&disks, elapsed_secs, &mut values);
 
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -158,5 +185,33 @@ pub async fn run_sysinfo_loop(broker: Arc<Broker>, config_watcher: Arc<ConfigWat
         };
 
         broker.publish(event);
+
+        // Per-pane process metrics: query each registered block's PID
+        let block_pids = pidregistry::get_all();
+        if !block_pids.is_empty() {
+            let pids: Vec<Pid> = block_pids.iter().map(|(_, pid)| Pid::from(*pid as usize)).collect();
+            sys.refresh_processes_specifics(ProcessesToUpdate::Some(&pids), true, sysinfo::ProcessRefreshKind::everything());
+        }
+        for (block_id, pid) in &block_pids {
+            let sysinfo_pid = Pid::from(*pid as usize);
+            if let Some(process) = sys.process(sysinfo_pid) {
+                let mut block_values = HashMap::new();
+                block_values.insert("cpu".to_string(), process.cpu_usage() as f64);
+                block_values.insert("mem".to_string(), process.memory() as f64);
+
+                let block_ts = TimeSeriesData {
+                    ts: now,
+                    values: block_values,
+                };
+                let block_event = WaveEvent {
+                    event: EVENT_BLOCK_STATS.to_string(),
+                    scopes: vec![format!("block:{}", block_id)],
+                    sender: String::new(),
+                    persist: 0,
+                    data: serde_json::to_value(&block_ts).ok(),
+                };
+                broker.publish(block_event);
+            }
+        }
     }
 }

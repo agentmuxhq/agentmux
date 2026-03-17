@@ -84,6 +84,7 @@
                 align-items: center;
                 gap: 8px;
                 font: var(--header-font);
+                zoom: var(--zoomfactor, 1);
                 border-bottom: 1px solid var(--border-color);
                 border-radius: var(--block-border-radius) var(--block-border-radius) 0 0;
 
@@ -284,7 +285,6 @@
         --magnified-block-opacity: 0.6;
         --magnified-block-blur: 10px;
 
-        &.magnified,
         &.ephemeral {
             background-color: rgb(from var(--block-bg-color) r g b / var(--magnified-block-opacity));
             backdrop-filter: blur(var(--magnified-block-blur));

@@ -1,6 +1,7 @@
 mod backend;
 mod config;
 mod server;
+mod server_addr;
 
 use std::future::IntoFuture;
 use std::sync::Arc;
@@ -196,6 +197,9 @@ async fn main() {
 
     let web_addr = web_listener.local_addr().unwrap();
     let ws_addr = ws_listener.local_addr().unwrap();
+
+    // Store web addr so pane env injection can use it (see server_addr.rs)
+    crate::server_addr::set(&web_addr.to_string());
 
     // 6. Emit WAVESRV-ESTART on stderr (exact format from cmd/server/main-server.go:617)
     eprintln!(

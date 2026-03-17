@@ -475,6 +475,14 @@ impl Controller for ShellController {
                 }
             }
 
+            // Inject local AgentMux URL so agentbus-client uses direct PTY injection
+            // (Path A) instead of cloud polling (Path B). Each pane gets the URL for
+            // the backend instance that owns it, so multiple AgentMux versions running
+            // simultaneously each inject their own port without conflicts.
+            if let Some(local_url) = crate::server_addr::local_url() {
+                c.env("AGENTMUX_LOCAL_URL", &local_url);
+            }
+
             c
         };
 

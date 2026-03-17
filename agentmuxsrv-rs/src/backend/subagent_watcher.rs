@@ -614,7 +614,8 @@ fn parse_event_type(value: &serde_json::Value) -> Option<SubagentEventType> {
                 .map(|v| {
                     let s = v.to_string();
                     if s.len() > 200 {
-                        format!("{}...", &s[..200])
+                        let end = s.char_indices().nth(200).map_or(s.len(), |(i, _)| i);
+                        format!("{}...", &s[..end])
                     } else {
                         s
                     }
@@ -640,7 +641,8 @@ fn parse_event_type(value: &serde_json::Value) -> Option<SubagentEventType> {
                         v.to_string()
                     };
                     if s.len() > 500 {
-                        format!("{}...", &s[..500])
+                        let end = s.char_indices().nth(500).map_or(s.len(), |(i, _)| i);
+                        format!("{}...", &s[..end])
                     } else {
                         s
                     }

@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { createEffect, createSignal, For, Show, onCleanup } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import type { SubagentViewModel, SubagentEvent, SubagentEventType } from "./subagent-model";
 import "./subagent-view.scss";

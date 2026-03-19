@@ -480,9 +480,10 @@ Function .onInit
   ${EndIf}
 
   ; AGENTMUX: Check for another installer instance running (RC 3)
+  ; CreateMutex returns ERROR_ALREADY_EXISTS (183) if another instance holds the mutex
   System::Call 'kernel32::CreateMutex(p 0, i 0, t "AgentMuxInstallerMutex") p .r1 ?e'
   Pop $R0
-  ${If} $R0 <> 0
+  ${If} $R0 = 183
     SetErrorLevel 3
     Abort
   ${EndIf}

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getSettingsKeyAtom } from "@/app/store/global";
-import { PLATFORM, PlatformLinux } from "@/util/platformutil";
+import { isLinux } from "@/util/platformutil";
 import { draggable, dropTargetForElements, monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import clsx from "clsx";
 import { toPng } from "html-to-image";
@@ -318,10 +318,10 @@ const DisplayNode = (props: DisplayNodeProps) => {
             // child inside a draggable="false" parent — the draggable() call with a
             // specific dragHandle makes the tile non-draggable on Linux. Fall back
             // to whole-tile drag on Linux (no dragHandle restriction).
-            if (!handle && PLATFORM !== PlatformLinux) return false;
+            if (!handle && !isLinux()) return false;
             cleanupFn = draggable({
                 element: tileNodeRef,
-                dragHandle: PLATFORM === PlatformLinux ? undefined : handle,
+                dragHandle: isLinux() ? undefined : handle,
                 canDrag: () => !isEphemeral() && !isMagnified(),
                 getInitialData: () => ({ nodeId: props.node.id, type: tileItemType }),
                 onGenerateDragPreview: ({ nativeSetDragImage }) => {

@@ -16,7 +16,7 @@
 
 !define RC_SUCCESS 0
 !define RC_CANCELLED 1
-!define RC_ALREADY_EXISTS 2
+; RC 2 (already exists) is reserved for future silent-mode detection
 !define RC_ALREADY_IN_PROGRESS 3
 !define RC_DISK_FULL 4
 !define RC_REBOOT_REQUIRED 5

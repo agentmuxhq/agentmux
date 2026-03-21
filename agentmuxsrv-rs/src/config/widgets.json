@@ -28,8 +28,20 @@
             }
         }
     },
-    "defwidget@swarm": {
+    "defwidget@identity": {
         "display:order": 3,
+        "icon": "id-card",
+        "color": "#a78bfa",
+        "label": "identity",
+        "description": "External account and credential management",
+        "blockdef": {
+            "meta": {
+                "view": "identity"
+            }
+        }
+    },
+    "defwidget@swarm": {
+        "display:order": 4,
         "display:hidden": true,
         "icon": "bee",
         "color": "#f59e0b",

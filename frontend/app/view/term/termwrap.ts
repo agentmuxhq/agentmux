@@ -175,7 +175,7 @@ export class TermWrap {
                     }
                     const selectedText = this.terminal.getSelection();
                     if (selectedText.length > 0) {
-                        clipboardWriteText(selectedText);
+                        clipboardWriteText(selectedText).catch((e) => console.log("clipboard write failed", e));
                     }
                 })
             )

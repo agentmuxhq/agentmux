@@ -368,16 +368,17 @@ class TermViewModel implements ViewModel {
             }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-            const p = clipboardReadText();
-            p.then((text) => {
-                this.termRef.current?.terminal.paste(text);
-            });
+            clipboardReadText()
+                .then((text) => {
+                    this.termRef.current?.terminal.paste(text);
+                })
+                .catch((e) => console.log("clipboard read failed", e));
             event.preventDefault();
             event.stopPropagation();
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             const sel = this.termRef.current?.terminal.getSelection();
-            clipboardWriteText(sel);
+            clipboardWriteText(sel).catch((e) => console.log("clipboard write failed", e));
             event.preventDefault();
             event.stopPropagation();
             return false;

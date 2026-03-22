@@ -107,7 +107,7 @@
     // === Retry Login Bar ===
     .agent-retry-bar {
         flex-shrink: 0;
-        padding: 6px 8px;
+        padding: 2px 4px;
         display: flex;
         justify-content: center;
         border-top: 1px solid var(--border-color, rgba(255,255,255,0.1));
@@ -1065,24 +1065,24 @@
     .agent-footer {
         border-top: 1px solid var(--border-color);
         background: color-mix(in srgb, var(--main-text-color) 3%, transparent);
-        padding: 4px 4px;
+        padding: 2px 2px;
 
         .agent-input-container {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
 
             .agent-input {
                 width: 100%;
-                padding: 4px 6px;
+                padding: 3px 4px;
                 background: var(--main-bg-color);
                 border: 1px solid var(--border-color);
-                border-radius: 3px;
+                border-radius: 2px;
                 color: var(--main-text-color);
                 font-family: inherit;
                 font-size: 12px;
                 resize: vertical;
-                min-height: 32px;
+                min-height: 28px;
 
                 &:focus {
                     outline: none;
@@ -1091,10 +1091,11 @@
             }
 
             .agent-input-hint {
-                font-size: 10px;
+                font-size: 9px;
                 color: var(--secondary-text-color);
-                opacity: 0.6;
-                padding: 0 4px;
+                opacity: 0.5;
+                padding: 0 2px;
+                line-height: 1.2;
             }
         }
     }

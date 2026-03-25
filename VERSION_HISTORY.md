@@ -2,13 +2,18 @@
 
 This document tracks the version history of AgentMux (forked from waveterm).
 
-## Latest Version: 0.31.119
+## Latest Version: 0.32.83
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.32.83 (2026-03-24)
+- **Agent:** Claude Sonnet 4.6
+- **Changes:**
+  - fix: pin macOS window buttons on chrome zoom — use width:100% not calc(100vw/factor)
 
 ### v0.32.9-fork (2026-03-17)
 - **Agent:** Claude Sonnet 4.6

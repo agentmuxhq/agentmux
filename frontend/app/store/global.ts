@@ -21,6 +21,7 @@ import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
 import { deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
 import { createMemo, createRoot, createSignal } from "solid-js";
+import { reconnectWS } from "./ws";
 import { modalsModel } from "./modalmodel";
 import { TAB_COLORS } from "@/app/tab/tab";
 import { ClientService, ObjectService, WorkspaceService } from "./services";
@@ -99,7 +100,7 @@ export const [reducedMotionSystemPreference, setReducedMotionSystemPreference] =
 export const prefersReducedMotionAtom = createMemo(() => reducedMotionSetting() || reducedMotionSystemPreference());
 
 type BackendStatusState = "connecting" | "running" | "crashed";
-export const [backendStatusAtom, setBackendStatusAtom] = createSignal<BackendStatusState>("running");
+export const [backendStatusAtom, setBackendStatusAtom] = createSignal<BackendStatusState>("connecting");
 
 export interface BackendDeathInfo {
     code: number | null;
@@ -243,7 +244,17 @@ function initGlobalSignals(initOpts: GlobalInitOptions) {
             });
             setBackendStatusAtom("crashed");
         });
-        getApi().listen("backend-ready", () => setBackendStatusAtom("running"));
+        getApi().listen("backend-ready", (event) => {
+            const payload = (event as any)?.payload as { ws?: string; web?: string } | null;
+            if (payload?.ws) {
+                // Update window globals so getWSServerEndpoint() returns the new address
+                (window as any).__WAVE_SERVER_WS_ENDPOINT__ = payload.ws;
+                (window as any).__WAVE_SERVER_WEB_ENDPOINT__ = payload.web ?? "";
+                // Reconnect the WS client to the new endpoint (port may have changed)
+                reconnectWS(`ws://${payload.ws}`);
+            }
+            setBackendStatusAtom("running");
+        });
     } catch (_) {}
 
     // Expose atoms on window for wos.ts callBackendService

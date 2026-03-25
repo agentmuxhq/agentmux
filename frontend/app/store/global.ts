@@ -255,6 +255,15 @@ function initGlobalSignals(initOpts: GlobalInitOptions) {
             }
             setBackendStatusAtom("running");
         });
+
+        // The backend-ready event may have already fired before this listener was
+        // registered (when initTauriApi resolved via invoke rather than waiting for
+        // the event). Catch up by checking whether the backend is already up.
+        getApi().getBackendInfo().then(() => {
+            if (backendStatusAtom() === "connecting") {
+                setBackendStatusAtom("running");
+            }
+        }).catch(() => {});
     } catch (_) {}
 
     // Expose atoms on window for wos.ts callBackendService

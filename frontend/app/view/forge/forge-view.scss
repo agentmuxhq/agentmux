@@ -4,6 +4,7 @@
 .forge-pane {
     container-type: inline-size;
     container-name: forge-pane;
+    position: relative;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -721,7 +722,7 @@
 // ── Import overlay ──────────────────────────────────────────────────────────
 
 .forge-import-overlay {
-    position: fixed;
+    position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
@@ -1017,6 +1018,30 @@
     .forge-skill-type-badge {
         font-size: 9px;
     }
+
+    // Fix: form inputs stretch to full width in vertical layout
+    .forge-form-input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    // Fix: remove horizontal margins when buttons stack
+    .forge-import-btn,
+    .forge-reseed-btn {
+        margin-left: 0;
+    }
+
+    // Fix: checkbox row stays horizontal
+    .forge-form-row:has(.forge-form-checkbox-label) {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    // Fix: skill content textarea shrinks
+    .forge-skill-content {
+        min-height: 70px;
+        max-height: 140px;
+    }
 }
 
 // ── Responsive: Very narrow pane (< 150px) ──────────────────────────────────
@@ -1072,6 +1097,12 @@
         font-size: 12px;
         width: 100%;
         text-align: center;
+    }
+
+    // Fix: skill content textarea further shrinks
+    .forge-skill-content {
+        min-height: 50px;
+        max-height: 100px;
     }
 }
 

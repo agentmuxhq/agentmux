@@ -1,11 +1,6 @@
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
-/// The full target triple this binary was compiled for.
-/// Mirrors the constant in the parent module — redeclared here so this module
-/// is self-contained and doesn't need a re-export from sidecar.rs.
-const AGENTMUX_TARGET_TRIPLE: &str = env!("AGENTMUX_TARGET_TRIPLE");
-
 /// The live receiver and child handle returned after a successful process spawn.
 pub struct SpawnedSidecar {
     pub rx: tokio::sync::mpsc::Receiver<CommandEvent>,

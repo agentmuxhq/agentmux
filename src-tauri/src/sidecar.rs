@@ -6,8 +6,6 @@ use libc;
 use std::path::PathBuf;
 use tauri::Emitter;
 use tauri::Manager;
-use tauri_plugin_shell::ShellExt;
-
 /// The full target triple this binary was compiled for (e.g. "x86_64-pc-windows-msvc").
 /// Emitted by build.rs so we can locate the bundled sidecar binary by name at runtime.
 const AGENTMUX_TARGET_TRIPLE: &str = env!("AGENTMUX_TARGET_TRIPLE");

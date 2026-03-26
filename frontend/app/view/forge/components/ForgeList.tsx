@@ -20,6 +20,9 @@ export function ForgeList(props: { model: ForgeViewModel }): JSX.Element {
         <div class="forge-pane">
             <div class="forge-header">
                 <span class="forge-title">Forge</span>
+                <button class="forge-new-btn forge-new-btn-primary" onClick={() => props.model.startCreate()}>
+                    + New Agent
+                </button>
             </div>
             <div class="forge-divider" />
             <Show when={agents().length > 0} fallback={
@@ -27,12 +30,6 @@ export function ForgeList(props: { model: ForgeViewModel }): JSX.Element {
                     <span class="forge-empty-icon">&#10022;</span>
                     <span class="forge-empty-label">No agents yet</span>
                     <span class="forge-empty-sub">Create your first agent</span>
-                    <button class="forge-new-btn" onClick={() => props.model.startCreate()}>
-                        + New Agent
-                    </button>
-                    <button class="forge-new-btn forge-import-btn" onClick={() => setShowImport(true)}>
-                        Import from Claw
-                    </button>
                 </div>
             }>
                 <div class="forge-list">
@@ -54,17 +51,6 @@ export function ForgeList(props: { model: ForgeViewModel }): JSX.Element {
                             <ForgeAgentCard agent={agent} model={props.model} />
                         }</For>
                     </Show>
-                </div>
-                <div class="forge-list-footer">
-                    <button class="forge-new-btn" onClick={() => props.model.startCreate()}>
-                        + New Agent
-                    </button>
-                    <button class="forge-new-btn forge-import-btn" onClick={() => setShowImport(true)}>
-                        Import from Claw
-                    </button>
-                    <button class="forge-new-btn forge-reseed-btn" onClick={() => props.model.reseedAgents()}>
-                        Reset Built-in Agents
-                    </button>
                 </div>
             </Show>
             <Show when={showImport()}>

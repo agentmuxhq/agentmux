@@ -279,6 +279,19 @@
         background: var(--highlight-bg-color);
         border-color: var(--accent-color, #a78bfa);
     }
+
+    &.forge-new-btn-primary {
+        margin-left: auto;
+        background: #2ea043;
+        border-color: #2ea043;
+        color: #fff;
+        font-weight: 500;
+
+        &:hover {
+            background: #3fb950;
+            border-color: #3fb950;
+        }
+    }
 }
 
 .forge-btn-primary {

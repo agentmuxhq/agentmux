@@ -2,13 +2,18 @@
 
 This document tracks the version history of AgentMux (forked from waveterm).
 
-## Latest Version: 0.32.83
+## Latest Version: 0.32.89
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.32.89 (2026-03-25)
+- **Agent:** Claude Sonnet 4.6
+- **Changes:**
+  - fix: macOS inter-pane resize cursor not showing — onMouseEnter unreliable in WKWebView on transformed elements; switched to onPointerEnter/onPointerLeave
 
 ### v0.32.83 (2026-03-24)
 - **Agent:** Claude Sonnet 4.6

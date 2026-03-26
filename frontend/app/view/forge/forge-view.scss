@@ -73,6 +73,7 @@
 .forge-list {
     display: flex;
     flex-wrap: wrap;
+    flex: 1;
     gap: 4px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -587,6 +588,7 @@
 .forge-skills-list {
     display: flex;
     flex-wrap: wrap;
+    flex: 1;
     gap: 6px;
     overflow-y: auto;
     align-content: start;

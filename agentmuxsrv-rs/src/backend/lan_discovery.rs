@@ -75,8 +75,8 @@ impl LanDiscovery {
             .register(service_info)
             .map_err(|e| format!("mDNS register failed: {e}"))?;
 
-        // Browse for peers
-        daemon
+        // Browse for peers — keep the receiver for the event loop
+        let browse_receiver = daemon
             .browse(SERVICE_TYPE)
             .map_err(|e| format!("mDNS browse failed: {e}"))?;
 
@@ -90,10 +90,10 @@ impl LanDiscovery {
             service_fullname,
         });
 
-        // Spawn event receiver loop
+        // Spawn event receiver on a blocking thread to avoid starving the tokio runtime
         let disc = discovery.clone();
-        tokio::spawn(async move {
-            disc.event_loop().await;
+        tokio::task::spawn_blocking(move || {
+            disc.event_loop(browse_receiver);
         });
 
         tracing::info!(
@@ -105,15 +105,7 @@ impl LanDiscovery {
         Ok(discovery)
     }
 
-    async fn event_loop(&self) {
-        let receiver = match self.daemon.browse(SERVICE_TYPE) {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!("mDNS browse failed in event loop: {e}");
-                return;
-            }
-        };
-
+    fn event_loop(&self, receiver: mdns_sd::Receiver<ServiceEvent>) {
         loop {
             match receiver.recv() {
                 Ok(event) => self.handle_event(event),

@@ -2,13 +2,19 @@
 
 This document tracks the version history of AgentMux (forked from waveterm).
 
-## Latest Version: 0.32.83
+## Latest Version: 0.32.89
 
 **Base:** Upstream waveterm v0.12.0 + extensive custom features
 
 ---
 
 ## Version History (Latest First)
+
+### v0.32.89 (2026-03-25)
+- **Agent:** Claude Sonnet 4.6
+- **Changes:**
+  - fix: prevent zombie agent processes from causing sustained high CPU — SIGTERM/SIGKILL on stop(), sysinfo dead-PID eviction, delete_block now calls delete_controller to avoid registry leak
+  - fix: xterm.js cursor blink rAF loop — cursorBlink: false by default, re-enabled on focus
 
 ### v0.32.83 (2026-03-24)
 - **Agent:** Claude Sonnet 4.6

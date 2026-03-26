@@ -823,6 +823,8 @@
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         align-items: start;
+        align-content: start;
+        flex: none;
     }
 
     .forge-group-header {
@@ -837,6 +839,8 @@
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         align-items: start;
+        align-content: start;
+        flex: none;
     }
 }
 

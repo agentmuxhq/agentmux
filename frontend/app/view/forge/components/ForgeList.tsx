@@ -1,16 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { createSignal } from "solid-js";
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 import type { ForgeViewModel } from "../forge-model";
 import { ForgeAgentCard } from "./ForgeAgentCard";
-import { ForgeImportForm } from "./ForgeImportForm";
 
 export function ForgeList(props: { model: ForgeViewModel }): JSX.Element {
     const agents = props.model.agentsAtom;
-    const [showImport, setShowImport] = createSignal(false);
 
     const hostAgents = () => agents().filter((a) => a.agent_type === "host");
     const containerAgents = () => agents().filter((a) => a.agent_type === "container");
@@ -52,9 +49,6 @@ export function ForgeList(props: { model: ForgeViewModel }): JSX.Element {
                         }</For>
                     </Show>
                 </div>
-            </Show>
-            <Show when={showImport()}>
-                <ForgeImportForm model={props.model} onClose={() => setShowImport(false)} />
             </Show>
         </div>
     );

@@ -819,238 +819,64 @@
 // ── Responsive: Wide pane (600px+) ──────────────────────────────────────────
 
 @container forge-pane (min-width: 600px) {
-    // Card list: 2-column grid
     .forge-list {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
+        align-items: start;
     }
 
-    // Group headers span full width
     .forge-group-header {
         grid-column: 1 / -1;
     }
 
-    // Form: constrain input width for readability
     .forge-form-input {
         max-width: 400px;
     }
 
-    .forge-form-input-icon {
-        max-width: 80px;
-    }
-
-    // Skills: 2-column grid
     .forge-skills-list {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-
-    // History: wider time column
-    .forge-history-time {
-        min-width: 90px;
-    }
-
-    // Content pre: larger
-    .forge-content-pre {
-        font-size: 13px;
-    }
-
-    // Import dialog: fixed width centered
-    .forge-import-dialog {
-        min-width: 450px;
-        max-width: 500px;
+        align-items: start;
     }
 }
 
 // ── Responsive: Large pane (1000px+) ────────────────────────────────────────
 
 @container forge-pane (min-width: 1000px) {
-    // Card list: 3-column grid
     .forge-list {
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
     }
 
-    // Card: show more detail
-    .forge-card {
-        padding: 8px 12px;
-    }
-
-    .forge-card-desc {
-        white-space: normal;
-        -webkit-line-clamp: 2;
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-    // Form: two-column layout for form rows
-    .forge-form {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px 24px;
-    }
-
-    // Full-width rows: providers, error, actions, and column-layout rows
-    .forge-form-row-col,
-    .forge-form-providers,
-    .forge-form-error,
-    .forge-form-actions {
-        grid-column: 1 / -1;
-    }
-
-    .forge-form-input {
-        max-width: 450px;
-    }
-
-    // Skills: 3-column grid
     .forge-skills-list {
         grid-template-columns: repeat(3, 1fr);
     }
 
-    // Detail: wider header
-    .forge-detail-header {
-        gap: 14px;
-    }
-
-    .forge-detail-icon {
-        font-size: 26px;
-    }
-
-    .forge-detail-name {
-        font-size: 16px;
-    }
-
-    // Section tabs: more spacing
-    .forge-section-tab {
-        padding: 6px 18px;
-        font-size: 13px;
-    }
-
-    // Content tabs: more spacing
-    .forge-content-tab {
-        padding: 6px 14px;
-        font-size: 13px;
-    }
-
-    // Skill content textarea: taller
-    .forge-skill-content {
-        min-height: 150px;
-        max-height: 300px;
+    .forge-form-input {
+        max-width: 450px;
     }
 }
 
 // ── Responsive: Extra-large pane (1200px+) ──────────────────────────────────
 
 @container forge-pane (min-width: 1200px) {
-    // Card list: 4-column grid
     .forge-list {
         grid-template-columns: repeat(4, 1fr);
     }
 
-    // Skills: 4-column grid
     .forge-skills-list {
         grid-template-columns: repeat(4, 1fr);
-    }
-
-    // Form: constrain max width and center
-    .forge-form {
-        max-width: 900px;
-        gap: 12px 32px;
-    }
-
-    // Detail: split content area into side-by-side
-    .forge-section-body {
-        flex-direction: row;
-        gap: 16px;
-    }
-
-    .forge-content-body {
-        flex: 2;
-    }
-
-    // Content: larger text
-    .forge-content-pre {
-        font-size: 13px;
-        padding: 14px;
-    }
-
-    .forge-content-textarea {
-        font-size: 13px;
-        min-height: 180px;
-    }
-
-    // History: more spacious
-    .forge-history-entry {
-        padding: 6px 0;
     }
 }
 
 // ── Responsive: Ultra-wide pane (1600px+) ───────────────────────────────────
 
 @container forge-pane (min-width: 1600px) {
-    // Card list: 5-column grid
     .forge-list {
         grid-template-columns: repeat(5, 1fr);
-        gap: 10px;
     }
 
-    // Card: larger, show full description
-    .forge-card {
-        padding: 10px 14px;
-        gap: 12px;
-    }
-
-    .forge-card-icon {
-        font-size: 24px;
-        width: 32px;
-    }
-
-    .forge-card-desc {
-        white-space: normal;
-        -webkit-line-clamp: 3;
-    }
-
-    // Skills: 5-column grid
     .forge-skills-list {
         grid-template-columns: repeat(5, 1fr);
-        gap: 10px;
-    }
-
-    // Form: constrain width, center
-    .forge-form {
-        max-width: 1000px;
-    }
-
-    .forge-form-input {
-        max-width: 500px;
-    }
-
-    // Detail header: more spacious
-    .forge-detail-header {
-        gap: 16px;
-        margin-bottom: 12px;
-    }
-
-    .forge-detail-icon {
-        font-size: 30px;
-    }
-
-    .forge-detail-name {
-        font-size: 18px;
-    }
-
-    // Skill content: taller
-    .forge-skill-content {
-        min-height: 200px;
-        max-height: 400px;
-    }
-
-    // History: wider timestamps
-    .forge-history-time {
-        min-width: 110px;
     }
 }
 

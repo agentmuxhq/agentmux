@@ -72,11 +72,11 @@
 
 .forge-list {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 4px;
     overflow-y: auto;
     overflow-x: hidden;
-    flex: 1;
+    align-content: start;
 }
 
 .forge-list-footer {
@@ -98,6 +98,8 @@
     border: 1px solid var(--border-color);
     border-radius: 6px;
     cursor: pointer;
+    flex: 1 1 280px;
+    min-width: 0;
 
     &:hover {
         border-color: var(--highlight-bg-color);
@@ -583,10 +585,10 @@
 
 .forge-skills-list {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 6px;
-    flex: 1;
     overflow-y: auto;
+    align-content: start;
 }
 
 .forge-skills-footer {
@@ -605,6 +607,8 @@
     background: var(--block-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 4px;
+    flex: 1 1 260px;
+    min-width: 0;
 }
 
 .forge-skill-card-info {
@@ -773,6 +777,8 @@
     letter-spacing: 0.5px;
     padding: 8px 0 2px;
     margin-top: 4px;
+    flex-basis: 100%;
+    width: 100%;
 
     &:first-child {
         margin-top: 0;
@@ -829,71 +835,11 @@
     }
 }
 
-// ── Responsive: Wide pane (600px+) ──────────────────────────────────────────
+// ── Responsive: Wide pane — cap form input width for readability ─────────────
 
 @container forge-pane (min-width: 600px) {
-    .forge-list {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        align-items: start;
-        align-content: start;
-        flex: none;
-    }
-
-    .forge-group-header {
-        grid-column: 1 / -1;
-    }
-
     .forge-form-input {
         max-width: 400px;
-    }
-
-    .forge-skills-list {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        align-items: start;
-        align-content: start;
-        flex: none;
-    }
-}
-
-// ── Responsive: Large pane (1000px+) ────────────────────────────────────────
-
-@container forge-pane (min-width: 1000px) {
-    .forge-list {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .forge-skills-list {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .forge-form-input {
-        max-width: 450px;
-    }
-}
-
-// ── Responsive: Extra-large pane (1200px+) ──────────────────────────────────
-
-@container forge-pane (min-width: 1200px) {
-    .forge-list {
-        grid-template-columns: repeat(4, 1fr);
-    }
-
-    .forge-skills-list {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-// ── Responsive: Ultra-wide pane (1600px+) ───────────────────────────────────
-
-@container forge-pane (min-width: 1600px) {
-    .forge-list {
-        grid-template-columns: repeat(5, 1fr);
-    }
-
-    .forge-skills-list {
-        grid-template-columns: repeat(5, 1fr);
     }
 }
 

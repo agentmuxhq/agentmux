@@ -99,6 +99,7 @@
     border-radius: 6px;
     cursor: pointer;
     flex: 1 1 280px;
+    max-width: 400px;
     min-width: 0;
 
     &:hover {
@@ -608,6 +609,7 @@
     border: 1px solid var(--border-color);
     border-radius: 4px;
     flex: 1 1 260px;
+    max-width: 380px;
     min-width: 0;
 }
 

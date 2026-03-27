@@ -127,6 +127,38 @@ menu.push({
 });
 ```
 
+## Empty Tab Context Menu
+
+When no panes are open (empty tab), right-clicking the empty content area shows a flat widget menu (not a submenu — there's no parent "Replace With..." since there's nothing to replace).
+
+### Menu Structure (empty tab)
+
+```
+agent
+forge
+identity
+swarm
+terminal
+sysinfo
+help
+```
+
+### Behavior
+
+1. Right-click the empty content area of a tab with no panes
+2. A flat list of all pane-based widgets appears
+3. Clicking a widget creates a new pane of that type via `createBlock()`
+
+### Filtering
+
+Same as the "Replace With..." submenu: exclude `devtools` and `settings`, include all others regardless of `display:hidden`.
+
+### Implementation
+
+| File | Change |
+|------|--------|
+| `frontend/app/tab/tabcontent.tsx` | Add `onContextMenu` handler to container div; build widget menu when layout has no leafs |
+
 ## Edge Cases
 
 - **Single pane in tab:** Replace works — layout has one node, its block ID changes
@@ -143,3 +175,5 @@ menu.push({
 5. Verify hidden widgets DO appear in the submenu (e.g. "swarm" which has `display:hidden: true`)
 6. Verify layout position is preserved in split layouts (2+ panes)
 7. Verify it works on magnified panes
+8. Right-click empty tab area (no panes) — flat widget list appears
+9. Click a widget — new pane of that type is created

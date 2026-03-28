@@ -44,7 +44,7 @@ const DEFAULT_AGENT_COLORS: Record<string, string> = {
  */
 const DEFAULT_AGENT_TEXT_COLORS: Record<string, string> = {
     AgentA: "#ffffff",  // White on dark blue
-    AgentX: "#ffffff",  // White on purple
+    AgentX: "#ffffff",  // White on red
     AgentY: "#000000",  // Black on yellow/gold
     AgentG: "#000000",  // Black on amber
     Agent1: "#ffffff",  // White on blue

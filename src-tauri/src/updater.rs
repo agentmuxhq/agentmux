@@ -264,17 +264,21 @@ pub fn install_update() {
         InstallType::Msix => {
             // Open Microsoft Store page
             // TODO: Replace with actual Store product ID once published
-            let _ = tauri_plugin_opener::open_url(
+            if let Err(e) = tauri_plugin_opener::open_url(
                 "ms-windows-store://pdp/?productid=9P3JFPWWDZRC",
                 None::<&str>,
-            );
+            ) {
+                tracing::warn!("failed to open Microsoft Store: {e}");
+            }
         }
         _ => {
             // All other types: open GitHub releases page
-            let _ = tauri_plugin_opener::open_url(
+            if let Err(e) = tauri_plugin_opener::open_url(
                 "https://github.com/agentmuxai/agentmux/releases/latest",
                 None::<&str>,
-            );
+            ) {
+                tracing::warn!("failed to open GitHub releases page: {e}");
+            }
         }
     }
 }

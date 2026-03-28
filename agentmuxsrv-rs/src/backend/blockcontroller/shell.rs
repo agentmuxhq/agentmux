@@ -537,6 +537,16 @@ impl Controller for ShellController {
                 }
             }
 
+            // Strip host-inherited agent identity unless explicitly configured
+            // in settings.cmd_env or block cmd:env metadata.
+            if !has_agent_id {
+                c.env_remove("AGENTMUX_AGENT_ID");
+                c.env_remove("AGENTMUX_AGENT_COLOR");
+                c.env_remove("AGENTMUX_AGENT_TEXT_COLOR");
+                c.env_remove("WAVEMUX_AGENT_ID");
+                c.env_remove("WAVEMUX_AGENT_COLOR");
+            }
+
             c
         };
 

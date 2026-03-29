@@ -399,7 +399,7 @@ export class TermWrap {
         // texture atlas doesn't redraw after control sequences (backspace, erase-in-line).
         // This is a WebKitGTK bug, not xterm.js (Tauri #6559, WebKit Bug 228268).
         // Default to DOM renderer on Linux; WebGL opt-in via term:disablewebgl=false.
-        if (PLATFORM === PlatformLinux) {
+        if (PLATFORM === PlatformLinux && !useWebGl) {
             if (!loggedWebGL) {
                 console.log("linux: using DOM renderer (WebKitGTK WebGL workaround)");
                 loggedWebGL = true;

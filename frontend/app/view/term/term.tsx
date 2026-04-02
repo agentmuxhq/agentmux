@@ -181,10 +181,7 @@ function TerminalView(props: ViewComponentProps<TermViewModel>): JSX.Element {
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
-                // Win11 DComp: WebGL canvases get promoted to hardware overlay planes that
-                // render above all CSS content, making pane focus borders invisible.
-                // Default Windows to DOM renderer; opt-in to WebGL via term:disablewebgl=false.
-                useWebGl: isWindows() ? ts?.["term:disablewebgl"] === false : !ts?.["term:disablewebgl"],
+                useWebGl: !ts?.["term:disablewebgl"],
                 sendDataHandler: model.sendDataToController.bind(model),
             }
         );

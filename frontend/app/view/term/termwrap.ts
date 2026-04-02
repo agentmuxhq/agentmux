@@ -448,18 +448,6 @@ export class TermWrap {
             }
             return; // DOM renderer is the default when no renderer addon is loaded
         }
-        // Win11 DComp: Chromium promotes WebGL canvases to DWM hardware overlay planes
-        // on Windows 11. These overlays render above the browser window's entire surface —
-        // no CSS (outline, border, background-color, z-index) can paint above them.
-        // Win10 doesn't promote WebGL to hardware overlays so CSS borders work there.
-        // Default to DOM renderer on Windows; WebGL opt-in via term:disablewebgl=false.
-        if (PLATFORM === PlatformWindows && !useWebGl) {
-            if (!loggedWebGL) {
-                console.log("windows: using DOM renderer (DComp hardware overlay workaround)");
-                loggedWebGL = true;
-            }
-            return; // DOM renderer is the default when no renderer addon is loaded
-        }
         if (WebGLSupported && useWebGl) {
             try {
                 const webglAddon = new WebglAddon();

@@ -196,6 +196,9 @@ task cef:bundle             # Bundle CEF runtime DLLs
 task cef:package:portable   # Portable ZIP (Windows)
 ```
 
+**CRITICAL — Always bump patch before a desktop build.**
+Each version gets its own CEF data directory (`ai.agentmux.cef.v{version}`). If you build and package without bumping, the new portable binary shares a data dir with the already-running instance → Chromium's SingletonLock causes the new instance to silently exit on double-click. Always run `bump patch --commit` before packaging.
+
 ---
 
 ## Common Issues

@@ -609,17 +609,6 @@ function BlockFrame_Default_Component(props: BlockFrameProps): JSX.Element {
     let connBtnRef: { current: HTMLDivElement | null } = { current: null };
     const noHeader = util.useAtomValueSafe(props.viewModel?.noHeader);
 
-    // Compute agent color for border styling (matches header color)
-    const blockAgentColor = createMemo(() => {
-        if (!props.preview && blockData()?.meta?.view === "term") {
-            const blockEnv = blockData()?.meta?.["cmd:env"] as Record<string, string> | undefined;
-            const agentId = detectAgentFromEnv(blockEnv);
-            if (agentId) {
-                return detectAgentColor(blockEnv, agentId);
-            }
-        }
-        return null;
-    });
 
     createEffect(() => {
         if (!manageConnection) {
@@ -696,7 +685,6 @@ function BlockFrame_Default_Component(props: BlockFrameProps): JSX.Element {
                 "block-focused": isFocused() || props.preview,
                 "block-preview": props.preview,
 
-                "has-agent-color": !!blockAgentColor(),
                 ephemeral: isEphemeral(),
                 magnified: isMagnified(),
             })}
@@ -709,12 +697,10 @@ function BlockFrame_Default_Component(props: BlockFrameProps): JSX.Element {
                 {
                     "--magnified-block-opacity": magnifiedBlockOpacity(),
                     "--magnified-block-blur": `${magnifiedBlockBlur()}px`,
-                    "--block-agent-color": blockAgentColor() ?? "transparent",
                 } as JSX.CSSProperties
             }
             inert={props.preview || undefined}
         >
-            <BlockMask nodeModel={nodeModel} />
             <Show when={!props.preview && props.viewModel != null}>
                 <ConnStatusOverlay
                     nodeModel={nodeModel}
@@ -745,6 +731,9 @@ function BlockFrame_Default_Component(props: BlockFrameProps): JSX.Element {
                     connBtnRef={connBtnRef}
                 />
             </Show>
+            {/* BlockMask is last in DOM so it paints above all block content,
+                including hardware-accelerated WebGL surfaces */}
+            <BlockMask nodeModel={nodeModel} />
         </div>
     );
 }

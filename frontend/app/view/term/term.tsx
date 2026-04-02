@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Search, useSearch } from "@/app/element/search";
+import { isWindows } from "@/util/platformutil";
 import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, pushNotification, WOS } from "@/store/global";
 import { backendStatusAtom } from "@/store/backendStatus";
 import { fireAndForget } from "@/util/util";
@@ -180,7 +181,10 @@ function TerminalView(props: ViewComponentProps<TermViewModel>): JSX.Element {
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
-                useWebGl: !ts?.["term:disablewebgl"],
+                // Win11 DComp: WebGL canvases get promoted to hardware overlay planes that
+                // render above all CSS content, making pane focus borders invisible.
+                // Default Windows to DOM renderer; opt-in to WebGL via term:disablewebgl=false.
+                useWebGl: isWindows() ? ts?.["term:disablewebgl"] === false : !ts?.["term:disablewebgl"],
                 sendDataHandler: model.sendDataToController.bind(model),
             }
         );

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Search, useSearch } from "@/app/element/search";
-import { isWindows } from "@/util/platformutil";
 import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, pushNotification, WOS } from "@/store/global";
 import { backendStatusAtom } from "@/store/backendStatus";
 import { fireAndForget } from "@/util/util";

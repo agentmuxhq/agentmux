@@ -465,6 +465,12 @@
                 // z-index must exceed any in-block overlay (termstickers = 20)
                 z-index: 50;
             }
+
+            // Agent-loaded terminals show the agent color instead of accent.
+            // Matches the header color for visual consistency.
+            &.has-agent-color .block-mask {
+                border-color: var(--block-agent-color);
+            }
         }
 
     }

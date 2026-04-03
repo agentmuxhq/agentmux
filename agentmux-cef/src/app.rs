@@ -194,13 +194,8 @@ wrap_app! {
         ) {
             if let Some(cmd) = command_line {
                 // Prevent empty browser on visibility change (CEF #3638).
-                // DCompPresenter: Chromium's DirectComposition presenter promotes WebGL
-                // canvases to DWM hardware overlay planes on Win11. These overlay planes
-                // composite at the OS level, above all CSS content — making focus rings,
-                // borders, and z-indexed elements invisible over terminal panes. Disabling
-                // DCompPresenter prevents overlay promotion while keeping WebGL GPU rendering.
                 let key = CefString::from("disable-features");
-                let val = CefString::from("CalculateNativeWinOcclusion,DCompPresenter");
+                let val = CefString::from("CalculateNativeWinOcclusion");
                 cmd.append_switch_with_value(Some(&key), Some(&val));
 
                 // Set initial background color via CLI.

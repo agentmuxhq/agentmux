@@ -283,7 +283,7 @@ describe('AgentMuxWebhookStack Integration', () => {
     const configTable = Object.values(resources).find(
       (resource: any) =>
         resource.Type === 'AWS::DynamoDB::Table' &&
-        resource.Properties.TableName === 'WaveMuxWebhookConfig-prod'
+        resource.Properties.TableName === 'AgentMuxWebhookConfig-prod'
     ) as any;
 
     expect(configTable).toBeDefined();

@@ -115,7 +115,7 @@ describe('AgentMuxWebhookStack', () => {
   describe('Lambda Function', () => {
     test('creates webhook router function with correct configuration', () => {
       template.hasResourceProperties('AWS::Lambda::Function', {
-        FunctionName: 'wavemux-webhook-router-test',
+        FunctionName: 'agentmux-webhook-router-test',
         Runtime: 'python3.12',
         Handler: 'handler.lambda_handler',
         Timeout: 30,
@@ -210,7 +210,7 @@ describe('AgentMuxWebhookStack', () => {
   describe('HTTP API Gateway', () => {
     test('creates HTTP API', () => {
       template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
-        Name: 'wavemux-webhook-http-test',
+        Name: 'agentmux-webhook-http-test',
         ProtocolType: 'HTTP',
       });
     });
@@ -260,7 +260,7 @@ describe('AgentMuxWebhookStack', () => {
   describe('WebSocket API Gateway', () => {
     test('creates WebSocket API', () => {
       template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
-        Name: 'wavemux-webhook-ws-test',
+        Name: 'agentmux-webhook-ws-test',
         ProtocolType: 'WEBSOCKET',
       });
     });
@@ -288,7 +288,7 @@ describe('AgentMuxWebhookStack', () => {
   describe('Secrets Manager', () => {
     test('creates webhook secret', () => {
       template.hasResourceProperties('AWS::SecretsManager::Secret', {
-        Name: 'wavemux/webhook-secret-test',
+        Name: 'agentmux/webhook-secret-test',
         Description: 'Webhook authentication secrets for AgentMux (GitHub, etc.)',
       });
     });
